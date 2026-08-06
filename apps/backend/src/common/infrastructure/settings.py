@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     jwt_algorithm: Literal["RS256", "HS256"] = "RS256"
     jwt_private_key_path: Path = Field(default=Path("./secrets/jwt_private.pem"))
     jwt_public_key_path: Path = Field(default=Path("./secrets/jwt_public.pem"))
-    jwt_access_token_ttl_seconds: int = 900  # 15 min
+    jwt_access_token_ttl_seconds: int = 300  # 5 min (shortened; silent refresh handles renewal)
     jwt_refresh_token_ttl_seconds: int = 30 * 24 * 3600  # 30 days
 
     # ---- CORS ----
