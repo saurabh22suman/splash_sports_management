@@ -39,6 +39,7 @@ class LoginResult:
     refresh_expires_at: datetime
     user_id: UUID
     tenant_id: UUID
+    roles: list[str]
 
 
 class AuthService:
@@ -137,6 +138,7 @@ class AuthService:
             refresh_expires_at=pair.refresh_expires_at,
             user_id=user.id,
             tenant_id=user.tenant_id,
+            roles=[r.value for r in user.roles],
         )
 
     # ----------------- refresh (rotating) -----------------
@@ -185,6 +187,7 @@ class AuthService:
             refresh_expires_at=pair.refresh_expires_at,
             user_id=user.id,
             tenant_id=user.tenant_id,
+            roles=[r.value for r in user.roles],
         )
 
     # ----------------- logout -----------------

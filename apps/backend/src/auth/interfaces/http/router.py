@@ -36,6 +36,7 @@ def _to_token_response(result) -> TokenResponse:  # type: ignore[no-untyped-def]
         refresh_expires_in=max(refresh_in, 0),
         user_id=result.user_id,
         tenant_id=result.tenant_id,
+        roles=getattr(result, "roles", []),
     )
 
 

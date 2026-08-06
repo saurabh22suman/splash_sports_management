@@ -255,6 +255,33 @@ class TestAuthEndpoints:
         body = resp.json()
         assert body["code"] == "unauthorized"
 
+    async def test_login_response_includes_roles(self, client: AsyncClient) -> None:
+        from datetime import datetime, timedelta, timezone
+        from uuid import uuid4
+
+        from auth.interfaces.http.router import _auth_service
+
+        result = MagicMock()
+        result.access_token = "fake-access"
+        result.refresh_token = "fake-refresh"
+        result.access_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        result.user_id = uuid4()
+        result.tenant_id = uuid4()
+        result.roles = ["tenant_admin", "customer"]
+
+        mock_svc = MagicMock()
+        mock_svc.login = AsyncMock(return_value=result)
+        client._transport.app.dependency_overrides[_auth_service] = lambda: mock_svc
+
+        resp = await client.post(
+            "/v1/auth/login",
+            json={"email": "admin@splashh.dev", "password": "verysecurepassword123"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["roles"] == ["tenant_admin", "customer"]
+
     async def test_healthz(self, client: AsyncClient) -> None:
         resp = await client.get("/healthz")
         assert resp.status_code == 200

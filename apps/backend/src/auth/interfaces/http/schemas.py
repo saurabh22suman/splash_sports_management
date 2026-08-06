@@ -47,6 +47,7 @@ class TokenResponse(BaseModel):
     refresh_expires_in: int
     user_id: UUID
     tenant_id: UUID
+    roles: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
