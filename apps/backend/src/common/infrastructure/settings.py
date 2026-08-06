@@ -49,7 +49,14 @@ class Settings(BaseSettings):
     jwt_refresh_token_ttl_seconds: int = 30 * 24 * 3600  # 30 days
 
     # ---- CORS ----
-    cors_allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    cors_allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://localhost:5174"])
+
+    # ---- Refresh-token cookie ----
+    auth_refresh_cookie_name: str = "refresh_token"
+    auth_refresh_cookie_secure: bool = True
+    auth_refresh_cookie_samesite: str = "lax"
+    auth_refresh_cookie_path: str = "/v1/auth"
+    auth_refresh_cookie_max_age_seconds: int = 2_592_000  # 30 days
 
     # ---- Rate limiting ----
     rate_limit_default_per_minute: int = 120
