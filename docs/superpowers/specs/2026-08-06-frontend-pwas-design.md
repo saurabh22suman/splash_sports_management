@@ -391,13 +391,15 @@ Both run against the live backend (started in CI via docker-compose). Locally th
 
 | Script | Effect |
 |---|---|
-| `pnpm dev` | `pnpm -r --parallel dev` (backend + both PWAs concurrently via `concurrently`) |
+| `pnpm dev` | `concurrently -k -n backend,admin,customer "make -C apps/backend dev" "pnpm --filter admin-pwa dev" "pnpm --filter customer-pwa dev"` |
 | `pnpm build` | `pnpm -r build` |
 | `pnpm typecheck` | `pnpm -r typecheck` |
 | `pnpm lint` | `biome check .` |
 | `pnpm test` | `pnpm -r test` |
 | `pnpm test:e2e` | `playwright test` |
 | `pnpm ui:add <name>` | shadcn add scoped to `packages/ui` |
+
+**Why `make -C apps/backend dev`:** the backend is a Python project managed by `uv`, not a pnpm package. A Makefile target in `apps/backend/Makefile` (or `scripts/backend-dev.sh`) wraps `uv run uvicorn ...` so the root `pnpm dev` can orchestrate all three processes uniformly.
 
 ---
 
