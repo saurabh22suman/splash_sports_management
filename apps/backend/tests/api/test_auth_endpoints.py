@@ -139,6 +139,35 @@ class TestAuthEndpoints:
         assert body["refresh_token"] == "fake-refresh"
         assert body["token_type"] == "bearer"
 
+    async def test_login_sets_refresh_cookie(self, client: AsyncClient) -> None:
+        from datetime import datetime, timedelta, timezone
+        from uuid import uuid4
+
+        from auth.interfaces.http.router import _auth_service
+
+        result = MagicMock()
+        result.access_token = "fake-access"
+        result.refresh_token = "fake-refresh-jwt"
+        result.access_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        result.user_id = uuid4()
+        result.tenant_id = uuid4()
+
+        mock_svc = MagicMock()
+        mock_svc.login = AsyncMock(return_value=result)
+        client._transport.app.dependency_overrides[_auth_service] = lambda: mock_svc
+
+        resp = await client.post(
+            "/v1/auth/login",
+            json={"email": "admin@splashh.dev", "password": "verysecurepassword123"},
+        )
+        assert resp.status_code == 200
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert "refresh_token=fake-refresh-jwt" in set_cookie
+        assert "HttpOnly" in set_cookie
+        assert "SameSite=lax" in set_cookie or "SameSite=Lax" in set_cookie
+        assert "Path=/v1/auth" in set_cookie
+
     async def test_login_invalid_credentials_returns_401(self, client: AsyncClient) -> None:
         from common.interfaces.http import app as app_module
         from auth.interfaces.http.router import _auth_service

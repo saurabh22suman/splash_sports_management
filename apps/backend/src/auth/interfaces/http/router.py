@@ -1,7 +1,7 @@
 """HTTP router for auth endpoints."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.application.auth_service import AuthService, build_auth_service
@@ -15,13 +15,12 @@ from auth.interfaces.http.schemas import (
 )
 from common.domain.exceptions import Unauthorized
 from common.infrastructure.db import get_session
+from common.infrastructure.settings import get_settings
 
 router = APIRouter()
 
 
 def _auth_service(session: AsyncSession = Depends(get_session)) -> AuthService:
-    from common.infrastructure.settings import get_settings
-
     return build_auth_service(session, get_settings())
 
 
@@ -37,6 +36,20 @@ def _to_token_response(result) -> TokenResponse:  # type: ignore[no-untyped-def]
         refresh_expires_in=max(refresh_in, 0),
         user_id=result.user_id,
         tenant_id=result.tenant_id,
+    )
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    """Attach the refresh token as an httpOnly cookie scoped to /v1/auth."""
+    s = get_settings()
+    response.set_cookie(
+        key=s.auth_refresh_cookie_name,
+        value=token,
+        max_age=s.auth_refresh_cookie_max_age_seconds,
+        path=s.auth_refresh_cookie_path,
+        secure=s.auth_refresh_cookie_secure,
+        httponly=True,
+        samesite=s.auth_refresh_cookie_samesite,
     )
 
 
@@ -67,25 +80,33 @@ async def register_tenant(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     payload: LoginRequest,
+    response: Response,
     svc: AuthService = Depends(_auth_service),
 ) -> TokenResponse:
     result = await svc.login(email=payload.email, password=payload.password)
+    _set_refresh_cookie(response, result.refresh_token)
     return _to_token_response(result)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
     payload: RefreshRequest,
+    response: Response,
     svc: AuthService = Depends(_auth_service),
 ) -> TokenResponse:
     result = await svc.refresh(refresh_token=payload.refresh_token)
+    _set_refresh_cookie(response, result.refresh_token)
     return _to_token_response(result)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     payload: LogoutRequest,
+    response: Response,
     svc: AuthService = Depends(_auth_service),
 ) -> None:
     await svc.logout(refresh_token=payload.refresh_token)
+    s = get_settings()
+    response.delete_cookie(key=s.auth_refresh_cookie_name, path=s.auth_refresh_cookie_path)
     return None
+
