@@ -121,3 +121,12 @@ async def test_seed_demo_creates_facility_pool_and_seven_rules(session, tenant):
         assert r.slot_duration_minutes == 60
 
     assert "Splash Sports Club" in stdout.getvalue()
+
+
+async def test_seed_demo_returns_one_with_message_when_no_tenant(session):
+    stdout = io.StringIO()
+    exit_code = await seed_demo(session, stdout=stdout)
+
+    assert exit_code == 1
+
+    assert "No tenant found" in stdout.getvalue()
