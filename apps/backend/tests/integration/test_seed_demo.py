@@ -130,3 +130,51 @@ async def test_seed_demo_returns_one_with_message_when_no_tenant(session):
     assert exit_code == 1
 
     assert "No tenant found" in stdout.getvalue()
+
+
+async def test_seed_demo_is_noop_when_facility_already_seeded(session, tenant):
+    # First call seeds.
+    stdout = io.StringIO()
+    first = await seed_demo(session, stdout=stdout)
+    assert first == 0
+
+    facility_count = (
+        await session.execute(
+            select(FacilityModel).where(FacilityModel.tenant_id == tenant.id)
+        )
+    ).scalars().all()
+    resource_count = (
+        await session.execute(select(ResourceModel))
+    ).scalars().all()
+    rule_count = (
+        await session.execute(select(AvailabilityRuleModel))
+    ).scalars().all()
+
+    assert len(facility_count) == 1
+    assert len(resource_count) == 1
+    assert len(rule_count) == 7
+
+    # Second call is a no-op.
+    stdout2 = io.StringIO()
+    second = await seed_demo(session, stdout=stdout2)
+
+    assert second == 0
+
+    # Counts unchanged.
+    facility_count_2 = (
+        await session.execute(
+            select(FacilityModel).where(FacilityModel.tenant_id == tenant.id)
+        )
+    ).scalars().all()
+    resource_count_2 = (
+        await session.execute(select(ResourceModel))
+    ).scalars().all()
+    rule_count_2 = (
+        await session.execute(select(AvailabilityRuleModel))
+    ).scalars().all()
+
+    assert len(facility_count_2) == 1
+    assert len(resource_count_2) == 1
+    assert len(rule_count_2) == 7
+
+    assert "Already seeded" in stdout2.getvalue()
