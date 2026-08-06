@@ -8,8 +8,16 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "admin", use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:5173" } },
-    { name: "customer", use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:5174" } },
+    {
+      name: "admin",
+      testMatch: /admin\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:5173" },
+    },
+    {
+      name: "customer",
+      testMatch: /customer\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:5174" },
+    },
   ],
   webServer: [
     {
