@@ -10,7 +10,13 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
+export function LoginForm({
+  onSuccess,
+  mode = "customer",
+}: {
+  onSuccess: (roles: string[]) => void;
+  mode?: "customer" | "staff";
+}) {
   const {
     register,
     handleSubmit,
@@ -20,8 +26,8 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
   const onSubmit = handleSubmit(async (data) => {
     try {
-      await login.mutateAsync(data);
-      onSuccess();
+      const roles = await login.mutateAsync({ ...data, mode });
+      onSuccess(roles);
     } catch {
       /* error surfaced via mutation */
     }
@@ -30,19 +36,37 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Admin log in</CardTitle>
+        <CardTitle className="text-xl">
+          {mode === "staff" ? "Admin log in" : "Log in"}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
           <FormField label="Email" htmlFor="email" error={errors.email?.message}>
-            <Input id="email" type="email" autoComplete="email" {...register("email")} />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              aria-invalid={errors.email ? "true" : "false"}
+              {...register("email")}
+            />
           </FormField>
           <FormField label="Password" htmlFor="password" error={errors.password?.message}>
-            <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={errors.password ? "true" : "false"}
+              {...register("password")}
+            />
           </FormField>
-          {login.error && <p role="alert" className="text-sm text-destructive">{(login.error as Error).message || "Login failed"}</p>}
+          {login.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {(login.error as Error).message || "Login failed"}
+            </p>
+          )}
           <Button type="submit" disabled={isSubmitting || login.isPending} className="w-full">
-            {login.isPending ? "Logging in…" : "Log in"}
+            {login.isPending ? "Logging in..." : "Log in"}
           </Button>
         </form>
       </CardContent>

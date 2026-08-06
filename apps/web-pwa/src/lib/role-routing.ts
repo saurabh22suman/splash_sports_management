@@ -10,7 +10,7 @@ export const homeForRoles = (roles: readonly string[]): string => {
   // Check roles in priority order
   for (const role of ROLE_PRIORITY) {
     if (roles.includes(role)) {
-      return ROLE_HOMES[role];
+      return ROLE_HOMES[role] ?? "/";
     }
   }
   return "/";
