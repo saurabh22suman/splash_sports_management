@@ -32,10 +32,10 @@ export function AppRouter() {
               <Route path="/book/bookings" element={<BookingsPage />} />
             </Route>
             <Route element={<RoleGate roles={["tenant_admin"]} />}>
-              <Route path="/admin" element={<AdminFacilitiesPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/facilities/new" element={<AdminFacilityNewPage />} />
               <Route path="/admin/facilities/:id" element={<AdminFacilityDetailPage />} />
-              <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin" element={<AdminFacilitiesPage />} />
             </Route>
           </Route>
           <Route path="*" element={<HomePage />} />
