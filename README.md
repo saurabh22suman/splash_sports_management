@@ -9,7 +9,7 @@ The complete engineering reference lives in [`docs/`](./docs/README.md).
 ## Stack
 
 - **Backend:** FastAPI + SQLAlchemy 2 (async) + Alembic + PostgreSQL 16 + Redis 7
-- **Frontend PWAs:** Vite + React 18 + TypeScript + TanStack Query + shadcn/ui + vite-plugin-pwa
+- **Frontend:** `apps/web-pwa` (single installable PWA; role-based home after login; admin users can create other roles)
 - **Auth:** Argon2id passwords, HS256 JWT (5min access) + opaque refresh tokens (30d, rotated, httpOnly cookie)
 - **Multi-tenancy:** shared schema with `tenant_id` on every business table + Postgres RLS
 - **Quality:** Ruff + mypy strict + pytest (TDD) for backend; Vitest + RTL + Playwright + axe-core for frontend
@@ -29,8 +29,7 @@ apps/
     tests/
     alembic/              # Database migrations
     pyproject.toml
-  admin-pwa/              # Operator PWA (facility admin, bookings)
-  customer-pwa/           # End-user PWA (browse + book)
+  web-pwa/                # Single PWA with role-based routing
 packages/
   ui/                     # @splashh/ui — shadcn primitives + brand tokens
   api-client/             # @splashh/api-client — axios + auth + query keys
@@ -69,11 +68,11 @@ cd ../..
 
 # 4. Run everything
 pnpm dev
-# → backend on :8765, admin-pwa on :5173, customer-pwa on :5174
+# → backend on :8765, web-pwa on :5173
 ```
 
 To run just the backend: `make -C apps/backend dev`.
-To run a single PWA: `pnpm --filter customer-pwa dev`.
+To run the PWA: `pnpm --filter web-pwa dev`.
 
 ### Test
 
@@ -99,12 +98,11 @@ This scopes the shadcn CLI to `packages/ui` per the root `ui:add` script.
 | Module | Status | Notes |
 |---|---|---|
 | `common` | Working | Base repo, errors, tenant context, structured logging, request context middleware |
-| `auth` | Working | User + Tenant aggregates, login/refresh/logout endpoints, httpOnly refresh cookies, JWT rotation + reuse detection |
+| `auth` | Working | User + Tenant aggregates, login/refresh/logout endpoints, httpOnly refresh cookies, JWT rotation + reuse detection, admin user management |
 | `customer` | Working | Customer profiles, CRUD endpoints |
 | `facility` | Working | Facilities, resources, availability rules |
 | `booking` | Working | Slot reservation, double-booking prevention via row-level lock |
-| `admin-pwa` | Thin slice | Login, facilities list/create/detail, resource form, PWA install + update |
-| `customer-pwa` | Thin slice | Login, browse facilities, booking dialog, my bookings, PWA install + update |
+| `web-pwa` | Working | Single PWA with role-based routing: /login (customer), /admin/login (admin), role-specific home pages, /admin/users for user management |
 
 ## Next phase
 
