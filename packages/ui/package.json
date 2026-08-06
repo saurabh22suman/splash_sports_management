@@ -6,7 +6,8 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/styles/globals.css"
+    "./styles.css": "./src/styles/globals.css",
+    "./tailwind-preset": "./tailwind-preset.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
