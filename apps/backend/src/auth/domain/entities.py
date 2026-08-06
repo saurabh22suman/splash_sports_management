@@ -26,6 +26,7 @@ class UserRole(str, Enum):
     COACH = "coach"
     STAFF = "staff"
     MEMBER = "member"
+    CUSTOMER = "customer"
 
 
 # Roles available in v1 — listed for tenant_id scoping rules
