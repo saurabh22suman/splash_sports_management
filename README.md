@@ -2,8 +2,6 @@
 
 PWA-first multi-tenant SaaS for sports clubs (swimming, badminton, tennis, pickleball, gym, cricket nets, football, indoor games, coaching academies).
 
-This monorepo currently contains the **backend prototype**. Frontend PWAs (`apps/admin-pwa`, `apps/customer-pwa`) will be added in the next phase.
-
 The complete engineering reference lives in [`docs/`](./docs/README.md).
 
 ---
@@ -11,9 +9,10 @@ The complete engineering reference lives in [`docs/`](./docs/README.md).
 ## Stack
 
 - **Backend:** FastAPI + SQLAlchemy 2 (async) + Alembic + PostgreSQL 16 + Redis 7
-- **Auth:** Argon2id passwords, RS256 JWT (15min access) + opaque refresh tokens (30d, rotated)
+- **Frontend PWAs:** Vite + React 18 + TypeScript + TanStack Query + shadcn/ui + vite-plugin-pwa
+- **Auth:** Argon2id passwords, HS256 JWT (5min access) + opaque refresh tokens (30d, rotated, httpOnly cookie)
 - **Multi-tenancy:** shared schema with `tenant_id` on every business table + Postgres RLS
-- **Quality:** Ruff + mypy strict + pytest (TDD)
+- **Quality:** Ruff + mypy strict + pytest (TDD) for backend; Vitest + RTL + Playwright + axe-core for frontend
 - **Infra:** Docker Compose for local dev
 
 ## Repository layout
@@ -30,9 +29,18 @@ apps/
     tests/
     alembic/              # Database migrations
     pyproject.toml
+  admin-pwa/              # Operator PWA (facility admin, bookings)
+  customer-pwa/           # End-user PWA (browse + book)
+packages/
+  ui/                     # @splashh/ui — shadcn primitives + brand tokens
+  api-client/             # @splashh/api-client — axios + auth + query keys
+  config/                 # @splashh/config — shared tsconfig/vitest/biome
 docs/                     # Engineering handbook (read this!)
+e2e/                      # Playwright smoke specs
 docker-compose.yml
-pyproject.toml            # Workspace root
+playwright.config.ts
+tsconfig.base.json
+biome.json
 ```
 
 ## Local development
@@ -41,63 +49,68 @@ pyproject.toml            # Workspace root
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) (fast Python package manager)
+- Node 20+ and [pnpm](https://pnpm.io/) 9+
 - Docker + Docker Compose
 - openssl (for JWT keypair generation, optional)
 
 ### First-time setup
 
 ```bash
-# 1. Copy env template
-cp .env.example .env
+# 1. Install JS deps (workspace root)
+pnpm install
 
-# 2. Generate JWT keypair (for RS256)
-mkdir -p secrets
-openssl genrsa -out secrets/jwt_private.pem 2048
-openssl rsa -in secrets/jwt_private.pem -pubout -out secrets/jwt_public.pem
-
-# 3. Start Postgres + Redis
+# 2. Start Postgres + Redis
 docker compose up -d postgres redis
 
-# 4. Install backend deps
+# 3. Apply migrations
 cd apps/backend
-uv sync --extra dev
+uv run alembic upgrade head
 cd ../..
 
-# 5. Apply migrations
-docker compose run --rm migrate
-# or: cd apps/backend && uv run alembic upgrade head
-
-# 6. Run the backend
-docker compose up backend
-# or: cd apps/backend && uv run uvicorn common.interfaces.http.app:create_app --factory --reload
+# 4. Run everything
+pnpm dev
+# → backend on :8765, admin-pwa on :5173, customer-pwa on :5174
 ```
 
-The API will be at <http://localhost:8000>. OpenAPI docs at <http://localhost:8000/docs>.
+To run just the backend: `make -C apps/backend dev`.
+To run a single PWA: `pnpm --filter customer-pwa dev`.
 
-### Run tests
+### Test
 
 ```bash
-cd apps/backend
-uv run pytest              # all tests
-uv run pytest -m unit      # unit only
-uv run pytest --cov=src    # with coverage
+# Backend
+cd apps/backend && uv run pytest
+
+# Frontend
+pnpm test                  # all packages
+pnpm test:e2e             # Playwright (requires pnpm dev or live servers)
 ```
+
+### Add a shadcn primitive
+
+```bash
+pnpm ui:add dialog
+```
+
+This scopes the shadcn CLI to `packages/ui` per the root `ui:add` script.
 
 ## What's in this prototype
 
 | Module | Status | Notes |
 |---|---|---|
-| `common` | Skeleton | Base repo, errors, tenant context, structured logging |
-| `auth` | Skeleton | User + Tenant aggregates, login/refresh endpoints |
-| `customer` | Stub | Coming next |
-| `facility` | Stub | Coming next |
-| `booking` | Stub | Coming next |
+| `common` | Working | Base repo, errors, tenant context, structured logging, request context middleware |
+| `auth` | Working | User + Tenant aggregates, login/refresh/logout endpoints, httpOnly refresh cookies, JWT rotation + reuse detection |
+| `customer` | Working | Customer profiles, CRUD endpoints |
+| `facility` | Working | Facilities, resources, availability rules |
+| `booking` | Working | Slot reservation, double-booking prevention via row-level lock |
+| `admin-pwa` | Thin slice | Login, facilities list/create/detail, resource form, PWA install + update |
+| `customer-pwa` | Thin slice | Login, browse facilities, booking dialog, my bookings, PWA install + update |
 
 ## Next phase
 
-After the backend is stable, the prototype will add:
-- `apps/admin-pwa` (React 18 + Vite + TanStack Query + shadcn/ui)
-- `apps/customer-pwa` (same stack, installable PWA)
+- Push notifications (VAPID + backend endpoint + SW handler)
+- OpenAPI client codegen (replace hand-written `domain.ts` types)
 - Stripe/Razorpay integration
 - SMS / email notifications
 - Background workers
+- Production deploy / CI-CD
