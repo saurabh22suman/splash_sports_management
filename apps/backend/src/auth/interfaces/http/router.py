@@ -1,7 +1,7 @@
 """HTTP router for auth endpoints."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.application.auth_service import AuthService, build_auth_service
@@ -53,6 +53,17 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
     )
 
 
+def _extract_refresh(request: Request, body: RefreshRequest | None) -> str:
+    """Read the refresh token from cookie (preferred) or JSON body."""
+    s = get_settings()
+    cookie_token = request.cookies.get(s.auth_refresh_cookie_name)
+    if cookie_token:
+        return cookie_token
+    if body and body.refresh_token:
+        return body.refresh_token
+    raise HTTPException(status_code=422, detail="Missing refresh token")
+
+
 @router.post(
     "/register-tenant",
     response_model=RegisterTenantResponse,
@@ -90,23 +101,31 @@ async def login(
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    payload: RefreshRequest,
+    request: Request,
     response: Response,
+    payload: RefreshRequest | None = Body(default=None),
     svc: AuthService = Depends(_auth_service),
 ) -> TokenResponse:
-    result = await svc.refresh(refresh_token=payload.refresh_token)
+    token = _extract_refresh(request, payload)
+    result = await svc.refresh(refresh_token=token)
     _set_refresh_cookie(response, result.refresh_token)
     return _to_token_response(result)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    payload: LogoutRequest,
+    request: Request,
     response: Response,
+    payload: LogoutRequest | None = Body(default=None),
     svc: AuthService = Depends(_auth_service),
 ) -> None:
-    await svc.logout(refresh_token=payload.refresh_token)
     s = get_settings()
+    cookie_token = request.cookies.get(s.auth_refresh_cookie_name)
+    body_token = payload.refresh_token if payload else None
+    token = cookie_token or body_token
+    if token:
+        await svc.logout(refresh_token=token)
     response.delete_cookie(key=s.auth_refresh_cookie_name, path=s.auth_refresh_cookie_path)
     return None
+
 

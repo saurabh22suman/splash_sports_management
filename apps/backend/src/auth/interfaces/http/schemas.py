@@ -52,11 +52,15 @@ class TokenResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str = Field(min_length=10)
+    """Either provide refresh_token in body OR send it as the refresh cookie.
+
+    The router reads cookie first; body is a fallback for server-to-server callers.
+    """
+    refresh_token: str | None = Field(default=None, min_length=10)
 
 
 class LogoutRequest(BaseModel):
-    refresh_token: str = Field(min_length=10)
+    refresh_token: str | None = Field(default=None, min_length=10)
 
 
 class UserOut(BaseModel):

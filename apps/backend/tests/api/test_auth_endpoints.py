@@ -168,6 +168,76 @@ class TestAuthEndpoints:
         assert "SameSite=lax" in set_cookie or "SameSite=Lax" in set_cookie
         assert "Path=/v1/auth" in set_cookie
 
+    async def test_refresh_via_cookie(self, client: AsyncClient) -> None:
+        from datetime import datetime, timedelta, timezone
+        from uuid import uuid4
+
+        from auth.interfaces.http.router import _auth_service
+
+        result = MagicMock()
+        result.access_token = "new-access"
+        result.refresh_token = "new-refresh-jwt"
+        result.access_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        result.user_id = uuid4()
+        result.tenant_id = uuid4()
+
+        mock_svc = MagicMock()
+        mock_svc.refresh = AsyncMock(return_value=result)
+        client._transport.app.dependency_overrides[_auth_service] = lambda: mock_svc
+
+        resp = await client.post(
+            "/v1/auth/refresh",
+            cookies={"refresh_token": "cookie-jwt-value"},
+        )
+        assert resp.status_code == 200
+        # The cookie was used as the refresh source
+        mock_svc.refresh.assert_awaited_once_with(refresh_token="cookie-jwt-value")
+        # And a new cookie was set
+        assert "refresh_token=new-refresh-jwt" in resp.headers.get("set-cookie", "")
+
+    async def test_refresh_via_body_still_works(self, client: AsyncClient) -> None:
+        from datetime import datetime, timedelta, timezone
+        from uuid import uuid4
+
+        from auth.interfaces.http.router import _auth_service
+
+        result = MagicMock()
+        result.access_token = "new-access"
+        result.refresh_token = "new-refresh-jwt"
+        result.access_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+        result.user_id = uuid4()
+        result.tenant_id = uuid4()
+
+        mock_svc = MagicMock()
+        mock_svc.refresh = AsyncMock(return_value=result)
+        client._transport.app.dependency_overrides[_auth_service] = lambda: mock_svc
+
+        resp = await client.post(
+            "/v1/auth/refresh",
+            json={"refresh_token": "body-jwt-value"},
+        )
+        assert resp.status_code == 200
+        mock_svc.refresh.assert_awaited_once_with(refresh_token="body-jwt-value")
+
+    async def test_logout_clears_cookie(self, client: AsyncClient) -> None:
+        from auth.interfaces.http.router import _auth_service
+
+        mock_svc = MagicMock()
+        mock_svc.logout = AsyncMock()
+        client._transport.app.dependency_overrides[_auth_service] = lambda: mock_svc
+
+        resp = await client.post(
+            "/v1/auth/logout",
+            cookies={"refresh_token": "to-revoke"},
+        )
+        assert resp.status_code == 204
+        mock_svc.logout.assert_awaited_once_with(refresh_token="to-revoke")
+        set_cookie = resp.headers.get("set-cookie", "")
+        assert "refresh_token=" in set_cookie
+        assert "Max-Age=0" in set_cookie or "max-age=0" in set_cookie.lower()
+
     async def test_login_invalid_credentials_returns_401(self, client: AsyncClient) -> None:
         from common.interfaces.http import app as app_module
         from auth.interfaces.http.router import _auth_service
