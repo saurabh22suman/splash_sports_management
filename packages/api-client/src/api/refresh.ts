@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/auth/store";
+import { useAuthStore } from "../auth/store.js";
 
 let inflight: Promise<string> | null = null;
 

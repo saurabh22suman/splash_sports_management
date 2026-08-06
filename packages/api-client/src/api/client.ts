@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
-import { useAuthStore } from "@/auth/store";
-import { silentRefresh } from "./refresh";
+import { useAuthStore } from "../auth/store.js";
+import { silentRefresh } from "./refresh.js";
 
 const baseURL = "/v1";
 
