@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -83,3 +84,30 @@ class TenantOut(BaseModel):
     primary_contact_email: EmailStr
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CreateUserRequest(BaseModel):
+    email: EmailStr
+    full_name: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=12, max_length=128)
+    roles: list[Literal["customer", "staff"]] = Field(min_length=1, max_length=4)
+
+
+class CreateUserResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    full_name: str
+    roles: list[str]
+
+
+class UserListItem(BaseModel):
+    id: UUID
+    email: EmailStr
+    full_name: str
+    roles: list[str]
+    is_active: bool
+    created_at: datetime
+
+
+class UserListResponse(BaseModel):
+    data: list[UserListItem]

@@ -46,3 +46,6 @@ class UserAdminService:
             roles=roles,
         )
         return await self.users.add(user)
+
+    async def list_users(self) -> list[User]:
+        return await self.users.list_by_tenant(self.tenant_id)

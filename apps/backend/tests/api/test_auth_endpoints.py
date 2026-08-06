@@ -286,3 +286,151 @@ class TestAuthEndpoints:
         resp = await client.get("/healthz")
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
+
+    async def test_admin_can_create_user(self, client: AsyncClient) -> None:
+        from uuid import uuid4
+
+        from auth.interfaces.http.router import _auth_service, _user_admin_service
+        from auth.interfaces.http.dependencies import auth_required
+
+        # Mock auth service to return a principal with tenant_admin
+        principal = MagicMock()
+        principal.tenant_id = uuid4()
+        principal.roles = ["tenant_admin"]
+
+        # The route uses Depends(auth_required) which is in auth.dependencies.
+        # We override it directly.
+        client._transport.app.dependency_overrides[auth_required] = lambda: principal
+
+        new_user = MagicMock()
+        new_user.id = uuid4()
+        new_user.email = "newuser@example.com"
+        new_user.full_name = "New User"
+        new_user.roles = [MagicMock(value="customer")]
+
+        admin_svc = MagicMock()
+        admin_svc.create_user = AsyncMock(return_value=new_user)
+        client._transport.app.dependency_overrides[_user_admin_service] = lambda: admin_svc
+
+        resp = await client.post(
+            "/v1/auth/users",
+            json={
+                "email": "newuser@example.com",
+                "full_name": "New User",
+                "password": "verysecurepassword123",
+                "roles": ["customer"],
+            },
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["email"] == "newuser@example.com"
+        assert body["roles"] == ["customer"]
+        admin_svc.create_user.assert_awaited_once()
+
+    async def test_non_admin_cannot_create_user(self, client: AsyncClient) -> None:
+        from uuid import uuid4
+
+        from auth.interfaces.http.dependencies import auth_required
+
+        principal = MagicMock()
+        principal.tenant_id = uuid4()
+        principal.roles = ["customer"]
+
+        client._transport.app.dependency_overrides[auth_required] = lambda: principal
+
+        resp = await client.post(
+            "/v1/auth/users",
+            json={
+                "email": "x@example.com",
+                "full_name": "X",
+                "password": "verysecurepassword123",
+                "roles": ["customer"],
+            },
+        )
+        assert resp.status_code == 403
+
+    async def test_create_user_validates_role(self, client: AsyncClient) -> None:
+        from uuid import uuid4
+
+        from auth.interfaces.http.dependencies import auth_required
+
+        principal = MagicMock()
+        principal.tenant_id = uuid4()
+        principal.roles = ["tenant_admin"]
+        client._transport.app.dependency_overrides[auth_required] = lambda: principal
+
+        resp = await client.post(
+            "/v1/auth/users",
+            json={
+                "email": "x@example.com",
+                "full_name": "X",
+                "password": "verysecurepassword123",
+                "roles": ["tenant_admin"],
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_create_user_duplicate_email_409(self, client: AsyncClient) -> None:
+        from uuid import uuid4
+
+        from auth.interfaces.http.dependencies import auth_required
+        from auth.interfaces.http.router import _user_admin_service
+        from common.domain.exceptions import Conflict
+
+        principal = MagicMock()
+        principal.tenant_id = uuid4()
+        principal.roles = ["tenant_admin"]
+        client._transport.app.dependency_overrides[auth_required] = lambda: principal
+
+        admin_svc = MagicMock()
+        admin_svc.create_user = AsyncMock(side_effect=Conflict("User with that email already exists", details={"email": "dup@example.com"}))
+        client._transport.app.dependency_overrides[_user_admin_service] = lambda: admin_svc
+
+        resp = await client.post(
+            "/v1/auth/users",
+            json={
+                "email": "dup@example.com",
+                "full_name": "Dup",
+                "password": "verysecurepassword123",
+                "roles": ["customer"],
+            },
+        )
+        assert resp.status_code == 409
+
+    async def test_admin_can_list_users(self, client: AsyncClient) -> None:
+        import datetime as dt
+
+        from uuid import uuid4
+
+        from auth.interfaces.http.dependencies import auth_required
+        from auth.interfaces.http.router import _user_admin_service
+
+        principal = MagicMock()
+        principal.tenant_id = uuid4()
+        principal.roles = ["tenant_admin"]
+        client._transport.app.dependency_overrides[auth_required] = lambda: principal
+
+        admin_svc = MagicMock()
+        admin_svc.list_users = AsyncMock(return_value=[
+            MagicMock(id=uuid4(), email="a@x.com", full_name="A", roles=[MagicMock(value="customer")], is_active=True, created_at=dt.datetime.now(dt.timezone.utc)),
+        ])
+        client._transport.app.dependency_overrides[_user_admin_service] = lambda: admin_svc
+
+        resp = await client.get("/v1/auth/users")
+        assert resp.status_code == 200
+        assert isinstance(resp.json()["data"], list)
+        assert resp.json()["data"][0]["email"] == "a@x.com"
+
+    async def test_non_admin_cannot_list_users(self, client: AsyncClient) -> None:
+        from uuid import uuid4
+
+        from auth.interfaces.http.dependencies import auth_required
+
+        principal = MagicMock()
+        principal.tenant_id = uuid4()
+        principal.roles = ["customer"]
+
+        client._transport.app.dependency_overrides[auth_required] = lambda: principal
+
+        resp = await client.get("/v1/auth/users")
+        assert resp.status_code == 403

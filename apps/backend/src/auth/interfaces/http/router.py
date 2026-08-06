@@ -5,15 +5,23 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.application.auth_service import AuthService, build_auth_service
+from auth.application.user_admin_service import UserAdminService
+from auth.infrastructure.password_hasher import Argon2PasswordHasher
+from auth.infrastructure.repositories import UserRepository
+from auth.interfaces.http.dependencies import auth_required, CurrentPrincipal
 from auth.interfaces.http.schemas import (
+    CreateUserRequest,
+    CreateUserResponse,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
     RegisterTenantRequest,
     RegisterTenantResponse,
     TokenResponse,
+    UserListItem,
+    UserListResponse,
 )
-from common.domain.exceptions import Unauthorized
+from common.domain.exceptions import Forbidden, Unauthorized
 from common.infrastructure.db import get_session
 from common.infrastructure.settings import get_settings
 
@@ -128,5 +136,63 @@ async def logout(
         await svc.logout(refresh_token=token)
     response.delete_cookie(key=s.auth_refresh_cookie_name, path=s.auth_refresh_cookie_path)
     return None
+
+
+def _user_admin_service(
+    session: AsyncSession = Depends(get_session),
+    principal: CurrentPrincipal = Depends(auth_required),
+) -> UserAdminService:
+    return UserAdminService(
+        users=UserRepository(session),
+        hasher=Argon2PasswordHasher(),
+        tenant_id=principal.tenant_id,
+    )
+
+
+@router.post("/users", response_model=CreateUserResponse, status_code=201)
+async def create_user(
+    payload: CreateUserRequest,
+    principal: CurrentPrincipal = Depends(auth_required),
+    svc: UserAdminService = Depends(_user_admin_service),
+) -> CreateUserResponse:
+    if "tenant_admin" not in principal.roles:
+        raise Forbidden("Only tenant admins can create users")
+    from auth.domain.entities import UserRole
+
+    user = await svc.create_user(
+        email=payload.email,
+        full_name=payload.full_name,
+        password=payload.password,
+        roles=[UserRole(r) for r in payload.roles],
+    )
+    return CreateUserResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        roles=[r.value for r in user.roles],
+    )
+
+
+@router.get("/users", response_model=UserListResponse)
+async def list_users(
+    principal: CurrentPrincipal = Depends(auth_required),
+    svc: UserAdminService = Depends(_user_admin_service),
+) -> UserListResponse:
+    if "tenant_admin" not in principal.roles:
+        raise Forbidden("Only tenant admins can list users")
+    users = await svc.list_users()
+    return UserListResponse(
+        data=[
+            UserListItem(
+                id=u.id,
+                email=u.email,
+                full_name=u.full_name,
+                roles=[r.value for r in u.roles],
+                is_active=u.is_active,
+                created_at=u.created_at,
+            )
+            for u in users
+        ]
+    )
 
 
