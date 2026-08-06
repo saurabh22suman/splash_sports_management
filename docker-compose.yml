@@ -1,0 +1,83 @@
+version: "3.9"
+
+# Local development infrastructure for Splashh Sports Platform.
+# Brings up Postgres, Redis, and runs migrations + backend.
+#
+# Usage:
+#   docker compose up -d                # start services
+#   docker compose run --rm migrate     # apply migrations
+#   docker compose up backend           # run backend (after migrate)
+#   docker compose down -v              # tear down + delete volumes
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: splashh_postgres
+    environment:
+      POSTGRES_USER: splashh
+      POSTGRES_PASSWORD: splashh_dev
+      POSTGRES_DB: splashh
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U splashh"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: splashh_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: splashh_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://splashh:splashh_dev@postgres:5432/splashh
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-dev-only-jwt-secret-change-me-in-production-please}
+      JWT_ALGORITHM: RS256
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/backend/src:/app/src
+    command: ["uvicorn", "common.interfaces.http.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://splashh:splashh_dev@postgres:5432/splashh
+    command: ["alembic", "upgrade", "head"]
+    volumes:
+      - ./apps/backend/src:/app/src
+      - ./apps/backend/alembic:/app/alembic
+
+volumes:
+  postgres_data:
+  redis_data:

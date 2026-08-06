@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+ENV/
+uv.lock
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+secrets/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+.docker-volumes/
+
+# Node (when frontend is added later)
+node_modules/
+.pnpm-store/
+dist/
+.parcel-cache/
+.next/
+.nuxt/
+.vite/
+
+# OS
+Thumbs.db
