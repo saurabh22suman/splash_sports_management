@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input } from "@splashh/ui";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,15 +20,28 @@ function AddUserForm({ onCreated }: { onCreated: () => void }) {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { role_customer: true, role_staff: false } });
   const create = useCreateUser();
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  const roleValues = watch(["role_customer", "role_staff"]);
+
+  useEffect(() => {
+    if (roleValues[0] || roleValues[1]) {
+      setRoleError(null);
+    }
+  }, [roleValues]);
 
   const onSubmit = handleSubmit(async (data) => {
     const roles: CreateUserInput["roles"] = [];
     if (data.role_customer) roles.push("customer");
     if (data.role_staff) roles.push("staff");
-    if (roles.length === 0) return;
+    if (roles.length === 0) {
+      setRoleError("Select at least one role");
+      return;
+    }
     try {
       await create.mutateAsync({
         email: data.email,
@@ -67,6 +80,11 @@ function AddUserForm({ onCreated }: { onCreated: () => void }) {
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" {...register("role_staff")} /> Staff
             </label>
+            {roleError && (
+              <p role="alert" className="text-sm text-destructive">
+                {roleError}
+              </p>
+            )}
           </fieldset>
           {create.error && (
             <p role="alert" className="text-sm text-destructive">
