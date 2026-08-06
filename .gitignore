@@ -49,3 +49,10 @@ dist/
 
 # OS
 Thumbs.db
+
+# Frontend additions
+*.tsbuildinfo
+playwright-report/
+test-results/
+coverage/
+.env.local

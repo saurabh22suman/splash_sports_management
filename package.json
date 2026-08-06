@@ -1,0 +1,20 @@
+{
+  "name": "splashh-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "engines": { "node": ">=20", "pnpm": ">=9" },
+  "scripts": {
+    "dev": "concurrently -k -n backend,admin,customer -c blue,magenta,green \"make -C apps/backend dev\" \"pnpm --filter admin-pwa dev\" \"pnpm --filter customer-pwa dev\"",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "pnpm -r test",
+    "test:e2e": "playwright test",
+    "ui:add": "pnpm --filter @splashh/ui dlx shadcn@latest add"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "concurrently": "^9.0.0"
+  }
+}
