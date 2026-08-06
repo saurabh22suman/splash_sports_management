@@ -11,7 +11,7 @@ export function UpdateBanner() {
   return (
     <div role="alert" className="fixed inset-x-0 top-0 z-50 border-b bg-card p-3 shadow">
       <div className="container flex items-center justify-between gap-3">
-        <p className="text-sm">A new version of Splashh Admin is available.</p>
+        <p className="text-sm">A new version of Splashh is available.</p>
         <Button size="sm" onClick={() => updateServiceWorker(true)}>
           Refresh
         </Button>

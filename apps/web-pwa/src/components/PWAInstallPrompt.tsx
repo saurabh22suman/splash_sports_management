@@ -46,10 +46,10 @@ export function PWAInstallPrompt() {
     <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:w-80">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Install Splashh Admin</CardTitle>
+          <CardTitle className="text-base">Install Splashh</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          Add to your home screen for quick management on the go.
+          Add to your home screen for the best experience.
         </CardContent>
         <CardFooter className="gap-2">
           <Button size="sm" onClick={install}>
