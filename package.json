@@ -2,7 +2,10 @@
   "name": "splashh-monorepo",
   "private": true,
   "version": "0.1.0",
-  "engines": { "node": ">=20", "pnpm": ">=9" },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
   "scripts": {
     "dev": "concurrently -k -n backend,admin,customer -c blue,magenta,green \"make -C apps/backend dev\" \"pnpm --filter admin-pwa dev\" \"pnpm --filter customer-pwa dev\"",
     "build": "pnpm -r build",
@@ -14,7 +17,9 @@
     "ui:add": "pnpm --filter @splashh/ui dlx shadcn@latest add"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@biomejs/biome": "^1.9.0",
+    "@playwright/test": "^1.62.1",
     "concurrently": "^9.0.0"
   }
 }
