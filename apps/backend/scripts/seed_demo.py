@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import sys
 from typing import TextIO
-from uuid import UUID
 
 from datetime import time
 from sqlalchemy import select
@@ -20,10 +19,7 @@ from sqlalchemy import select
 from auth.infrastructure.models import TenantModel
 from facility.application.facility_service import FacilityService
 from facility.domain.entities import ResourceType
-from facility.infrastructure.models import (
-    AvailabilityRuleModel,
-    FacilityModel,
-)
+from facility.infrastructure.models import FacilityModel
 from facility.infrastructure.repositories import (
     AvailabilityRuleRepository,
     FacilityRepository,
