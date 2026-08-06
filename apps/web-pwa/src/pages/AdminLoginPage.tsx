@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { LoginForm } from "@/features/auth/LoginForm";
 import { useAuthStore } from "@splashh/api-client";
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { homeForRoles } from "@/lib/role-routing";
 
 export function AdminLoginPage() {
@@ -9,16 +10,7 @@ export function AdminLoginPage() {
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const roles = useAuthStore((s) => s.roles);
 
-  useEffect(() => {
-    document.title = "Splashh Admin";
-    const meta = document.createElement("meta");
-    meta.name = "robots";
-    meta.content = "noindex";
-    document.head.appendChild(meta);
-    return () => {
-      document.head.removeChild(meta);
-    };
-  }, []);
+  useNoIndex("/admin");
 
   useEffect(() => {
     if (isAuthed) navigate(homeForRoles(roles), { replace: true });

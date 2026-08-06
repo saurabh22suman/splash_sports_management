@@ -19,28 +19,27 @@ test("admin creates a customer; customer logs in at /login", async ({ page, requ
   });
   expect(reg.status()).toBe(201);
 
-  // Log in as admin via UI
+  // Log in as admin
   await page.goto("/admin/login");
   await page.getByLabel("Email").fill(adminEmail);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /log in/i }).click();
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: /facilities/i })).toBeVisible();
 
-  // Use API to create customer user (the UI navigation has auth refresh issues in test)
-  const loginAsAdmin = await request.post("http://127.0.0.1:8765/v1/auth/login", {
-    data: { email: adminEmail, password },
-  });
-  expect(loginAsAdmin.status()).toBe(200);
-  const adminAccess = (await loginAsAdmin.json()).access_token;
+  // Navigate to users page and create a customer
+  await page.goto("/admin/users");
+  await expect(page.getByRole("heading", { name: /users/i })).toBeVisible();
+  await page.getByRole("button", { name: /add user/i }).click();
+  await page.getByLabel("Email").fill(customerEmail);
+  await page.getByLabel("Full name").fill("E2E Customer");
+  await page.getByLabel("Temporary password").fill(password);
+  await page.getByLabel("Customer").check();
+  await page.getByRole("button", { name: /add user/i }).last().click();
 
-  const create = await request.post("http://127.0.0.1:8765/v1/auth/users", {
-    data: { email: customerEmail, full_name: "E2E Customer", password, roles: ["customer"] },
-    headers: { Authorization: `Bearer ${adminAccess}` },
-  });
-  expect(create.status()).toBe(201);
+  // The new user appears in the list
+  await expect(page.getByText(customerEmail)).toBeVisible();
 
-  // Log out and log in as the customer
+  // Log out (best effort) and log in as the customer
   await page.context().clearCookies();
   await page.goto("/login");
   await page.getByLabel("Email").fill(customerEmail);

@@ -21,7 +21,7 @@ export function FacilitiesPage() {
                 {f.city}, {f.state}
               </CardContent>
               <CardFooter>
-                <Link to={`/facilities/${f.id}`} className="text-sm text-primary hover:underline">
+                <Link to={`/book/facilities/${f.id}`} className="text-sm text-primary hover:underline">
                   View details →
                 </Link>
               </CardFooter>

@@ -1,9 +1,11 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { AuthBootstrap } from "@/features/auth/AuthBootstrap";
 import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { titleForPath } from "@/lib/page-titles";
 import { ProtectedRoute } from "./protected";
 import { RoleGate } from "./role-gate";
 import { RoleBasedRedirect } from "./role-based-redirect";
@@ -17,6 +19,8 @@ const AdminFacilityDetailPage = lazy(() => import("@/pages/admin/AdminFacilityDe
 const AdminUsersPage = lazy(() => import("@/pages/AdminUsersPage").then((m) => ({ default: m.AdminUsersPage })));
 
 export function AppRouter() {
+  const location = useLocation();
+  useDocumentTitle(titleForPath(location.pathname));
   return (
     <AuthBootstrap>
       <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}>
@@ -32,10 +36,10 @@ export function AppRouter() {
               <Route path="/book/bookings" element={<BookingsPage />} />
             </Route>
             <Route element={<RoleGate roles={["tenant_admin"]} />}>
-              <Route path="/admin" element={<AdminFacilitiesPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/facilities/new" element={<AdminFacilityNewPage />} />
               <Route path="/admin/facilities/:id" element={<AdminFacilityDetailPage />} />
+              <Route path="/admin" element={<AdminFacilitiesPage />} />
             </Route>
           </Route>
           <Route path="*" element={<HomePage />} />
