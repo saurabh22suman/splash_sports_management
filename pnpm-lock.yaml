@@ -21,7 +21,7 @@ importers:
         specifier: ^9.0.0
         version: 9.2.4
 
-  apps/admin-pwa:
+  apps/customer-pwa:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.9.0
@@ -106,7 +106,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.1)(happy-dom@15.11.7)(terser@5.49.2)
 
-  apps/customer-pwa:
+  apps/web-pwa:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.9.0

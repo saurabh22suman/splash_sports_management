@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "Splashh Admin",
-        short_name: "Splashh Admin",
+        name: "Splashh",
+        short_name: "Splashh",
         description: "Manage your sports club",
         theme_color: "#0EA5E9",
         background_color: "#ffffff",
@@ -22,8 +22,8 @@ export default defineConfig({
           { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
         ],
         shortcuts: [
-          { name: "Today's Bookings", url: "/bookings", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
-          { name: "New Facility", url: "/admin/facilities/new", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+          { name: "My bookings", url: "/book/bookings", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+          { name: "Browse facilities", url: "/book", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
         ],
       },
       workbox: {
