@@ -1,6 +1,7 @@
 """Integration tests for the seed_demo script."""
 from __future__ import annotations
 
+import io
 import os
 from collections.abc import AsyncIterator
 from datetime import datetime, time, timezone
@@ -74,8 +75,9 @@ from scripts.seed_demo import seed_demo  # noqa: E402
 pytestmark = pytest.mark.integration
 
 
-async def test_seed_demo_creates_facility_pool_and_seven_rules(session, tenant, capsys):
-    exit_code = await seed_demo(session)
+async def test_seed_demo_creates_facility_pool_and_seven_rules(session, tenant):
+    stdout = io.StringIO()
+    exit_code = await seed_demo(session, stdout=stdout)
 
     assert exit_code == 0
 
@@ -118,5 +120,4 @@ async def test_seed_demo_creates_facility_pool_and_seven_rules(session, tenant, 
         assert r.end_time == time(22, 0)
         assert r.slot_duration_minutes == 60
 
-    captured = capsys.readouterr()
-    assert "Splash Sports Club" in captured.out
+    assert "Splash Sports Club" in stdout.getvalue()
