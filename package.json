@@ -14,6 +14,7 @@
     "lint:fix": "biome check --write .",
     "test": "pnpm -r test",
     "test:e2e": "playwright test",
+    "seed:demo": "make -C apps/backend seed-demo",
     "ui:add": "pnpm --filter @splashh/ui dlx shadcn@latest add"
   },
   "devDependencies": {

@@ -136,6 +136,22 @@ async def seed_demo(session: AsyncSession, *, stdout: TextIO = sys.stdout) -> in
     return EXIT_OK
 
 
+async def _main() -> int:
+    """CLI entry point: bootstrap engine + session, run seed_demo, exit."""
+    from common.infrastructure.db import init_engine, get_session_factory, dispose_engine
+    from common.infrastructure.settings import get_settings
+
+    settings = get_settings()
+    await init_engine(settings)
+    try:
+        factory = get_session_factory()
+        async with factory() as session:
+            return await seed_demo(session)
+    finally:
+        await dispose_engine()
+
+
 if __name__ == "__main__":
-    # CLI wrapper is added in Task 5.
-    raise SystemExit("CLI not yet wired — see Task 5")
+    import asyncio
+
+    raise SystemExit(asyncio.run(_main()))

@@ -8,3 +8,6 @@ dev:
 
 test:
 	PYTHONPATH=src uv run pytest
+
+seed-demo:
+	PYTHONPATH=src uv run python scripts/seed_demo.py
