@@ -48,3 +48,8 @@ markers = [
     "integration: integration tests against real services",
     "api: API/endpoint tests",
 ]
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.22.1",
+]

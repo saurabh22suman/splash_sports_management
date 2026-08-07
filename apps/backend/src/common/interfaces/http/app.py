@@ -14,6 +14,9 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Import payments models to register them with Base.metadata
+from payments.infrastructure import models as _payments_models  # noqa: F401
+
 from common.infrastructure.db import dispose_engine, init_engine
 from common.infrastructure.logging import configure_logging, get_logger
 from common.infrastructure.middleware import RequestContextMiddleware
