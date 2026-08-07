@@ -637,3 +637,60 @@ async def seed_bookings(
 
     await session.commit()
     return counts
+
+
+# ----- Orchestrator -----
+
+import sys
+from typing import TextIO
+
+
+async def seed_mock_data(
+    session: AsyncSession, *, stdout: TextIO = sys.stdout
+) -> dict[str, object]:
+    """Orchestrator: run all seeders in dependency order.
+
+    Idempotent: skips seed_tenant if demo tenant already exists.
+    Returns a dict with tenant_id and seeding results.
+    """
+    # 1. Seed tenant (with gate: skip if demo tenant already exists)
+    from sqlalchemy import select
+    existing_tenant = (
+        await session.execute(
+            select(TenantModel).where(TenantModel.slug == TENANT_SLUG)
+        )
+    ).scalar_one_or_none()
+    if existing_tenant is not None:
+        tenant_id = existing_tenant.id
+        print(f"Demo tenant already exists: {TENANT_NAME} (slug={TENANT_SLUG}, id={tenant_id})", file=stdout)
+    else:
+        tenant_id = await seed_tenant(session, stdout=stdout)
+        print(f"Demo tenant: {TENANT_NAME} (slug={TENANT_SLUG}, id={tenant_id})", file=stdout)
+
+    # 2. Seed users
+    user_ids = await seed_users(session, tenant_id, stdout=stdout)
+    print(f"Seeded {len(user_ids)} users", file=stdout)
+
+    # 3. Seed customers
+    customer_ids = await seed_customers(session, tenant_id, user_ids, stdout=stdout)
+    print(f"Seeded {len(customer_ids)} customers", file=stdout)
+
+    # 4. Seed facilities and resources
+    fr = await seed_facilities_and_resources(session, tenant_id, stdout=stdout)
+    print(f"Seeded {len(fr)} facilities", file=stdout)
+
+    # 5. Seed bookings
+    resource_ids = [ids["resource_id"] for ids in fr.values()]
+    booking_counts = await seed_bookings(session, tenant_id, customer_ids, resource_ids, stdout=stdout)
+    print(f"Seeded {booking_counts['created']} bookings", file=stdout)
+
+    # 6. Commit all changes
+    await session.commit()
+
+    return {
+        "tenant_id": tenant_id,
+        "user_ids": user_ids,
+        "customer_ids": customer_ids,
+        "facilities": fr,
+        "bookings": booking_counts,
+    }

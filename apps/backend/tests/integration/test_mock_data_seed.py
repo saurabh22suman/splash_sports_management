@@ -232,3 +232,55 @@ async def test_seed_bookings_is_idempotent(session):
     ).scalars().all()
     assert len(rows) == first["created"]
     assert second["created"] == 0
+
+
+async def test_seed_mock_data_full_run_creates_documented_shape(session):
+    """Orchestrator test: runs seed_mock_data and verifies documented shape."""
+    from scripts.mock_data import seed_mock_data
+
+    stdout = io.StringIO()
+    result = await seed_mock_data(session, stdout=stdout)
+    text = stdout.getvalue()
+
+    # Tenant exists and is active
+    tenant = await session.get(TenantModel, result["tenant_id"])
+    assert tenant is not None
+    assert tenant.slug == "demo"
+    assert tenant.status == "active"
+
+    # Tenant name must be in stdout
+    assert "Demo Sports Club" in text
+
+    # Users: 1 admin + 3 customer users from seed_users + 12 auto-created in seed_customers = 16
+    users = (
+        await session.execute(
+            select(UserModel).where(UserModel.tenant_id == result["tenant_id"])
+        )
+    ).scalars().all()
+    assert len(users) == 16
+
+    # Customers: 15
+    customers = (
+        await session.execute(
+            select(CustomerModel).where(CustomerModel.tenant_id == result["tenant_id"])
+        )
+    ).scalars().all()
+    assert len(customers) == 15
+
+    # Facilities: 5
+    from facility.infrastructure.models import FacilityModel
+    facilities = (
+        await session.execute(
+            select(FacilityModel).where(FacilityModel.tenant_id == result["tenant_id"])
+        )
+    ).scalars().all()
+    assert len(facilities) == 5
+
+    # Bookings: at least 30
+    from booking.infrastructure.models import BookingModel
+    bookings = (
+        await session.execute(
+            select(BookingModel).where(BookingModel.tenant_id == result["tenant_id"])
+        )
+    ).scalars().all()
+    assert len(bookings) >= 30
