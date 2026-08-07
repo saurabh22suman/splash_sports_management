@@ -9,6 +9,7 @@ import { titleForPath } from "@/lib/page-titles";
 import { ProtectedRoute } from "./protected";
 import { RoleGate } from "./role-gate";
 import { RoleBasedRedirect } from "./role-based-redirect";
+import { AppShell } from "@/components/AppShell";
 
 const FacilitiesPage = lazy(() => import("@/pages/book/FacilitiesPage").then((m) => ({ default: m.FacilitiesPage })));
 const FacilityDetailPage = lazy(() => import("@/pages/book/FacilityDetailPage").then((m) => ({ default: m.FacilityDetailPage })));
@@ -31,15 +32,15 @@ export function AppRouter() {
           <Route element={<ProtectedRoute />}>
             <Route path="/redirect" element={<RoleBasedRedirect />} />
             <Route element={<RoleGate roles={["customer"]} />}>
-              <Route path="/book" element={<FacilitiesPage />} />
-              <Route path="/book/facilities/:id" element={<FacilityDetailPage />} />
-              <Route path="/book/bookings" element={<BookingsPage />} />
+              <Route path="/book" element={<AppShell><FacilitiesPage /></AppShell>} />
+              <Route path="/book/facilities/:id" element={<AppShell><FacilityDetailPage /></AppShell>} />
+              <Route path="/book/bookings" element={<AppShell><BookingsPage /></AppShell>} />
             </Route>
             <Route element={<RoleGate roles={["tenant_admin"]} />}>
-              <Route path="/admin/users" element={<AdminUsersPage />} />
-              <Route path="/admin/facilities/new" element={<AdminFacilityNewPage />} />
-              <Route path="/admin/facilities/:id" element={<AdminFacilityDetailPage />} />
-              <Route path="/admin" element={<AdminFacilitiesPage />} />
+              <Route path="/admin/users" element={<AppShell><AdminUsersPage /></AppShell>} />
+              <Route path="/admin/facilities/new" element={<AppShell><AdminFacilityNewPage /></AppShell>} />
+              <Route path="/admin/facilities/:id" element={<AppShell><AdminFacilityDetailPage /></AppShell>} />
+              <Route path="/admin" element={<AppShell><AdminFacilitiesPage /></AppShell>} />
             </Route>
           </Route>
           <Route path="*" element={<HomePage />} />
