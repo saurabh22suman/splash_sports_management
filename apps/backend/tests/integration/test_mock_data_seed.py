@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from auth.infrastructure.models import TenantModel, UserModel
 from common.infrastructure.db import Base
 from customer.infrastructure.models import CustomerModel
-from scripts.mock_data import seed_tenant, seed_users, seed_customers
+from scripts.mock_data import seed_tenant, seed_users, seed_customers, seed_facilities_and_resources
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -115,3 +115,55 @@ async def test_seed_customers_creates_fifteen(session):
     for shared_email in ("alex@demo.splashh.dev", "priya@demo.splashh.dev", "jordan@demo.splashh.dev"):
         matching = [c for c in customers if c.email == shared_email]
         assert len(matching) == 1
+
+
+async def test_seed_facilities_creates_five_with_one_resource_each(session):
+    tenant_id = await seed_tenant(session)
+    fr = await seed_facilities_and_resources(session, tenant_id)
+
+    assert len(fr) == 5
+    expected_slugs = {
+        "sydney-aquatic-centre",
+        "melbourne-swim-academy",
+        "brisbane-sport-complex",
+        "auckland-marine-pool",
+        "gold-coast-gym",
+    }
+    assert set(fr.keys()) == expected_slugs
+    for slug, ids in fr.items():
+        assert "facility_id" in ids
+        assert "resource_id" in ids
+
+
+async def test_seed_facilities_creates_seven_availability_rules_per_resource(session):
+    from facility.infrastructure.models import AvailabilityRuleModel, ResourceModel
+
+    tenant_id = await seed_tenant(session)
+    fr = await seed_facilities_and_resources(session, tenant_id)
+
+    for slug, ids in fr.items():
+        rules = (
+            await session.execute(
+                select(AvailabilityRuleModel).where(
+                    AvailabilityRuleModel.resource_id == ids["resource_id"]
+                )
+            )
+        ).scalars().all()
+        assert len(rules) == 7, f"{slug} should have 7 rules"
+        assert {r.day_of_week for r in rules} == set(range(7))
+
+
+async def test_seed_facilities_is_idempotent(session):
+    from facility.infrastructure.models import FacilityModel
+
+    tenant_id = await seed_tenant(session)
+    first = await seed_facilities_and_resources(session, tenant_id)
+    second = await seed_facilities_and_resources(session, tenant_id)
+    assert first.keys() == second.keys()
+
+    rows = (
+        await session.execute(
+            select(FacilityModel).where(FacilityModel.tenant_id == tenant_id)
+        )
+    ).scalars().all()
+    assert len(rows) == 5

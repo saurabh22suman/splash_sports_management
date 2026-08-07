@@ -21,6 +21,7 @@ and persist via `bookings.update(b)`.
 from __future__ import annotations
 
 import random
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import TextIO
@@ -278,8 +279,17 @@ from auth.infrastructure.repositories import TenantRepository, UserRepository  #
 from customer.domain.entities import Customer  # noqa: E402
 from customer.infrastructure.models import CustomerModel  # noqa: E402
 from customer.infrastructure.repositories import CustomerRepository  # noqa: E402
+from facility.application.facility_service import FacilityService  # noqa: E402
+from facility.domain.entities import ResourceType  # noqa: E402
+from facility.infrastructure.models import AvailabilityRuleModel, FacilityModel, ResourceModel  # noqa: E402
+from facility.infrastructure.repositories import (  # noqa: E402
+    AvailabilityRuleRepository,
+    FacilityRepository,
+    ResourceRepository,
+)
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
+from datetime import time
 
 
 async def seed_tenant(session: AsyncSession, *, stdout: TextIO | None = None) -> "uuid.UUID":
@@ -400,3 +410,102 @@ async def seed_customers(
         customer_ids[spec.email] = customer.id
 
     return customer_ids
+
+
+async def seed_facilities_and_resources(
+    session: AsyncSession, tenant_id, *, stdout: TextIO | None = None
+) -> dict[str, dict[str, "uuid.UUID"]]:
+    """Idempotently create 5 facilities, 1 resource each, and 7 availability rules per resource.
+
+    Returns {facility_slug: {"facility_id": ..., "resource_id": ...}}.
+    """
+    facilities_repo = FacilityRepository(session)
+    resources_repo = ResourceRepository(session)
+    rules_repo = AvailabilityRuleRepository(session)
+    service = FacilityService(
+        session=session,
+        facilities=facilities_repo,
+        resources=resources_repo,
+        rules=rules_repo,
+    )
+
+    result: dict[str, dict[str, "uuid.UUID"]] = {}
+
+    for spec in FACILITIES:
+        # 1. Facility
+        existing_facility = (
+            await session.execute(
+                select(FacilityModel).where(
+                    FacilityModel.tenant_id == tenant_id,
+                    FacilityModel.slug == spec.slug,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_facility is not None:
+            facility_id = existing_facility.id
+        else:
+            facility = await service.create_facility(
+                tenant_id=tenant_id,
+                name=spec.name,
+                slug=spec.slug,
+                address_line1="1 Aquatic Drive",
+                address_line2=None,
+                city=spec.city,
+                state=spec.state,
+                postal_code=spec.postal_code,
+                country=spec.country,
+                timezone_=spec.timezone,
+                phone=spec.phone,
+            )
+            facility_id = facility.id
+
+        # 2. Resource
+        existing_resource = (
+            await session.execute(
+                select(ResourceModel).where(
+                    ResourceModel.facility_id == facility_id,
+                    ResourceModel.slug == spec.resource_slug,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_resource is not None:
+            resource_id = existing_resource.id
+        else:
+            resource = await service.create_resource(
+                tenant_id=tenant_id,
+                facility_id=facility_id,
+                name=spec.resource_name,
+                slug=spec.resource_slug,
+                resource_type=ResourceType(spec.resource_type),
+                capacity=spec.capacity,
+                attributes=spec.attributes,
+            )
+            resource_id = resource.id
+
+        # 3. Availability rules (one per day-of-week)
+        existing_rules = (
+            await session.execute(
+                select(AvailabilityRuleModel).where(
+                    AvailabilityRuleModel.resource_id == resource_id
+                )
+            )
+        ).scalars().all()
+        existing_days = {r.day_of_week for r in existing_rules}
+
+        start_time = time(spec.open_start_hour, spec.open_start_minute)
+        end_time = time(spec.open_end_hour, spec.open_end_minute)
+        for day_of_week in range(7):
+            if day_of_week in existing_days:
+                continue
+            await service.create_availability_rule(
+                tenant_id=tenant_id,
+                resource_id=resource_id,
+                day_of_week=day_of_week,
+                start_time=start_time,
+                end_time=end_time,
+                slot_duration_minutes=60,
+            )
+
+        result[spec.slug] = {"facility_id": facility_id, "resource_id": resource_id}
+
+    return result
