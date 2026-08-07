@@ -8,6 +8,7 @@ export const NAV_BY_ROLE: Record<string, NavItem[]> = {
   tenant_admin: [
     { to: "/admin", label: "Facilities", icon: "🏢" },
     { to: "/admin/users", label: "Users", icon: "👥" },
+    { to: "/admin/invoices", label: "Invoices", icon: "🧾" },
   ],
 };
 

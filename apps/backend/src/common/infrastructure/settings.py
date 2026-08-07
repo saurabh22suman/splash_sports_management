@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     # ---- SSRF allowlist ----
     ssrf_allowed_hosts: list[str] = Field(default_factory=list)
 
+    # ---- Payments (Razorpay) ----
+    razorpay_key_id: str = Field(default="rzp_test_placeholder", description="Razorpay public key id")
+    razorpay_key_secret: str = Field(default="rzp_test_placeholder_secret", description="Razorpay secret API key")
+    razorpay_webhook_secret: str = Field(default="whsec_placeholder", description="Razorpay webhook signing secret (HMAC SHA256)")
+    payments_provider: Literal["razorpay", "null"] = Field(default="razorpay", description="Which PaymentProvider adapter to use")
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

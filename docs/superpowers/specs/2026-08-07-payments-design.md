@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a multi-tenant payments module that lets booking/membership create invoices, lets customers pay via Stripe-hosted Checkout, lets admins issue full refunds, and emits domain events that future modules (membership, notifications, analytics) can subscribe to. Payments are processed through a single platform-owned Stripe account; the schema leaves room for Stripe Connect later.
+**Goal:** Ship a multi-tenant payments module that lets booking/membership create invoices, lets customers pay via Razorpay-hosted Payment Links (UPI / NetBanking / cards / wallets), lets admins issue full refunds, and emits domain events that future modules (membership, notifications, analytics) can subscribe to. Payments are processed through a single platform-owned Razorpay account using INR; the schema leaves room for a second provider (e.g. Stripe) later.
 
-**Architecture:** A new `payments` backend module (`interfaces/http/` + `application/` + `domain/` + `infrastructure/`) plus a small event-bus addition to `common` (`common/application/events.py` + a singleton `InProcessEventPublisher` wired at startup). All Stripe interaction is hidden behind a `PaymentProvider` protocol with a `StripeAdapter` (production) and a `NullAdapter` (tests). The customer-facing checkout flow is Stripe Checkout (hosted redirect). The webhook receiver is synchronous and idempotent by Stripe event id. The frontend gains an admin `/admin/invoices*` set and a customer `/book/pay/:invoiceId*` set, both backed by typed hooks in `@splashh/api-client`.
+**Architecture:** A new `payments` backend module (`interfaces/http/` + `application/` + `domain/` + `infrastructure/`) plus a small event-bus addition to `common` (`common/application/events.py` + a singleton `InProcessEventPublisher` wired at startup). All Razorpay interaction is hidden behind a `PaymentProvider` protocol with a `RazorpayAdapter` (production) and a `NullAdapter` (tests). The customer-facing checkout flow is Razorpay Payment Links (hosted redirect). The webhook receiver is synchronous and idempotent by Razorpay event id. The frontend gains an admin `/admin/invoices*` set and a customer `/book/pay/:invoiceId*` set, both backed by typed hooks in `@splashh/api-client`.
 
-**Tech Stack:** FastAPI, SQLAlchemy 2 (async) + Alembic, Pydantic v2, Stripe Python SDK, `stripe-mock` (dev/test), `pytest` + `httpx` (backend), React 19 + react-router-dom + @tanstack/react-query + zustand + vitest + RTL + Playwright (frontend). One new Python dependency (`stripe`) and one dev dependency (`stripe-mock`). No new npm dependencies.
+**Tech Stack:** FastAPI, SQLAlchemy 2 (async) + Alembic, Pydantic v2, Razorpay Python SDK (`razorpay`), `pytest` + `httpx` + `responses` (backend, for mocking the requests-based razorpay SDK), React 19 + react-router-dom + @tanstack/react-query + zustand + vitest + RTL + Playwright (frontend). Two new Python dependencies: `razorpay` (runtime, currently 2.0.1) and `responses` (dev). The razorpay SDK is built on `requests`, so `respx` (httpx-only) cannot mock it. No new npm dependencies. No external mock server — the `NullAdapter` is the test double for the provider.
 
 ---
 
@@ -24,15 +24,18 @@
 
 - **Multi-tenancy:** every business table has `tenant_id UUID NOT NULL` and a corresponding Postgres RLS policy. Payments tables follow the existing pattern enforced in `common/infrastructure/repository.py`.
 - **Audit columns:** every business table has `created_at` and `updated_at` timestamptz columns populated by the existing base mixin.
-- **Money:** stored as `Decimal` columns in DB and `int` cents in API + Stripe payloads. Never floats. Currency code is a 3-char string (`USD`, `INR`, ...).
-- **Idempotency keys:** client-supplied `Idempotency-Key` header (UUID v4 string, ≤ 64 chars) on mutating endpoints; cached server-side for 24 h. Stripe event ids are stored separately for webhook dedup.
-- **Stripe SDK version:** pinned via `uv` lock; match the version installed by `uv add stripe`.
-- **Stripe keys:** `STRIPE_SECRET_KEY` (sk_test_... in dev), `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` from env (`common/infrastructure/settings.py`). Single platform account; per-tenant config table leaves `stripe_account_id` NULL.
-- **No card data on our servers.** All PCI compliance is via Stripe Checkout.
-- **Logging:** never log full payment objects or Stripe API responses. Log only `invoice_id`, `payment_id`, `stripe_event_id`, and high-level status.
-- **Errors:** never expose Stripe SDK error details to API consumers; map to standard `common` exceptions (`Validation`, `Conflict`, `ServiceUnavailable`).
+- **Money:** stored as `BIGINT` paise in DB (1 INR = 100 paise) and `int` paise in API + Razorpay payloads. Never floats. Currency code is a 3-char string; v1 supports **INR only**. The `Money` value object uses `amount_paise: int`.
+- **Idempotency keys:** client-supplied `Idempotency-Key` header (UUID v4 string, ≤ 64 chars) on mutating endpoints; cached server-side for 24 h. Razorpay event ids are stored separately for webhook dedup. Razorpay's own `payment_link.id` is also unique and used as a backstop on payment rows.
+- **Razorpay keys (env, all required in prod, placeholders in dev/tests):**
+  - `RAZORPAY_KEY_ID` (e.g. `rzp_test_abc`) — public identifier, also used by the SDK client.
+  - `RAZORPAY_KEY_SECRET` — server-only secret used to sign Razorpay API requests.
+  - `RAZORPAY_WEBHOOK_SECRET` — secret used to verify the `X-Razorpay-Signature` HMAC SHA256 header.
+  - `PAYMENTS_PROVIDER` — `Literal["razorpay", "null"]`; `razorpay` for production, `null` for unit tests (NullAdapter).
+- **No card / UPI / banking data on our servers.** All PCI / NPCI compliance is via Razorpay Payment Links.
+- **Logging:** never log full payment objects or Razorpay API responses. Log only `invoice_id`, `payment_id`, `razorpay_event_id`, and high-level status.
+- **Errors:** never expose Razorpay SDK error details to API consumers; map to standard `common` exceptions (`Validation`, `Conflict`, `ServiceUnavailable`).
 - **Auth:** all `/payments/*` endpoints require an authenticated session. Customers see only their own invoices; staff and tenant_admin see all invoices in their tenant. Refund endpoint requires `tenant_admin` role.
-- **Webhook auth:** `/webhooks/stripe` requires a valid `Stripe-Signature` header. No JWT.
+- **Webhook auth:** `/webhooks/razorpay` requires a valid `X-Razorpay-Signature` header (HMAC SHA256 of the raw body with the webhook secret). No JWT.
 - **CORS / CSRF:** webhook endpoint is on the backend origin only; no CORS or CSRF needed.
 - **No new `@splashh/ui` primitives** — payments pages use `Card`, `Button`, `Input`, `Table` (already in the package).
 - **No npm dependencies added.**
@@ -51,24 +54,23 @@ apps/backend/src/payments/
   domain/
     __init__.py
     entities.py            # Invoice, Payment, Refund, TenantPaymentConfig (pure Python)
-    value_objects.py       # Money, InvoiceStatus, PaymentStatus, RefundStatus, Channel
+    value_objects.py       # Money (paise), InvoiceStatus, PaymentStatus, RefundStatus
   application/
     __init__.py
-    payment_service.py     # create_invoice, create_checkout_session, handle_webhook, refund, get_invoice, list_invoices
-    provider.py            # PaymentProvider protocol, StripeAdapter, NullAdapter
+    payment_service.py     # create_invoice, create_payment_link, handle_webhook, refund, get_invoice, list_invoices
+    provider.py            # PaymentProvider protocol, RazorpayAdapter, NullAdapter
     events.py              # Domain events emitted by payments
   infrastructure/
     __init__.py
     models.py              # SQLAlchemy ORM models
-    repositories.py        # InvoiceRepository, PaymentRepository, RefundRepository, ProcessedStripeEventRepository
-    stripe_client.py       # Wraps stripe SDK with our settings; constructs the SDK client
+    repositories.py        # InvoiceRepository, PaymentRepository, RefundRepository, ProcessedRazorpayEventRepository, IdempotencyKeyRepository, TenantPaymentConfigRepository
     idempotency.py         # IdempotencyKeyRepository backed by Redis (24h TTL) or DB
   interfaces/
     http/
       __init__.py
-      router.py            # /payments/invoices, /payments/invoices/{id}/checkout, /webhooks/stripe, ...
+      router.py            # /payments/invoices, /payments/invoices/{id}/payment-link, /webhooks/razorpay, ...
       schemas.py           # Pydantic request/response models
-      deps.py              # FastAPI dependencies for current user, tenant, idempotency-key extraction
+      deps.py              # FastAPI dependencies for current user, tenant, idempotency-key extraction, payment provider
 apps/backend/src/common/application/
   events.py                # NEW — DomainEvent base, EventPublisher protocol, InProcessEventPublisher
 apps/backend/alembic/versions/
@@ -78,26 +80,26 @@ apps/backend/alembic/versions/
 ### Backend — modified files
 
 ```
-apps/backend/src/common/interfaces/http/app.py    # wire InProcessEventPublisher singleton at startup
-apps/backend/src/common/infrastructure/settings.py    # add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PUBLISHABLE_KEY, STRIPE_API_BASE (override for stripe-mock)
+apps/backend/src/common/interfaces/http/app.py    # wire InProcessEventPublisher singleton + PaymentProvider at startup
+apps/backend/src/common/infrastructure/settings.py    # add RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, PAYMENTS_PROVIDER
 apps/backend/src/common/domain/types.py    # add InvoiceId, PaymentId, RefundId NewType wrappers
-apps/backend/pyproject.toml    # add stripe + stripe-mock (dev) deps
-apps/backend/tests/conftest.py    # add stripe-mock fixture, idempotency cache clear, event-bus reset
+apps/backend/pyproject.toml    # add `razorpay` runtime dep
+apps/backend/tests/conftest.py    # add idempotency cache clear, event-bus reset, Razorpay adapter fixtures
 ```
 
 ### Frontend — new files
 
 ```
 apps/web-pwa/src/features/payments/
-  api.ts                    # createCheckoutSession, listInvoices, getInvoice, refundInvoice
-  hooks.ts                  # useInvoices, useInvoice, useCreateCheckoutSession, useRefundInvoice
+  api.ts                    # createInvoice, listInvoices, getInvoice, createPaymentLink, refundInvoice
+  hooks.ts                  # useInvoices, useInvoice, useCreateInvoice, useCreatePaymentLink, useRefundInvoice
   schemas.ts                # Invoice, Payment, Refund, LineItem types
 apps/web-pwa/src/pages/admin/
   InvoicesPage.tsx          # list + filters + create-invoice modal
-  InvoiceDetailPage.tsx     # detail + line items + payment status + refund action
+  InvoiceDetailPage.tsx     # detail + line items + payment status + refund action + copy payment link
 apps/web-pwa/src/pages/book/
-  PayInvoicePage.tsx        # customer "Pay now" entry; shows summary + button
-  PayInvoiceReturnPage.tsx  # Stripe success-redirect target; polls status
+  PayInvoicePage.tsx        # customer "Pay now" entry; shows summary + button that opens Razorpay hosted page
+  PayInvoiceReturnPage.tsx  # Razorpay success-redirect target; polls status
 apps/web-pwa/src/components/nav.ts    # add "Invoices" entry to tenant_admin nav
 ```
 
@@ -114,18 +116,18 @@ packages/api-client/src/
 ```
 apps/backend/tests/payments/
   test_invoice_service.py          # service-level tests with NullAdapter
-  test_checkout_endpoint.py        # HTTP tests for POST /payments/invoices/{id}/checkout
-  test_webhook_endpoint.py         # signed-fixture tests for /webhooks/stripe
+  test_payment_link_endpoint.py    # HTTP tests for POST /payments/invoices/{id}/payment-link
+  test_webhook_endpoint.py         # signed-fixture tests for /webhooks/razorpay
   test_idempotency.py              # webhook dedup + Idempotency-Key caching
   test_refund_endpoint.py
-  test_stripe_adapter.py           # integration tests against stripe-mock
+  test_razorpay_adapter.py         # unit tests using responses to mock razorpay SDK HTTP calls
   test_tenant_rls.py               # RLS scoping: customer A cannot read customer B's invoices
 apps/web-pwa/test/payments/
   invoices-page.test.tsx
   invoice-detail-page.test.tsx
   pay-invoice-page.test.tsx
   pay-invoice-return-page.test.tsx
-e2e/admin-invoice-flow.spec.ts    # admin creates invoice → customer pays via Stripe test card → status updates
+e2e/admin-invoice-flow.spec.ts    # admin creates invoice → customer pays via Razorpay test mode → status updates
 ```
 
 ---
@@ -138,13 +140,13 @@ e2e/admin-invoice-flow.spec.ts    # admin creates invoice → customer pays via 
 src/payments/
   domain/         # pure Python — entities, value objects, status enums
   application/    # payment_service, PaymentProvider protocol + adapters, events
-  infrastructure/ # SQLAlchemy models, repositories, Stripe SDK wrapper, idempotency store
+  infrastructure/ # SQLAlchemy models, repositories, Razorpay SDK wrapper, idempotency store
   interfaces/http # FastAPI router + Pydantic schemas + deps
 ```
 
 The `domain/` layer has zero framework imports (per `docs/01-vision/principles.md`). Status transitions and invariants live there; the service layer orchestrates them and the repositories persist.
 
-### Domain entities
+### Domain value objects
 
 ```python
 # apps/backend/src/payments/domain/value_objects.py
@@ -159,7 +161,6 @@ class InvoiceStatus(str, Enum):
 
 class PaymentStatus(str, Enum):
     PENDING = "pending"
-    AUTHORIZED = "authorized"
     CAPTURED = "captured"
     FAILED = "failed"
 
@@ -170,9 +171,13 @@ class RefundStatus(str, Enum):
 
 @dataclass(frozen=True)
 class Money:
-    amount_cents: int
-    currency: str  # ISO-4217
+    amount_paise: int
+    currency: str  # ISO-4217 — "INR" only for v1
 ```
+
+`amount_cents` from the original design is renamed `amount_paise` everywhere (DB columns, Pydantic fields, API). INR has paise like USD has cents — `100 paise = ₹1`. Wire-format field name: `amount_paise`. Display helper: `₹{amount_paise // 100}.{amount_paise % 100:02d}`.
+
+### Domain entities
 
 ```python
 # apps/backend/src/payments/domain/entities.py
@@ -234,14 +239,14 @@ class Payment:
     invoice_id: UUID
     amount: Money
     status: PaymentStatus
-    stripe_payment_intent_id: str | None
-    stripe_checkout_session_id: str | None
+    razorpay_payment_id: str | None
+    razorpay_payment_link_id: str | None
     idempotency_key: str | None
     captured_at: datetime | None
     created_at: datetime
 
     def mark_captured(self, when: datetime) -> None:
-        if self.status not in (PaymentStatus.PENDING, PaymentStatus.AUTHORIZED):
+        if self.status != PaymentStatus.PENDING:
             raise Conflict("Payment cannot transition to captured", details={"status": self.status.value})
         self.status = PaymentStatus.CAPTURED
         self.captured_at = when
@@ -253,15 +258,15 @@ class Refund:
     payment_id: UUID
     amount: Money
     status: RefundStatus
-    stripe_refund_id: str | None
+    razorpay_refund_id: str | None
     reason: str
     created_at: datetime
 
 @dataclass
 class TenantPaymentConfig:
     tenant_id: UUID
-    stripe_account_id: str | None    # NULL in v1
-    default_currency: str            # "USD" by default
+    razorpay_account_id: str | None    # NULL in v1 (single platform account)
+    default_currency: str             # "INR" by default
     created_at: datetime
     updated_at: datetime
 ```
@@ -276,13 +281,14 @@ from payments.domain.entities import Invoice, Payment
 from payments.domain.value_objects import Money
 
 @dataclass
-class CheckoutSessionResult:
-    checkout_url: str
-    stripe_checkout_session_id: str
+class PaymentLinkResult:
+    short_url: str                  # https://rzp.io/i/<short>
+    razorpay_payment_link_id: str   # "plink_XXXX"
+    razorpay_order_id: str | None   # set when invoice becomes a Razorpay Order; NULL when Payment Links auto-creates the order
     expires_at: datetime
 
 class PaymentProvider(Protocol):
-    async def create_checkout_session(
+    async def create_payment_link(
         self,
         *,
         invoice: Invoice,
@@ -290,44 +296,83 @@ class PaymentProvider(Protocol):
         idempotency_key: str,
         success_url: str,
         cancel_url: str,
-    ) -> CheckoutSessionResult: ...
+        customer: dict,            # {name, email, contact}
+    ) -> PaymentLinkResult: ...
 
-    async def retrieve_checkout_session(self, stripe_session_id: str) -> dict: ...
+    async def fetch_payment(self, razorpay_payment_id: str) -> dict: ...
 
     async def create_refund(
         self,
         *,
-        stripe_payment_intent_id: str,
-        amount_cents: int,
+        razorpay_payment_id: str,
+        amount_paise: int,
         idempotency_key: str,
     ) -> dict: ...
 
     def verify_webhook(self, payload: bytes, signature: str) -> dict: ...
 
 
-class StripeAdapter:
-    """Production adapter. Wraps the official `stripe` SDK."""
-    def __init__(self, *, api_key: str, api_base: str | None = None) -> None:
-        self._stripe = stripe
-        self._stripe.api_key = api_key
-        if api_base:
-            self._stripe.api_base = api_base  # set to stripe-mock URL in tests
+class RazorpayAdapter:
+    """Production adapter. Wraps the official `razorpay` SDK."""
+    def __init__(self, *, key_id: str, key_secret: str, webhook_secret: str) -> None:
+        import razorpay
+        self._client = razorpay.Client(auth=(key_id, key_secret))
+        self._webhook_secret = webhook_secret
 
-    async def create_checkout_session(self, *, invoice, payment_id, idempotency_key, success_url, cancel_url) -> CheckoutSessionResult:
-        # sync SDK call wrapped in asyncio.to_thread
-        session = await asyncio.to_thread(self._stripe.checkout.Session.create, ...)
-        return CheckoutSessionResult(checkout_url=session.url, stripe_checkout_session_id=session.id, expires_at=datetime.fromtimestamp(session.expires_at))
-    # ... (other methods follow the same pattern)
+    async def create_payment_link(self, *, invoice, payment_id, idempotency_key, success_url, cancel_url, customer) -> PaymentLinkResult:
+        link = await asyncio.to_thread(
+            self._client.payment_link.create,
+            {
+                "amount": invoice.total.amount_paise,
+                "currency": invoice.total.currency,           # "INR"
+                "accept_partial": False,
+                "description": f"{invoice.invoice_number} — {invoice.description[:250]}",
+                "customer": customer,
+                "notify": {"sms": False, "email": False},    # notifications module owns outbound comms
+                "reminder_enable": False,
+                "callback_url": success_url,
+                "callback_method": "get",
+                "reference_id": str(payment_id),             # lets us reconcile the link → our Payment row
+                "notes": {
+                    "tenant_id": str(invoice.tenant_id),
+                    "invoice_id": str(invoice.id),
+                    "payment_id": str(payment_id),
+                },
+            },
+            idempotency_key=idempotency_key,                  # SDK-level dedup
+        )
+        return PaymentLinkResult(
+            short_url=link["short_url"],
+            razorpay_payment_link_id=link["id"],
+            razorpay_order_id=None,                          # Payment Links auto-creates order on payment
+            expires_at=datetime.fromtimestamp(link["expire_by"]),
+        )
+
+    async def fetch_payment(self, razorpay_payment_id: str) -> dict:
+        return await asyncio.to_thread(self._client.payment.fetch, razorpay_payment_id)
+
+    async def create_refund(self, *, razorpay_payment_id, amount_paise, idempotency_key) -> dict:
+        return await asyncio.to_thread(
+            self._client.payment.refund,
+            razorpay_payment_id,
+            {"amount": amount_paise, "speed": "optimum"},
+            idempotency_key=idempotency_key,
+        )
+
+    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+        # razorpay SDK verifies HMAC SHA256 with `RAZORPAY_WEBHOOK_SECRET`
+        self._client.utility.verify_webhook_signature(payload.decode(), signature, self._webhook_secret)
+        return json.loads(payload)
 
 
 class NullAdapter:
     """Test adapter. Returns deterministic fake values; no network calls."""
-    # Used only in `pytest` when `STRIPE_PROVIDER=null` is set.
+    # Used only in `pytest` when `PAYMENTS_PROVIDER=null` is set.
 ```
 
 The active adapter is selected at app startup based on settings:
-- `STRIPE_PROVIDER=stripe` → `StripeAdapter`
-- `STRIPE_PROVIDER=null` → `NullAdapter` (unit tests)
+- `PAYMENTS_PROVIDER=razorpay` → `RazorpayAdapter`
+- `PAYMENTS_PROVIDER=null` → `NullAdapter` (unit tests)
 
 A single instance is held in `app.state.payment_provider` and accessed via a FastAPI dependency.
 
@@ -344,7 +389,7 @@ class PaymentService:
         invoice_repo: InvoiceRepository,
         payment_repo: PaymentRepository,
         refund_repo: RefundRepository,
-        processed_event_repo: ProcessedStripeEventRepository,
+        processed_event_repo: ProcessedRazorpayEventRepository,
         idempotency: IdempotencyStore,
         provider: PaymentProvider,
         events: EventPublisher,
@@ -357,19 +402,19 @@ class PaymentService:
         description: str, due_date: date, idempotency_key: str | None,
     ) -> Invoice: ...
 
-    async def create_checkout_session(
+    async def create_payment_link(
         self, *, tenant_id: UUID, customer_id: UUID, invoice_id: UUID, idempotency_key: str,
-    ) -> CheckoutSessionResult: ...
+    ) -> PaymentLinkResult: ...
 
     async def handle_webhook(self, *, raw_payload: bytes, signature: str) -> None:
-        """Single entry point for /webhooks/stripe.
+        """Single entry point for /webhooks/razorpay.
 
         1. Verify signature (provider.verify_webhook)
-        2. Dedup by stripe event id (processed_event_repo)
+        2. Dedup by Razorpay event id (processed_event_repo)
         3. Dispatch by event type:
-           - checkout.session.completed → mark Payment CAPTURED, Invoice PAID, publish InvoicePaid
-           - charge.refunded → mark Refund COMPLETED, publish RefundIssued
-           - payment_intent.payment_failed → mark Payment FAILED, Invoice FAILED, publish PaymentFailed
+           - payment.captured           → mark Payment CAPTURED, Invoice PAID, publish InvoicePaid
+           - payment.failed             → mark Payment FAILED, Invoice FAILED, publish PaymentFailed
+           - refund.processed           → mark Refund COMPLETED, publish RefundIssued
         4. Mark event processed (committed atomically with state changes)
         """
         ...
@@ -389,7 +434,7 @@ class InvoiceCreated(DomainEvent):
     invoice_id: UUID
     tenant_id: UUID
     customer_id: UUID
-    total_cents: int
+    total_paise: int
     currency: str
 
 @dataclass(frozen=True)
@@ -398,7 +443,7 @@ class InvoicePaid(DomainEvent):
     payment_id: UUID
     tenant_id: UUID
     customer_id: UUID
-    amount_cents: int
+    amount_paise: int
     currency: str
 
 @dataclass(frozen=True)
@@ -416,7 +461,7 @@ class RefundIssued(DomainEvent):
     refund_id: UUID
     tenant_id: UUID
     customer_id: UUID
-    amount_cents: int
+    amount_paise: int
     currency: str
 ```
 
@@ -461,8 +506,8 @@ Wiring: `common/interfaces/http/app.py` constructs one `InProcessEventPublisher`
 ```sql
 CREATE TABLE payments_tenant_config (
   tenant_id          UUID PRIMARY KEY REFERENCES auth_tenants(id) ON DELETE CASCADE,
-  stripe_account_id  TEXT,                  -- NULL in v1; populated when Connect is enabled
-  default_currency   CHAR(3) NOT NULL DEFAULT 'USD',
+  razorpay_account_id TEXT,                 -- NULL in v1; populated if a second provider is enabled later
+  default_currency   CHAR(3) NOT NULL DEFAULT 'INR',
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -473,10 +518,10 @@ CREATE TABLE payments_invoices (
   customer_id     UUID NOT NULL,
   invoice_number  TEXT NOT NULL,
   status          TEXT NOT NULL CHECK (status IN ('draft','pending','paid','failed','cancelled','refunded')),
-  subtotal_cents  BIGINT NOT NULL CHECK (subtotal_cents >= 0),
-  tax_cents       BIGINT NOT NULL DEFAULT 0 CHECK (tax_cents >= 0),
-  total_cents     BIGINT NOT NULL CHECK (total_cents >= 0),
-  currency        CHAR(3) NOT NULL,
+  subtotal_paise  BIGINT NOT NULL CHECK (subtotal_paise >= 0),
+  tax_paise       BIGINT NOT NULL DEFAULT 0 CHECK (tax_paise >= 0),
+  total_paise     BIGINT NOT NULL CHECK (total_paise >= 0),
+  currency        CHAR(3) NOT NULL DEFAULT 'INR',
   due_date        DATE NOT NULL,
   paid_at         TIMESTAMPTZ,
   description     TEXT NOT NULL DEFAULT '',
@@ -493,8 +538,8 @@ CREATE TABLE payments_invoice_line_items (
   invoice_id      UUID NOT NULL REFERENCES payments_invoices(id) ON DELETE CASCADE,
   description     TEXT NOT NULL,
   quantity        INTEGER NOT NULL CHECK (quantity > 0),
-  unit_price_cents BIGINT NOT NULL CHECK (unit_price_cents >= 0),
-  total_cents     BIGINT NOT NULL CHECK (total_cents >= 0)
+  unit_price_paise BIGINT NOT NULL CHECK (unit_price_paise >= 0),
+  total_paise     BIGINT NOT NULL CHECK (total_paise >= 0)
 );
 CREATE INDEX payments_line_items_invoice_idx ON payments_invoice_line_items (invoice_id);
 
@@ -502,41 +547,41 @@ CREATE TABLE payments_payments (
   id                          UUID PRIMARY KEY,
   tenant_id                   UUID NOT NULL,
   invoice_id                  UUID NOT NULL REFERENCES payments_invoices(id) ON DELETE RESTRICT,
-  amount_cents                BIGINT NOT NULL CHECK (amount_cents > 0),
-  currency                    CHAR(3) NOT NULL,
-  status                      TEXT NOT NULL CHECK (status IN ('pending','authorized','captured','failed')),
-  stripe_payment_intent_id    TEXT,
-  stripe_checkout_session_id  TEXT,
+  amount_paise                BIGINT NOT NULL CHECK (amount_paise > 0),
+  currency                    CHAR(3) NOT NULL DEFAULT 'INR',
+  status                      TEXT NOT NULL CHECK (status IN ('pending','captured','failed')),
+  razorpay_payment_id         TEXT,
+  razorpay_payment_link_id    TEXT,
   idempotency_key             TEXT,
   captured_at                 TIMESTAMPTZ,
   created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE UNIQUE INDEX payments_payments_stripe_pi_uniq ON payments_payments (tenant_id, stripe_payment_intent_id) WHERE stripe_payment_intent_id IS NOT NULL;
-CREATE UNIQUE INDEX payments_payments_stripe_session_uniq ON payments_payments (tenant_id, stripe_checkout_session_id) WHERE stripe_checkout_session_id IS NOT NULL;
-CREATE UNIQUE INDEX payments_payments_idempotency_uniq ON payments_payments (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
+CREATE UNIQUE INDEX payments_payments_rzp_payment_uniq  ON payments_payments (tenant_id, razorpay_payment_id)      WHERE razorpay_payment_id IS NOT NULL;
+CREATE UNIQUE INDEX payments_payments_rzp_link_uniq     ON payments_payments (tenant_id, razorpay_payment_link_id) WHERE razorpay_payment_link_id IS NOT NULL;
+CREATE UNIQUE INDEX payments_payments_idempotency_uniq  ON payments_payments (tenant_id, idempotency_key)          WHERE idempotency_key IS NOT NULL;
 
 CREATE TABLE payments_refunds (
   id                UUID PRIMARY KEY,
   tenant_id         UUID NOT NULL,
   payment_id        UUID NOT NULL REFERENCES payments_payments(id) ON DELETE RESTRICT,
-  amount_cents      BIGINT NOT NULL CHECK (amount_cents > 0),
-  currency          CHAR(3) NOT NULL,
+  amount_paise      BIGINT NOT NULL CHECK (amount_paise > 0),
+  currency          CHAR(3) NOT NULL DEFAULT 'INR',
   status            TEXT NOT NULL CHECK (status IN ('pending','completed','failed')),
-  stripe_refund_id  TEXT,
+  razorpay_refund_id TEXT,
   reason            TEXT NOT NULL DEFAULT '',
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE UNIQUE INDEX payments_refunds_stripe_uniq ON payments_refunds (tenant_id, stripe_refund_id) WHERE stripe_refund_id IS NOT NULL;
+CREATE UNIQUE INDEX payments_refunds_rzp_uniq ON payments_refunds (tenant_id, razorpay_refund_id) WHERE razorpay_refund_id IS NOT NULL;
 
-CREATE TABLE payments_processed_stripe_events (
-  stripe_event_id  TEXT PRIMARY KEY,
-  tenant_id        UUID NOT NULL,
-  event_type       TEXT NOT NULL,
-  processed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE payments_processed_razorpay_events (
+  razorpay_event_id  TEXT PRIMARY KEY,
+  tenant_id          UUID,
+  event_type         TEXT NOT NULL,
+  processed_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX payments_processed_events_processed_at_idx ON payments_processed_stripe_events (processed_at);
+CREATE INDEX payments_processed_events_processed_at_idx ON payments_processed_razorpay_events (processed_at);
 
 CREATE TABLE payments_idempotency_keys (
   key             TEXT NOT NULL,
@@ -552,9 +597,21 @@ CREATE TABLE payments_idempotency_keys (
 CREATE INDEX payments_idempotency_keys_expires_at_idx ON payments_idempotency_keys (expires_at);
 ```
 
-Row-Level Security: each table gets a `tenant_id = current_setting('app.tenant_id')::uuid` policy, matching the existing pattern.
+**Rename notes** (Stripe → Razorpay in column names):
+- `subtotal_cents` / `tax_cents` / `total_cents` / `unit_price_cents` → `*_paise`
+- `amount_cents` → `amount_paise`
+- `stripe_payment_intent_id` → `razorpay_payment_id`
+- `stripe_checkout_session_id` → `razorpay_payment_link_id`
+- `stripe_refund_id` → `razorpay_refund_id`
+- `stripe_account_id` → `razorpay_account_id`
+- `stripe_event_id` → `razorpay_event_id`
+- `payments_processed_stripe_events` → `payments_processed_razorpay_events`
 
-Seed: a one-time Alembic data migration inserts a `payments_tenant_config` row for every existing tenant (idempotent on tenant_id).
+`tenant_id` is intentionally nullable on `payments_processed_razorpay_events` because some events (e.g. test pings from Razorpay dashboard) may arrive without a tenant context; the webhook handler falls back to deriving tenant from `notes.tenant_id` on the underlying Payment Link.
+
+Row-Level Security: each business table gets a `tenant_id = current_setting('app.tenant_id')::uuid` policy, matching the existing pattern. The `payments_processed_razorpay_events` table is **not** RLS-scoped (it's a global dedup log keyed by Razorpay event id, which is globally unique).
+
+Seed: a one-time Alembic data migration inserts a `payments_tenant_config` row for every existing tenant (idempotent on tenant_id), with `default_currency='INR'`.
 
 ---
 
@@ -567,10 +624,10 @@ All endpoints return JSON. All mutating endpoints (POST) accept an optional `Ide
 | `/payments/invoices` | GET | session | customer (own only), tenant_admin/staff (all in tenant) | List invoices; query: `status`, `customer_id`, `from`, `to`, `limit`, `offset` |
 | `/payments/invoices` | POST | session | tenant_admin, staff | Create invoice (internal — booking/membership will call) |
 | `/payments/invoices/{id}` | GET | session | customer (own only), tenant_admin/staff | Get invoice with line items |
-| `/payments/invoices/{id}/checkout` | POST | session | customer (own only) | Create Stripe Checkout Session; return `{ checkout_url, expires_at, session_id }` |
-| `/payments/invoices/{id}/return` | GET | session | customer (own only) | Stripe success-redirect target; returns the invoice (frontend shows "Paid" or "Processing") |
+| `/payments/invoices/{id}/payment-link` | POST | session | customer (own only) | Create Razorpay Payment Link; return `{ short_url, razorpay_payment_link_id, expires_at }` |
+| `/payments/invoices/{id}/return` | GET | session | customer (own only) | Razorpay success-redirect target; returns the invoice (frontend shows "Paid" or "Processing") |
 | `/payments/invoices/{id}/refund` | POST | session | tenant_admin | Full refund; body: `{ reason }` |
-| `/webhooks/stripe` | POST | Stripe signature | — | Stripe webhook receiver |
+| `/webhooks/razorpay` | POST | Razorpay signature | — | Razorpay webhook receiver |
 
 ### Status codes
 
@@ -578,14 +635,14 @@ All endpoints return JSON. All mutating endpoints (POST) accept an optional `Ide
 |---|---|
 | 200 | Successful read or state-already-final action |
 | 201 | Invoice created |
-| 202 | Checkout session created (returns URL) |
+| 202 | Payment link created (returns URL) |
 | 400 | Malformed request, signature invalid on webhook |
 | 401 | Unauthenticated |
 | 403 | Authenticated but wrong role / accessing another tenant's invoice |
 | 404 | Invoice not found |
 | 409 | Invoice already paid / not refundable / non-cancellable |
 | 422 | Validation error (line item quantity ≤ 0, etc.) |
-| 503 | Stripe API unavailable (call timed out, 5xx from Stripe) |
+| 503 | Razorpay API unavailable (call timed out, 5xx from Razorpay) |
 
 ### Response schemas (Pydantic)
 
@@ -594,8 +651,8 @@ class LineItemResponse(BaseModel):
     id: UUID
     description: str
     quantity: int
-    unit_price_cents: int
-    total_cents: int
+    unit_price_paise: int
+    total_paise: int
 
 class InvoiceResponse(BaseModel):
     id: UUID
@@ -603,9 +660,9 @@ class InvoiceResponse(BaseModel):
     customer_id: UUID
     invoice_number: str
     status: InvoiceStatus
-    subtotal_cents: int
-    tax_cents: int
-    total_cents: int
+    subtotal_paise: int
+    tax_paise: int
+    total_paise: int
     currency: str
     due_date: date
     paid_at: datetime | None
@@ -614,19 +671,19 @@ class InvoiceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-class CheckoutSessionResponse(BaseModel):
-    checkout_url: str
-    stripe_checkout_session_id: str
+class PaymentLinkResponse(BaseModel):
+    short_url: str
+    razorpay_payment_link_id: str
     expires_at: datetime
 
 class RefundResponse(BaseModel):
     id: UUID
     payment_id: UUID
-    amount_cents: int
+    amount_paise: int
     currency: str
     status: RefundStatus
     reason: str
-    stripe_refund_id: str | None
+    razorpay_refund_id: str | None
     created_at: datetime
 ```
 
@@ -642,13 +699,13 @@ POST /payments/invoices
   Idempotency-Key: <uuid>          (optional)
   {
     "customer_id": "...",
-    "line_items": [{"description":"Lane 4, 60min","quantity":1,"unit_price_cents":1500}],
+    "line_items": [{"description":"Lane 4, 60min","quantity":1,"unit_price_paise":150000}],
     "description": "Booking #abc-123",
     "due_date": "2026-08-14"
   }
 
 → PaymentService.create_invoice
-  1. Resolve TenantPaymentConfig (default_currency, future stripe_account_id)
+  1. Resolve TenantPaymentConfig (default_currency, future razorpay_account_id)
   2. Validate line items (positive qty + unit price; total == sum)
   3. Compute next per-tenant invoice_number atomically (SELECT MAX + 1 in same tx; uniqueness enforced by UNIQUE index as backstop)
   4. Persist Invoice (status=PENDING) + line items
@@ -659,58 +716,64 @@ POST /payments/invoices
 ### 2. Checkout (customer pays)
 
 ```
-POST /payments/invoices/{id}/checkout
+POST /payments/invoices/{id}/payment-link
   Authorization: Bearer <access_token>
   Idempotency-Key: <uuid>          (required)
 
-→ PaymentService.create_checkout_session
+→ PaymentService.create_payment_link
   1. Load invoice (404 if not found, 403 if not own, 409 if not can_pay)
   2. Create Payment row (status=PENDING)
-  3. StripeAdapter.create_checkout_session:
-     - line_items built from invoice_line_items
-     - metadata = {tenant_id, invoice_id, payment_id}
-     - success_url = {APP_URL}/book/pay/{id}/return?session_id={CHECKOUT_SESSION_ID}
-     - cancel_url  = {APP_URL}/book/pay/{id}
-     - idempotency_key passed to Stripe SDK
-  4. Persist stripe_checkout_session_id on Payment
-  5. Return CheckoutSessionResponse
+  3. RazorpayAdapter.create_payment_link:
+     - amount = invoice.total.amount_paise
+     - currency = invoice.total.currency  (always "INR" in v1)
+     - description = "{invoice_number} — {description[:250]}"
+     - customer = {name, email, contact} resolved from the customer record
+     - callback_url = {APP_URL}/book/pay/{id}/return
+     - reference_id = payment_id (used to reconcile)
+     - notes = {tenant_id, invoice_id, payment_id}
+     - idempotency_key passed to Razorpay SDK
+  4. Persist razorpay_payment_link_id on Payment
+  5. Return PaymentLinkResponse
 
-Frontend: window.location = response.checkout_url
-User pays on Stripe → Stripe redirects to success_url
+Frontend: window.location = response.short_url
+User pays via UPI / card / NetBanking / wallet on Razorpay → Razorpay redirects to callback_url
 ```
 
 ### 3. Webhook (source of truth)
 
 ```
-POST /webhooks/stripe
-  Stripe-Signature: <t=...,v1=...>
+POST /webhooks/razorpay
+  X-Razorpay-Signature: <hex HMAC SHA256>
   Content-Type: application/json
   <raw JSON body>
 
 → PaymentService.handle_webhook(raw_payload, signature)
-  1. event = StripeAdapter.verify_webhook(raw_payload, signature)
+  1. event = RazorpayAdapter.verify_webhook(raw_payload, signature)
      → raises Validation("invalid signature") on mismatch (→ 400, log warning, no retry)
-  2. If ProcessedStripeEventRepository.exists(event.id):
+  2. If ProcessedRazorpayEventRepository.exists(event.id):
      return  (idempotent no-op → 200)
-  3. Switch on event.type:
-     a. checkout.session.completed
-        - Payment = load by stripe_checkout_session_id (UNIQUE index hits)
-        - Invoice = load by id (from event.metadata)
+  3. Switch on event.event:
+     a. payment.captured
+        - Extract payment_link_id from event.payload.payment_link.entity.id
+        - Payment = load by razorpay_payment_link_id (UNIQUE index hits)
+          (fallback: load by event.payload.payment.id which is the Razorpay payment_id, also unique)
+        - Invoice = load by event.payload.payment_link.notes.invoice_id (from notes)
         - Payment.mark_captured(utcnow()); Invoice.mark_paid(utcnow())
         - Persist both
         - Publish InvoicePaid event
-     b. payment_intent.payment_failed
+     b. payment.failed
+        - Same payment lookup as above
         - Payment.mark_failed()
         - Invoice.mark_failed()
         - Persist
         - Publish PaymentFailed event
-     c. charge.refunded
-        - Refund = load by stripe_refund_id (UNIQUE index hits)
+     c. refund.processed
+        - Refund = load by razorpay_refund_id (UNIQUE index hits)
         - If Refund is None: log warning, mark event processed, return (orphan event)
         - Refund.status = COMPLETED; Invoice.mark_refunded()
         - Persist
         - Publish RefundIssued event
-  4. processed_event_repo.insert(event.id, tenant_id, event.type)  — same transaction
+  4. processed_event_repo.insert(event.id, tenant_id, event.event)  — same transaction
   5. Return 200
 ```
 
@@ -727,9 +790,9 @@ POST /payments/invoices/{id}/refund
   2. If not invoice.can_refund(): raise Conflict
   3. Load latest CAPTURED Payment for invoice
   4. Create Refund row (status=PENDING)
-  5. StripeAdapter.create_refund(stripe_payment_intent_id, total_cents, idempotency_key)
-     → returns stripe refund dict
-  6. Persist stripe_refund_id on Refund (UNIQUE index dedups retries)
+  5. RazorpayAdapter.create_refund(razorpay_payment_id, total_paise, idempotency_key)
+     → returns Razorpay refund dict
+  6. Persist razorpay_refund_id on Refund (UNIQUE index dedups retries)
   7. Return RefundResponse (status=PENDING; webhook flips to COMPLETED)
 ```
 
@@ -743,19 +806,19 @@ The `/book/pay/{id}/return` page polls the invoice once on mount via `GET /payme
 
 | Failure | Behaviour |
 |---|---|
-| Stripe API down at checkout creation | `StripeAdapter` raises `ServiceUnavailable("payment provider unavailable")`; 503 with `Retry-After: 5` header; frontend shows "Payment provider unavailable, try again" |
-| Stripe SDK 4xx (bad params) | Logs the SDK error id, raises `Validation` with a generic message; 422 |
-| Webhook signature invalid | Logs warning; 400 (Stripe will retry, but our handler stays idempotent) |
+| Razorpay API down at payment-link creation | `RazorpayAdapter` raises `ServiceUnavailable("payment provider unavailable")`; 503 with `Retry-After: 5` header; frontend shows "Payment provider unavailable, try again" |
+| Razorpay SDK 4xx (bad params) | Logs the SDK error id, raises `Validation` with a generic message; 422 |
+| Webhook signature invalid | Logs warning; 400 (Razorpay will retry, but our handler stays idempotent) |
 | Webhook event already processed | 200, no-op (dedup by `event.id`) |
-| Webhook event for unknown invoice (orphan) | Logs warning, marks event processed, returns 200 (Stripe retry storm protection) |
-| Invoice already PAID at checkout | 409 Conflict; frontend shows "This invoice is already paid" |
+| Webhook event for unknown invoice (orphan) | Logs warning, marks event processed, returns 200 (Razorpay retry storm protection) |
+| Invoice already PAID at payment-link request | 409 Conflict; frontend shows "This invoice is already paid" |
 | Invoice already REFUNDED at refund | 409 Conflict |
 | Refund on non-PAID invoice | 422 |
 | Customer tries to pay another customer's invoice | 403 |
 | Idempotency-Key reused with different body | 422 with explanation |
 | Tenant RLS denies access | 404 (not 403) to avoid leaking invoice existence |
 | Redis idempotency store down | Falls back to DB `payments_idempotency_keys` table; logs warning |
-| `stripe-mock` URL not reachable in CI | Test fails fast; CI script asserts mock is up before pytest |
+| Razorpay SDK unavailable in CI | `NullAdapter` is used (PAYMENTS_PROVIDER=null); no real SDK needed for unit tests |
 
 ---
 
@@ -763,10 +826,10 @@ The `/book/pay/{id}/return` page polls the invoice once on mount via `GET /payme
 
 Two layers, both required:
 
-1. **Webhook dedup (Stripe event id)**
-   - `payments_processed_stripe_events` table with `stripe_event_id` PK.
+1. **Webhook dedup (Razorpay event id)**
+   - `payments_processed_razorpay_events` table with `razorpay_event_id` PK.
    - Webhook handler checks existence before processing; inserts in the same transaction as the state change.
-   - Stripe retries the same event id with the same payload on transient failure → second call hits the dedup check, returns 200.
+   - Razorpay retries the same event id with the same payload on transient failure → second call hits the dedup check, returns 200.
    - Background prune: a small Alembic-managed SQL function or a one-shot pytest fixture deletes rows older than 30 days.
 
 2. **API idempotency (`Idempotency-Key` header)**
@@ -777,9 +840,9 @@ Two layers, both required:
      - If a row exists with a different hash → 422 (client reused the key for a different request).
      - Otherwise execute the request, then store `(response_status, response_body)`.
    - TTL: 24 h via `expires_at`; background prune keeps the table small.
-   - Stripe SDK also receives the same `Idempotency-Key` so Stripe itself dedupes at the provider.
+   - Razorpay SDK also receives the same `Idempotency-Key` so Razorpay itself dedupes at the provider.
 
-The two layers cover different threats: webhook dedup is about Stripe retries, API idempotency is about client retries (browser back button, double-clicks, network blips during checkout).
+The two layers cover different threats: webhook dedup is about Razorpay retries, API idempotency is about client retries (browser back button, double-clicks, network blips during checkout).
 
 ---
 
@@ -788,9 +851,9 @@ The two layers cover different threats: webhook dedup is about Stripe retries, A
 ### Backend (`pytest`)
 
 - **Service tests** (`test_invoice_service.py`): `PaymentService` with `NullAdapter` + in-memory repos. Asserts state transitions (`can_pay`, `can_refund`), invoice number sequencing, and event emission via a test publisher that records calls.
-- **Endpoint tests** (`test_checkout_endpoint.py`, `test_refund_endpoint.py`): FastAPI `TestClient` with `NullAdapter`. Asserts 201/202/409/422/403 paths, idempotency-Key reuse, and customer scoping.
-- **Webhook tests** (`test_webhook_endpoint.py`): signed fixtures from `stripe` SDK test data (`tests/fixtures/stripe/webhook_checkout_completed.json`). Loads `payload` and `Stripe-Signature` from disk, posts raw bytes, asserts state change + event emission. Second call with the same fixture asserts dedup.
-- **Stripe adapter tests** (`test_stripe_adapter.py`): integration tests against `stripe-mock` running on `localhost:10611`. Verifies request shape (line items, metadata, idempotency-key passthrough).
+- **Endpoint tests** (`test_payment_link_endpoint.py`, `test_refund_endpoint.py`): FastAPI `TestClient` with `NullAdapter`. Asserts 201/202/409/422/403 paths, idempotency-Key reuse, and customer scoping.
+- **Webhook tests** (`test_webhook_endpoint.py`): signed fixtures from `razorpay` SDK test data (`tests/fixtures/razorpay/webhook_payment_captured.json`). Loads `payload` and `X-Razorpay-Signature` from disk, posts raw bytes, asserts state change + event emission. Second call with the same fixture asserts dedup. Signature is computed in-fixture with `hmac.new(webhook_secret, payload, sha256).hexdigest()`.
+- **Razorpay adapter tests** (`test_razorpay_adapter.py`): unit tests using `responses` to mock the `requests` calls made by the SDK. Verifies request shape (amount, currency, customer, notes, idempotency-key passthrough).
 - **RLS tests** (`test_tenant_rls.py`): two tenants, assert that tenant A's session cannot SELECT tenant B's invoices (returns empty / 404).
 - **Idempotency tests** (`test_idempotency.py`): two requests with the same key + body → second returns cached response; same key + different body → 422.
 
@@ -798,20 +861,20 @@ The two layers cover different threats: webhook dedup is about Stripe retries, A
 
 - `invoices-page.test.tsx` — list rendering, filters, create-invoice modal open/close.
 - `invoice-detail-page.test.tsx` — line items display, refund button hidden for non-admin, refund action calls hook and shows confirmation.
-- `pay-invoice-page.test.tsx` — summary render, "Pay now" button calls `useCreateCheckoutSession` and redirects on success.
+- `pay-invoice-page.test.tsx` — summary render, "Pay now" button calls `useCreatePaymentLink` and redirects on success.
 - `pay-invoice-return-page.test.tsx` — polls invoice, shows Paid / Processing state.
 
 ### E2E (`playwright`)
 
 `e2e/admin-invoice-flow.spec.ts`:
 1. Log in as `admin@demo.splashh.dev` (staff tab).
-2. Navigate to `/admin/invoices`, create invoice for `alex@demo.splashh.dev` ($10 USD, "E2E test").
+2. Navigate to `/admin/invoices`, create invoice for `alex@demo.splashh.dev` (₹150, "E2E test").
 3. Log out, log in as `alex@demo.splashh.dev`.
 4. Navigate to `/admin/invoices/{id}` → see "Pay now" button.
-5. Click → mocked Stripe Checkout returns success → webhook (sent in-test via `stripe-mock`) updates status → invoice detail shows `PAID`.
+5. Click → opens Razorpay hosted page (test mode). The E2E bypasses real Razorpay by injecting a stub `payment_link_id` and POSTing a signed `payment.captured` webhook in-test to `/webhooks/razorpay` → status updates → invoice detail shows `PAID`.
 6. Log back in as admin → click refund → status flips to `REFUNDED`.
 
-Stripe test cards (`4242 4242 4242 4242`) used throughout. `stripe-mock` is spun up via Docker Compose alongside the existing Postgres + Redis for the e2e test target.
+Razorpay test card (`4111 1111 1111 1111`) and UPI test handle (`success@razorpay`) used where the test exercises the hosted page directly. `PAYMENTS_PROVIDER=null` is set in the e2e environment so unit-style mocking still works.
 
 ---
 
@@ -823,23 +886,23 @@ Stripe test cards (`4242 4242 4242 4242`) used throughout. `stripe-mock` is spun
 
 - Header: "Invoices" + "New invoice" button.
 - Filters: status (`All` / `Pending` / `Paid` / `Refunded`), customer, date range.
-- Table columns: Invoice #, Customer (email), Total, Status badge, Due date.
+- Table columns: Invoice #, Customer (email), Total (formatted as `₹X.XX`), Status badge, Due date.
 - Row click → `/admin/invoices/:id`.
-- "New invoice" opens a modal with: customer picker (typeahead), description, due date, line item editor (add/remove rows, qty + unit price).
+- "New invoice" opens a modal with: customer picker (typeahead), description, due date, line item editor (add/remove rows, qty + unit price in paise).
 
 #### `/admin/invoices/:id` — InvoiceDetailPage
 
 - Header: invoice number + status badge.
-- Line items table (description, qty, unit price, total).
+- Line items table (description, qty, unit price, total — all in paise, displayed as `₹X.XX`).
 - Totals card (subtotal, tax, total).
 - "Refund" button (tenant_admin only) → opens confirmation modal with reason field → POSTs `/refund` → optimistic update to `REFUNDED` (webhook will reconcile).
 - "Copy payment link" button → copies `${APP_URL}/book/pay/{id}` to clipboard for emailing.
 
 #### `/book/pay/:id` — PayInvoicePage
 
-- Summary card (invoice #, description, total, due date).
-- "Pay with card" button → `useCreateCheckoutSession` → `window.location = response.checkout_url`.
-- Error state if checkout creation fails: "Payment provider unavailable, try again".
+- Summary card (invoice #, description, total in `₹X.XX`, due date).
+- "Pay with Razorpay" button → `useCreatePaymentLink` → `window.location = response.short_url`.
+- Error state if payment-link creation fails: "Payment provider unavailable, try again".
 
 #### `/book/pay/:id/return` — PayInvoiceReturnPage
 
@@ -854,11 +917,11 @@ Stripe test cards (`4242 4242 4242 4242`) used throughout. `stripe-mock` is spun
 - `createInvoice(input): Promise<Invoice>`
 - `listInvoices(params): Promise<Invoice[]>`
 - `getInvoice(id): Promise<Invoice>`
-- `createCheckoutSession(invoiceId, idempotencyKey): Promise<CheckoutSessionResponse>`
+- `createPaymentLink(invoiceId, idempotencyKey): Promise<PaymentLinkResponse>`
 - `refundInvoice(invoiceId, reason, idempotencyKey): Promise<Refund>`
 
 `packages/api-client/src/hooks.ts` (existing file; add):
-- `useInvoices(params)`, `useInvoice(id)`, `useCreateInvoice()`, `useCreateCheckoutSession()`, `useRefundInvoice()`
+- `useInvoices(params)`, `useInvoice(id)`, `useCreateInvoice()`, `useCreatePaymentLink()`, `useRefundInvoice()`
 
 ### Nav config
 
@@ -885,12 +948,12 @@ Routes file (`apps/web-pwa/src/routes/index.tsx`):
 
 ## Out of Scope (deferred to later specs)
 
-- Saved payment methods / Stripe Customer setup UI (membership may need this; revisit then).
+- Saved payment methods / Razorpay Customer setup UI (membership may need this; revisit then).
 - Partial refunds (only full refunds in v1).
-- Stripe Connect / multi-account payouts (schema is ready; feature deferred).
-- Subscription / recurring billing logic (membership module owns this — may add Stripe Subscriptions API integration then).
+- Stripe Connect / multi-account payouts (schema is ready; feature deferred). A second `PaymentProvider` adapter (e.g. `StripeAdapter`) is straightforward when needed.
+- Subscription / recurring billing logic (membership module owns this — may add Razorpay Subscriptions API integration then).
 - Async webhook processing via worker queue (sync is fine until processing becomes slow).
-- Multi-currency conversion (display in invoice currency only).
+- Multi-currency conversion (INR only in v1).
 - Email/SMS notification of payment events (notifications module will consume `InvoicePaid` etc.).
 - Analytics dashboards for revenue / MRR (analytics module will consume events).
 - Invoice PDF generation.
@@ -904,5 +967,6 @@ Routes file (`apps/web-pwa/src/routes/index.tsx`):
 - ✅ No placeholders or TBDs. Every endpoint, schema field, status code, and file path is concrete.
 - ✅ Internal consistency: the same file names appear in every section that references them (`payments/application/payment_service.py`, `common/application/events.py`, `e2e/admin-invoice-flow.spec.ts`, etc.). Endpoint signatures match between the router and the service. Status enums appear identically in the domain layer and the DB CHECK constraints.
 - ✅ Scope: single bounded context, single app surface, no decomposition needed.
-- ✅ No ambiguous requirements: every status code, every Stripe mode (test vs live), every auth scope, every role requirement is explicit. The two idempotency layers have distinct, documented responsibilities.
-- ✅ Recommended options baked in: adapter interface + Stripe v1, platform account + Connect-ready schema, Stripe Checkout hosted redirect, sync event bus + sync webhooks, full refunds only, no saved methods, both idempotency layers, both admin + customer frontend pages.
+- ✅ No ambiguous requirements: every status code, every Razorpay mode (test vs live), every auth scope, every role requirement is explicit. The two idempotency layers have distinct, documented responsibilities.
+- ✅ India-specific choices baked in: Razorpay primary, INR-only, Payment Links hosted redirect, paise int minor units, `X-Razorpay-Signature` HMAC SHA256 verification, three Razorpay webhook events (payment.captured / payment.failed / refund.processed).
+- ✅ Recommended options baked in: adapter interface + Razorpay v1 (Stripe-ready schema), single platform account + Connect-ready schema, Razorpay Payment Links hosted redirect, sync event bus + sync webhooks, full refunds only, no saved methods, both idempotency layers, both admin + customer frontend pages.

@@ -14,6 +14,9 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Import payments models to register them with Base.metadata
+from payments.infrastructure import models as _payments_models  # noqa: F401
+
 from common.infrastructure.db import dispose_engine, init_engine
 from common.infrastructure.logging import configure_logging, get_logger
 from common.infrastructure.middleware import RequestContextMiddleware
@@ -45,11 +48,29 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # Initialize database engine
         await init_engine(settings)
         _logger.info("engine_initialised")
+
+        # Initialize payment provider and event bus
+        from common.application.events import InProcessEventPublisher
+        from payments.application.provider import NullAdapter, RazorpayAdapter
+
+        app.state.event_bus = InProcessEventPublisher()
+        if settings.payments_provider == "null":
+            app.state.payment_provider = NullAdapter()
+        else:
+            app.state.payment_provider = RazorpayAdapter(
+                key_id=settings.razorpay_key_id,
+                key_secret=settings.razorpay_key_secret,
+                webhook_secret=settings.razorpay_webhook_secret,
+            )
+        _logger.info("payment_provider_initialised", provider=settings.payments_provider)
+
         try:
             yield
         finally:
+            # Dispose database engine
             await dispose_engine()
             _logger.info("engine_disposed")
 
@@ -90,7 +111,7 @@ def _register_module_routers(app: FastAPI) -> None:
     router stay self-contained. We import lazily so a broken module doesn't
     prevent the app from booting.
     """
-    for module_name in ("auth", "customer", "facility", "booking"):
+    for module_name in ("auth", "customer", "facility", "booking", "payments"):
         try:
             module = __import__(module_name, fromlist=["interfaces"])
             router = getattr(module.interfaces, "router", None)  # type: ignore[attr-defined]
