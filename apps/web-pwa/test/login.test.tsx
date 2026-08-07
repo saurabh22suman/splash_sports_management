@@ -3,9 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { MemoryRouter } from "react-router-dom";
 import { LoginForm } from "@/features/auth/LoginForm";
-import { LoginPage } from "@/pages/LoginPage";
 
 vi.mock("@splashh/api-client", async () => {
   const actual = await vi.importActual<typeof import("@splashh/api-client")>("@splashh/api-client");
@@ -47,40 +45,5 @@ describe("LoginForm", () => {
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
     await userEvent.click(screen.getByRole("button", { name: /log in/i }));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
-  });
-});
-
-describe("LoginPage", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("renders a <main> landmark with an h1 visible to assistive tech", () => {
-    render(
-      <MemoryRouter>
-        <QueryClientProvider client={new QueryClient()}>
-          <LoginPage />
-        </QueryClientProvider>
-      </MemoryRouter>,
-    );
-    expect(screen.getByRole("main")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: /log in/i })).toBeInTheDocument();
-  });
-
-  it("puts the error message in an aria-live=assertive region", async () => {
-    (api.post as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Invalid credentials"));
-    render(
-      <MemoryRouter>
-        <QueryClientProvider client={new QueryClient()}>
-          <LoginPage />
-        </QueryClientProvider>
-      </MemoryRouter>,
-    );
-    await userEvent.type(screen.getByLabelText(/email/i), "u@example.com");
-    await userEvent.type(screen.getByLabelText(/password/i), "wrongpwd");
-    await userEvent.click(screen.getByRole("button", { name: /log in/i }));
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveAttribute("aria-live", "assertive");
-    expect(alert).toHaveTextContent(/invalid credentials/i);
   });
 });

@@ -7,8 +7,12 @@ interface LoginResponse {
   roles: string[];
 }
 
-export async function loginRequest(email: string, password: string): Promise<string[]> {
-  const res = await api.post<LoginResponse>("/auth/login", { email, password });
+export async function loginRequest(
+  email: string,
+  password: string,
+  mode?: "customer" | "staff",
+): Promise<string[]> {
+  const res = await api.post<LoginResponse>("/auth/login", { email, password, mode });
   useAuthStore.getState().setSession({
     accessToken: res.data.access_token,
     userId: res.data.user_id,
