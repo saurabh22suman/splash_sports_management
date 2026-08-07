@@ -6,7 +6,7 @@ export function FacilitiesPage() {
   const { data, isLoading, error, refetch } = useFacilities();
 
   return (
-    <main className="container py-6">
+    <div className="container py-6">
       <h1 className="mb-4 text-2xl font-semibold">Facilities</h1>
       {isLoading && <LoadingSkeleton withCard lines={3} />}
       {error && (
@@ -46,6 +46,6 @@ export function FacilitiesPage() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

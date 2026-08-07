@@ -12,13 +12,13 @@ export function AdminFacilityDetailPage() {
   const resources = useAdminResources(id);
   const [tab, setTab] = useState<Tab>("info");
 
-  if (facility.isLoading) return <main className="container py-6">Loading…</main>;
+  if (facility.isLoading) return <div className="container py-6">Loading…</div>;
   if (facility.error || !facility.data)
-    return <main className="container py-6 text-destructive">Failed to load facility.</main>;
+    return <div className="container py-6 text-destructive">Failed to load facility.</div>;
   const f = facility.data;
 
   return (
-    <main className="container py-6">
+    <div className="container py-6">
       <h1 className="text-2xl font-semibold">{f.name}</h1>
       <p className="text-sm text-muted-foreground">
         {f.address_line1}, {f.city} {f.state} · {f.timezone}
@@ -75,6 +75,6 @@ export function AdminFacilityDetailPage() {
         )}
         {tab === "bookings" && <p className="text-sm text-muted-foreground">Bookings view coming soon.</p>}
       </div>
-    </main>
+    </div>
   );
 }

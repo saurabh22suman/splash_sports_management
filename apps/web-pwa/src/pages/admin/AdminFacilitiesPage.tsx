@@ -5,7 +5,7 @@ import { useAdminFacilities } from "@/features/admin/facilities/useAdminFaciliti
 export function AdminFacilitiesPage() {
   const { data, isLoading, error } = useAdminFacilities();
   return (
-    <main className="container py-6">
+    <div className="container py-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Facilities</h1>
         <Button asChild>
@@ -32,6 +32,6 @@ export function AdminFacilitiesPage() {
           </li>
         ))}
       </ul>
-    </main>
+    </div>
   );
 }

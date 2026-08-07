@@ -39,7 +39,7 @@ describe("TopBar", () => {
 
   it("renders the page title from the current route", () => {
     renderBar("/book");
-    expect(screen.getByRole("heading", { level: 1, name: "Browse" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Browse" })).toBeInTheDocument();
   });
 
   it("renders the hamburger button with aria-label", () => {

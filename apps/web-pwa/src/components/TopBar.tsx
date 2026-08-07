@@ -22,7 +22,7 @@ export function TopBar({
       >
         ☰
       </button>
-      <h1 className="text-base font-semibold text-slate-900 truncate">{title}</h1>
+      <h2 className="text-base font-semibold text-slate-900 truncate">{title}</h2>
       <div className="ml-auto" />
     </header>
   );

@@ -24,7 +24,7 @@ export function BookingsPage() {
   const { data, isLoading, error, refetch } = useBookingsByCustomer(userId);
 
   return (
-    <main className="container py-6">
+    <div className="container py-6">
       <h1 className="mb-4 text-2xl font-semibold">My bookings</h1>
       {isLoading && <LoadingSkeleton withCard lines={3} />}
       {error && (
@@ -64,6 +64,6 @@ export function BookingsPage() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

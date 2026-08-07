@@ -12,39 +12,39 @@ export function FacilityDetailPage() {
 
   if (facility.isLoading) {
     return (
-      <main className="container py-6">
+      <div className="container py-6">
         <LoadingSkeleton withCard lines={3} />
-      </main>
+      </div>
     );
   }
 
   if (facility.error) {
     return (
-      <main className="container py-6">
+      <div className="container py-6">
         <ErrorState
           title="Could not load facility"
           description="Try again in a moment."
           onRetry={() => facility.refetch()}
         />
-      </main>
+      </div>
     );
   }
 
   if (!facility.data) {
     return (
-      <main className="container py-6">
+      <div className="container py-6">
         <EmptyState
           title="Facility not found"
           description="It may have been removed. Try browsing all facilities."
           action={{ label: "Browse facilities", to: "/book" }}
         />
-      </main>
+      </div>
     );
   }
 
   const f = facility.data;
   return (
-    <main className="container py-6">
+    <div className="container py-6">
       <h1 className="text-2xl font-semibold">{f.name}</h1>
       <p className="text-sm text-muted-foreground">
         {f.address_line1}, {f.city} {f.state}
@@ -82,6 +82,6 @@ export function FacilityDetailPage() {
       {bookingResource && (
         <BookingDialog resourceId={bookingResource} onClose={() => setBookingResource(null)} />
       )}
-    </main>
+    </div>
   );
 }

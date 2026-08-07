@@ -105,7 +105,7 @@ export function AdminUsersPage() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <main className="container py-6">
+    <div className="container py-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Users</h1>
         <Button onClick={() => setAdding((s) => !s)}>{adding ? "Close" : "+ Add user"}</Button>
@@ -129,6 +129,6 @@ export function AdminUsersPage() {
           </ul>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
