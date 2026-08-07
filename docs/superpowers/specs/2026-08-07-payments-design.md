@@ -6,7 +6,7 @@
 
 **Architecture:** A new `payments` backend module (`interfaces/http/` + `application/` + `domain/` + `infrastructure/`) plus a small event-bus addition to `common` (`common/application/events.py` + a singleton `InProcessEventPublisher` wired at startup). All Razorpay interaction is hidden behind a `PaymentProvider` protocol with a `RazorpayAdapter` (production) and a `NullAdapter` (tests). The customer-facing checkout flow is Razorpay Payment Links (hosted redirect). The webhook receiver is synchronous and idempotent by Razorpay event id. The frontend gains an admin `/admin/invoices*` set and a customer `/book/pay/:invoiceId*` set, both backed by typed hooks in `@splashh/api-client`.
 
-**Tech Stack:** FastAPI, SQLAlchemy 2 (async) + Alembic, Pydantic v2, Razorpay Python SDK (`razorpay`), `pytest` + `httpx` + `respx` (backend, for HTTP mocking), React 19 + react-router-dom + @tanstack/react-query + zustand + vitest + RTL + Playwright (frontend). One new Python dependency (`razorpay`). No new npm dependencies. No external mock server — the `NullAdapter` is the test double for the provider.
+**Tech Stack:** FastAPI, SQLAlchemy 2 (async) + Alembic, Pydantic v2, Razorpay Python SDK (`razorpay`), `pytest` + `httpx` + `responses` (backend, for mocking the requests-based razorpay SDK), React 19 + react-router-dom + @tanstack/react-query + zustand + vitest + RTL + Playwright (frontend). Two new Python dependencies: `razorpay` (runtime, currently 2.0.1) and `responses` (dev). The razorpay SDK is built on `requests`, so `respx` (httpx-only) cannot mock it. No new npm dependencies. No external mock server — the `NullAdapter` is the test double for the provider.
 
 ---
 
@@ -64,7 +64,6 @@ apps/backend/src/payments/
     __init__.py
     models.py              # SQLAlchemy ORM models
     repositories.py        # InvoiceRepository, PaymentRepository, RefundRepository, ProcessedRazorpayEventRepository, IdempotencyKeyRepository, TenantPaymentConfigRepository
-    razorpay_client.py     # Constructs the razorpay SDK client from settings
     idempotency.py         # IdempotencyKeyRepository backed by Redis (24h TTL) or DB
   interfaces/
     http/
@@ -121,7 +120,7 @@ apps/backend/tests/payments/
   test_webhook_endpoint.py         # signed-fixture tests for /webhooks/razorpay
   test_idempotency.py              # webhook dedup + Idempotency-Key caching
   test_refund_endpoint.py
-  test_razorpay_adapter.py         # unit tests using respx to mock razorpay SDK HTTP calls
+  test_razorpay_adapter.py         # unit tests using responses to mock razorpay SDK HTTP calls
   test_tenant_rls.py               # RLS scoping: customer A cannot read customer B's invoices
 apps/web-pwa/test/payments/
   invoices-page.test.tsx
@@ -854,7 +853,7 @@ The two layers cover different threats: webhook dedup is about Razorpay retries,
 - **Service tests** (`test_invoice_service.py`): `PaymentService` with `NullAdapter` + in-memory repos. Asserts state transitions (`can_pay`, `can_refund`), invoice number sequencing, and event emission via a test publisher that records calls.
 - **Endpoint tests** (`test_payment_link_endpoint.py`, `test_refund_endpoint.py`): FastAPI `TestClient` with `NullAdapter`. Asserts 201/202/409/422/403 paths, idempotency-Key reuse, and customer scoping.
 - **Webhook tests** (`test_webhook_endpoint.py`): signed fixtures from `razorpay` SDK test data (`tests/fixtures/razorpay/webhook_payment_captured.json`). Loads `payload` and `X-Razorpay-Signature` from disk, posts raw bytes, asserts state change + event emission. Second call with the same fixture asserts dedup. Signature is computed in-fixture with `hmac.new(webhook_secret, payload, sha256).hexdigest()`.
-- **Razorpay adapter tests** (`test_razorpay_adapter.py`): unit tests using `respx` to mock `httpx` calls made by the SDK. Verifies request shape (amount, currency, customer, notes, idempotency-key passthrough).
+- **Razorpay adapter tests** (`test_razorpay_adapter.py`): unit tests using `responses` to mock the `requests` calls made by the SDK. Verifies request shape (amount, currency, customer, notes, idempotency-key passthrough).
 - **RLS tests** (`test_tenant_rls.py`): two tenants, assert that tenant A's session cannot SELECT tenant B's invoices (returns empty / 404).
 - **Idempotency tests** (`test_idempotency.py`): two requests with the same key + body → second returns cached response; same key + different body → 422.
 
