@@ -56,3 +56,6 @@ playwright-report/
 test-results/
 coverage/
 .env.local
+
+# Local worktrees (managed by using-git-worktrees)
+.worktrees/
