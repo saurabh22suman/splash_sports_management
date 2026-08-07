@@ -2,9 +2,10 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+import auth.infrastructure.models  # noqa: F401  (register TenantModel with Base.metadata)
 from payments.infrastructure.models import (
     IdempotencyKeyModel,
     InvoiceLineItemModel,
@@ -22,11 +23,13 @@ async def session():
     async with engine.begin() as conn:
         # Create tables manually to avoid issues with PostgreSQL-specific types
         # in auth models when using SQLite
+        from auth.infrastructure.models import TenantModel
+        await conn.run_sync(TenantModel.__table__.create)
         await conn.run_sync(InvoiceModel.__table__.create)
         await conn.run_sync(InvoiceLineItemModel.__table__.create)
         await conn.run_sync(PaymentModel.__table__.create)
         await conn.run_sync(RefundModel.__table__.create)
-        # Skip TenantPaymentConfigModel - has FK to tenants table which requires PostgreSQL
+        await conn.run_sync(TenantPaymentConfigModel.__table__.create)
         await conn.run_sync(ProcessedRazorpayEventModel.__table__.create)
         await conn.run_sync(IdempotencyKeyModel.__table__.create)
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -35,10 +38,23 @@ async def session():
     await engine.dispose()
 
 
-@pytest.mark.skip(reason="TenantPaymentConfigModel requires PostgreSQL FK to tenants table")
 async def test_tenant_config_round_trip(session):
-    """This test requires PostgreSQL due to FK constraint to tenants table."""
+    """Test TenantPaymentConfigModel round-trip on SQLite with parent tenant."""
+    from auth.infrastructure.models import TenantModel
+
+    # Insert parent tenant first (required for FK)
     tid = uuid4()
+    session.add(TenantModel(
+        id=tid,
+        slug="test-tenant",
+        name="Test Tenant",
+        primary_contact_email="test@example.com",
+        status="active",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    ))
+    await session.flush()  # ensure tenant is inserted before FK reference
+
     session.add(TenantPaymentConfigModel(
         tenant_id=tid, razorpay_account_id=None, default_currency="INR",
         created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
