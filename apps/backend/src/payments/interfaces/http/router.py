@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from payments.domain.entities import Invoice
 
 
-def _invoice_to_response(inv: "Invoice") -> InvoiceResponse:
+def _invoice_to_response(inv: Invoice) -> InvoiceResponse:
     """Convert a domain Invoice entity to InvoiceResponse."""
     return InvoiceResponse(
         id=inv.id,
