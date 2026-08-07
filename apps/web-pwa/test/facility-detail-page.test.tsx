@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
@@ -87,9 +87,10 @@ describe("FacilityDetailPage", () => {
       Promise.reject(new Error("Network error")),
     );
     renderAt("fac-123");
-    // Wait for the error to propagate to React Query
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    // Wait for the error to propagate to React Query - wrap in waitFor to silence act() warning
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 });
