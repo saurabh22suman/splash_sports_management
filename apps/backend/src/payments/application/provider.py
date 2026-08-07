@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 from uuid import UUID, uuid4
+
+import razorpay
 
 
 @dataclass(frozen=True)
@@ -86,3 +89,87 @@ class NullAdapter:
         self, payload: bytes, signature: str
     ) -> dict:
         return json.loads(payload)
+
+
+class RazorpayAdapter:
+    """Production adapter. Wraps the official `razorpay` SDK.
+    All SDK calls are sync; we wrap them in asyncio.to_thread.
+    """
+
+    def __init__(self, *, key_id: str, key_secret: str, webhook_secret: str) -> None:
+        self._client = razorpay.Client(auth=(key_id, key_secret))
+        self._webhook_secret = webhook_secret
+
+    async def create_payment_link(
+        self,
+        *,
+        invoice: dict,
+        payment_id: UUID,
+        idempotency_key: str,
+        success_url: str,
+        cancel_url: str,
+        customer: dict,
+    ) -> PaymentLinkResult:
+        amount_paise = sum(li["total_paise"] for li in invoice["line_items"])
+        description = "; ".join(li["description"] for li in invoice["line_items"])
+        plink = await asyncio.to_thread(
+            self._client.payment_link.create,
+            {
+                "amount": amount_paise,
+                "currency": invoice["currency"],
+                "accept_partial": False,
+                "description": description[:255],
+                "reference_id": str(payment_id),
+                "customer": {
+                    "name": customer.get("name", "Customer"),
+                    "email": customer.get("email", ""),
+                    "contact": customer.get("contact", ""),
+                },
+                "notify": {"sms": False, "email": False},
+                "reminder_enable": False,
+                "notes": {
+                    "tenant_id": str(invoice.get("tenant_id", "")),
+                    "invoice_id": str(invoice["id"]),
+                    "payment_id": str(payment_id),
+                },
+                "callback_url": success_url,
+                "callback_method": "get",
+                "cancel_url": cancel_url,
+            },
+        )
+        expire_by_timestamp = plink.get("expire_by")
+        if expire_by_timestamp is not None:
+            expires_at = datetime.fromtimestamp(int(expire_by_timestamp), tz=UTC)
+        else:
+            expires_at = datetime.now(UTC) + timedelta(hours=24)
+        return PaymentLinkResult(
+            short_url=plink["short_url"],
+            razorpay_payment_link_id=plink["id"],
+            razorpay_order_id=None,
+            expires_at=expires_at,
+        )
+
+    async def fetch_payment(self, razorpay_payment_id: str) -> dict:
+        payment = await asyncio.to_thread(self._client.payment.fetch, razorpay_payment_id)
+        return payment
+
+    async def create_refund(
+        self,
+        *,
+        razorpay_payment_id: str,
+        amount_paise: int,
+        idempotency_key: str,
+    ) -> dict:
+        refund = await asyncio.to_thread(
+            self._client.payment.refund,
+            razorpay_payment_id,
+            {"amount": amount_paise},
+        )
+        return {"id": refund["id"], "amount": refund["amount"], "status": refund["status"]}
+
+    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+        # Raises razorpay.errors.SignatureVerificationError on mismatch.
+        self._client.utility.verify_webhook_signature(
+            payload.decode(), signature, self._webhook_secret
+        )
+        return json.loads(payload.decode())
