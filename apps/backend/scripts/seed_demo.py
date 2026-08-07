@@ -7,10 +7,14 @@ Run via:
     make -C apps/backend seed-demo
 or directly:
     PYTHONPATH=src uv run python apps/backend/scripts/seed_demo.py
+
+For mock data seeding (full dataset):
+    PYTHONPATH=src uv run python apps/backend/scripts/seed_demo.py --mock
 """
 from __future__ import annotations
 
 import sys
+import argparse
 from typing import TextIO
 
 from datetime import time
@@ -132,16 +136,22 @@ async def seed_demo(session: AsyncSession, *, stdout: TextIO = sys.stdout) -> in
     return EXIT_OK
 
 
-async def _main() -> int:
-    """CLI entry point: bootstrap engine + session, run seed_demo, exit."""
+async def _main(mock: bool = False) -> int:
+    """CLI entry point: bootstrap engine + session, run seed script, exit."""
     from common.infrastructure.db import init_engine, get_session_factory, dispose_engine
     from common.infrastructure.settings import get_settings
+
+    if mock:
+        from scripts.mock_data import seed_mock_data
 
     settings = get_settings()
     await init_engine(settings)
     try:
         factory = get_session_factory()
         async with factory() as session:
+            if mock:
+                await seed_mock_data(session)
+                return EXIT_OK
             return await seed_demo(session)
     finally:
         await dispose_engine()
@@ -150,4 +160,12 @@ async def _main() -> int:
 if __name__ == "__main__":
     import asyncio
 
-    raise SystemExit(asyncio.run(_main()))
+    parser = argparse.ArgumentParser(description="Seed demo data")
+    parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Seed full mock data (tenant, users, customers, facilities, bookings)",
+    )
+    args = parser.parse_args()
+
+    raise SystemExit(asyncio.run(_main(mock=args.mock)))
