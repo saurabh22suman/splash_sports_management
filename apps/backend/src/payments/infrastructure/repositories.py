@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from payments.infrastructure.models import (
@@ -222,13 +223,23 @@ class ProcessedRazorpayEventRepository:
     async def mark_processed(
         self, razorpay_event_id: str, tenant_id: UUID | None, event_type: str
     ) -> None:
-        # Use SQLite insert for test compatibility; PostgreSQL uses pg_insert
-        stmt = sqlite_insert(ProcessedRazorpayEventModel).values(
-            razorpay_event_id=razorpay_event_id,
-            tenant_id=tenant_id,
-            event_type=event_type,
-            processed_at=datetime.now(UTC),
-        ).on_conflict_do_nothing(index_elements=["razorpay_event_id"])
+        # Use dialect-aware insert for cross-database compatibility
+        dialect_name = self._s.bind.dialect.name
+        if dialect_name == "sqlite":
+            stmt = sqlite_insert(ProcessedRazorpayEventModel).values(
+                razorpay_event_id=razorpay_event_id,
+                tenant_id=tenant_id,
+                event_type=event_type,
+                processed_at=datetime.now(UTC),
+            ).on_conflict_do_nothing(index_elements=["razorpay_event_id"])
+        else:
+            # PostgreSQL and other dialects
+            stmt = pg_insert(ProcessedRazorpayEventModel).values(
+                razorpay_event_id=razorpay_event_id,
+                tenant_id=tenant_id,
+                event_type=event_type,
+                processed_at=datetime.now(UTC),
+            ).on_conflict_do_nothing(index_elements=["razorpay_event_id"])
         await self._s.execute(stmt)
         await self._s.flush()
 
