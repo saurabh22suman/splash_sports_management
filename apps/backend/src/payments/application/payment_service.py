@@ -8,7 +8,12 @@ from common.domain.exceptions import Conflict, NotFound, Validation
 from payments.application.events import InvoiceCreated, InvoicePaid, PaymentFailed, RefundIssued
 from payments.domain.entities import Invoice, InvoiceStatus, LineItem
 from payments.domain.value_objects import Money, PaymentStatus
-from payments.infrastructure.models import InvoiceLineItemModel, InvoiceModel, PaymentModel
+from payments.infrastructure.models import (
+    InvoiceLineItemModel,
+    InvoiceModel,
+    PaymentModel,
+    RefundModel,
+)
 from payments.infrastructure.repositories import (  # noqa: F401
     InvoiceRepository,
     TenantPaymentConfigRepository,
@@ -272,3 +277,63 @@ class PaymentService:
         else:
             # Unknown event type - mark processed and move on
             await self._processed_events.mark_processed(event["id"], uuid4(), etype)
+
+    async def refund_invoice(
+        self, *, tenant_id: UUID, invoice_id: UUID, reason: str, idempotency_key: str,
+    ) -> RefundModel:
+        # Per correction #3: drop async with session.begin() wrapper
+        # Load invoice for update
+        inv = await self._invoices.get_for_update(tenant_id, invoice_id)
+        if inv is None or inv.status != "paid":
+            raise Conflict(
+                "Invoice is not refundable",
+                details={"status": inv.status if inv else "not_found"},
+            )
+
+        # Find captured payment
+        payment = await self._payments.latest_captured_for_invoice(tenant_id, invoice_id)
+        if payment is None or not payment.razorpay_payment_id:
+            raise Validation("No captured payment to refund")
+
+        # Build refund model
+        now = datetime.now(UTC)
+        refund = RefundModel(
+            id=uuid4(), tenant_id=tenant_id, payment_id=payment.id,
+            amount_paise=inv.total_paise, currency=inv.currency,
+            status="pending", razorpay_refund_id=None, reason=reason,
+            created_at=now, updated_at=now,
+        )
+        await self._refunds.save(refund)
+
+        # Call provider
+        razorpay_refund = await self._provider.create_refund(
+            razorpay_payment_id=payment.razorpay_payment_id,
+            amount_paise=inv.total_paise,
+            idempotency_key=idempotency_key,
+        )
+        refund.razorpay_refund_id = razorpay_refund["id"]
+        await self._refunds.save(refund)
+        return refund
+
+    async def list_invoices(
+        self, *, tenant_id: UUID, viewer_customer_id: UUID | None = None,
+        status: str | None = None, customer_id: UUID | None = None,
+        limit: int = 50, offset: int = 0,
+    ) -> list[InvoiceModel]:
+        if viewer_customer_id is not None:
+            return await self._invoices.list_by_customer(
+                tenant_id, viewer_customer_id, limit=limit, offset=offset
+            )
+        return await self._invoices.list_for_tenant(
+            tenant_id, status=status, customer_id=customer_id, limit=limit, offset=offset
+        )
+
+    async def get_invoice(
+        self, *, tenant_id: UUID, invoice_id: UUID, viewer_customer_id: UUID | None = None
+    ) -> InvoiceModel | None:
+        inv = await self._invoices.get(tenant_id, invoice_id)
+        if inv is None:
+            return None
+        if viewer_customer_id is not None and inv.customer_id != viewer_customer_id:
+            return None  # 404 to avoid leaking
+        return inv
