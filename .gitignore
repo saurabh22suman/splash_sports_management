@@ -59,3 +59,6 @@ coverage/
 
 # Local worktrees (managed by using-git-worktrees)
 .worktrees/
+
+# Superpowers scratch (brainstorm mockups, SDD progress)
+.superpowers/
