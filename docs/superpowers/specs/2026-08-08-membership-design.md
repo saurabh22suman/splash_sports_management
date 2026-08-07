@@ -70,7 +70,7 @@ apps/backend/src/membership/
       schemas.py            # Pydantic request/response models
       deps.py               # FastAPI dependencies (current_user, tenant, membership_service)
 apps/backend/alembic/versions/
-  20240101_0005_membership.py             # NEW — 2 migrations in one file (customers column + 4 tables)
+  20240101_0005_membership.py             # NEW — migration: 4 tables + bookings columns
 apps/backend/tests/membership/
   __init__.py
   test_entities.py
@@ -94,7 +94,6 @@ apps/backend/src/booking/
   application/booking_service.py           # take MembershipGate dep; consult gate at create_booking
   infrastructure/models.py                 # add coverage_source, pack_purchase_id columns
 apps/backend/src/customer/
-  infrastructure/models.py                 # add has_active_subscription column
 apps/backend/src/payments/
   application/payment_service.py           # extend handle_webhook to dispatch subscription.* events
   interfaces/http/router.py                # (no change — webhook endpoint already exists)
@@ -121,11 +120,7 @@ e2e/membership.spec.ts                     # NEW — happy path E2E
 
 ### `customers` (modified)
 
-Add one column:
-
-| Column | Type | Notes |
-|---|---|---|
-| `has_active_subscription` | BOOL NOT NULL DEFAULT false | Fast pre-check for the gate; avoids subscription-table join on every booking. Flipped by webhook handler on `subscription.activated` and `subscription.cancelled`. |
+No new columns. The gate queries `subscriptions` directly via an indexed lookup (`(tenant_id, customer_id, status)`). A denormalized `has_active_subscription` flag was considered but rejected — it would require updates on every subscription state transition (including `pending`, `halted`, `completed`, `expired`), and a missed update would silently grant free bookings. The single-row indexed query is fast enough; correctness over micro-optimization.
 
 ### `subscription_plans` (new — tenant config)
 
@@ -210,12 +205,11 @@ These enable reporting (`GROUP BY coverage_source`) without reconstructing from 
 
 ### Migrations
 
-Two Alembic migrations:
+One Alembic migration:
 
-1. `20240101_0005a_customers_has_active_subscription.py` — add `customers.has_active_subscription` column (default false, backfill safe).
-2. `20240101_0005b_membership_tables.py` — create `subscription_plans`, `subscriptions`, `pack_definitions`, `pack_purchases`; add `bookings.coverage_source`, `bookings.pack_purchase_id`.
+1. `20240101_0005_membership.py` — creates `subscription_plans`, `subscriptions`, `pack_definitions`, `pack_purchases` with RLS enabled and policies attached; adds `bookings.coverage_source` and `bookings.pack_purchase_id`.
 
-Both migrations are RLS-aware: tables created with RLS enabled, policies attached immediately. Backfills (none needed — no existing rows).
+Backfills: none needed — no existing rows.
 
 ---
 
@@ -324,8 +318,7 @@ Implements `MembershipGate` and exposes the public API.
 - `async activate_from_webhook(*, event_id, event_type, payload) -> None`
   - Idempotency: checks `IdempotencyStore` for `subscription:{razorpay_subscription_id}:{event_type}:{event_id}`; returns silently if seen.
   - Dispatches by `event_type` to `Subscription.apply_event`.
-  - On `subscription.activated`: flips `customers.has_active_subscription = true` (single UPDATE).
-  - On `subscription.cancelled` and `subscription.expired` and `subscription.halted`: flips `customers.has_active_subscription = false`.
+  - No cache writes — gate reads `subscriptions.status` directly on every booking, so a single state-transition UPDATE per webhook is enough.
   - Records event in `IdempotencyStore` (24h TTL).
 - `async get_active_subscription(*, tenant_id, customer_id) -> Subscription | None`
 - `async list_subscriptions(*, tenant_id, customer_id=None, plan_id=None, status=None, limit, offset) -> list[Subscription]`
@@ -345,7 +338,7 @@ Implements `MembershipGate` and exposes the public API.
 **Gate implementation:**
 
 - `async evaluate_coverage(*, tenant_id, customer_id, resource_id, now) -> CoverageDecision`
-  - Reads `customers.has_active_subscription`. If true → return `CoverageDecision(free=True, source="subscription", pack_purchase_id=None, pack_visits_remaining=None)`.
+  - Queries `subscriptions` for the customer's active subscription: `SELECT id FROM subscriptions WHERE tenant_id=? AND customer_id=? AND status='active' AND (trial_ends_at IS NULL OR trial_ends_at > ?) LIMIT 1`. If found → return `CoverageDecision(free=True, source="subscription", pack_purchase_id=None, pack_visits_remaining=None)`.
   - Otherwise: locks and reads the customer's most-recent active pack (single SQL: `SELECT ... FROM pack_purchases WHERE tenant_id=? AND customer_id=? AND status='active' AND expires_at > ? ORDER BY expires_at ASC LIMIT 1 FOR UPDATE`).
   - If found with `visits_remaining > 0` → return `CoverageDecision(free=True, source="pack", pack_purchase_id=..., pack_visits_remaining=N)`.
   - Otherwise → return `CoverageDecision(free=False, source=None, ...)`.
@@ -401,7 +394,7 @@ The webhook endpoint URL stays the same (`POST /webhooks/razorpay`); the dispatc
 
 ### `models.py`
 
-SQLAlchemy ORM models for all 4 tables, plus a small mapping for `customers.has_active_subscription` on the existing customer model. Uses the existing `TenantScopedBase` mixin so RLS policies attach automatically.
+SQLAlchemy ORM models for all 4 tables. Uses the existing `TenantScopedBase` mixin so RLS policies attach automatically.
 
 ### `repositories.py`
 
@@ -433,7 +426,7 @@ Pydantic v2 models with `ConfigDict(from_attributes=True)`:
 - `PlanResponse`, `PlanCreateRequest`, `PlanUpdateRequest`
 - `PackDefinitionResponse`, `PackDefinitionCreateRequest`
 - `PackPurchaseResponse`, `PackIssueRequest`
-- `MembershipOverviewResponse` (the `/membership/me` payload: subscription + packs + `has_active_subscription`)
+- `MembershipOverviewResponse` (the `/membership/me` payload: computed `has_active_subscription` boolean + subscription + packs)
 
 ### `deps.py`
 
@@ -516,13 +509,15 @@ The pack decrement uses `WHERE visits_remaining = expected_remaining`. If anothe
 |---|---|
 | `subscription.created` | Insert row (status `created`) if not present; idempotent. |
 | `subscription.authenticated` | Status `authenticated`. |
-| `subscription.activated` | Status `active`; populate `current_period_start`/`end`; if trial > 0, `trial_ends_at = current_period_start - 1 day`; flip `customers.has_active_subscription = true`. |
+| `subscription.activated` | Status `active`; populate `current_period_start`/`end`; if trial > 0, `trial_ends_at = current_period_start - 1 day`. |
 | `subscription.charged` | Refresh `current_period_start`/`end` to the new billing period. Idempotent. |
-| `subscription.pending` | Status `pending`. |
-| `subscription.halted` | Status `halted`; flip `customers.has_active_subscription = false`. |
-| `subscription.cancelled` | Status `cancelled`; set `cancelled_at`; flip `customers.has_active_subscription = false`. (Final cancel — fires after period end if admin cancelled at period end.) |
+| `subscription.pending` | Status `pending`. (Auth failure on next charge — gate sees `status != ACTIVE` and stops granting coverage.) |
+| `subscription.halted` | Status `halted`. |
+| `subscription.cancelled` | Status `cancelled`; set `cancelled_at`. (Final cancel — fires after period end if admin cancelled at period end.) |
 | `subscription.completed` | Status `completed`. |
-| `subscription.expired` | Status `expired`; flip `customers.has_active_subscription = false`. |
+| `subscription.expired` | Status `expired`. |
+
+The gate reads `subscriptions.status` directly on every booking — no denormalized cache to keep in sync. A subscription only grants coverage when `status == ACTIVE AND (trial_ends_at IS NULL OR now < trial_ends_at)`.
 
 ### Customer signup flow
 
@@ -532,7 +527,7 @@ The pack decrement uses `WHERE visits_remaining = expected_remaining`. If anothe
 4. Customer completes auth on Razorpay's hosted page.
 5. Razorpay fires `subscription.created` → `subscription.authenticated` → `subscription.activated` webhooks.
 6. Webhook handler routes to `MembershipService.activate_from_webhook`.
-7. On `subscription.activated`, `customers.has_active_subscription` flips to `true`; the gate opens.
+7. On `subscription.activated`, the row's `status` becomes `active`; the gate sees `status == ACTIVE` on the next booking and grants coverage.
 
 ### Admin cancel flow
 
@@ -540,7 +535,7 @@ The pack decrement uses `WHERE visits_remaining = expected_remaining`. If anothe
 2. Frontend calls `POST /admin/membership/subscriptions/:id/cancel` with `{at_period_end: true}` (v1 only supports true).
 3. Backend calls `RazorpayAdapter.cancel_subscription(razorpay_id, cancel_at_cycle_end=true)`.
 4. Subscription remains `ACTIVE` until period end; `cancel_at_period_end = true` locally.
-5. At period end, Razorpay fires `subscription.cancelled`. Handler flips `status` and `customers.has_active_subscription`.
+5. At period end, Razorpay fires `subscription.cancelled`. Handler flips `status` to `cancelled`. The gate sees `status != ACTIVE` on the next booking and stops granting coverage.
 
 ### Trial period
 
@@ -612,7 +607,7 @@ Packs are non-refundable (admin issued). Admin can force `expired` early via `PO
 |---|---|---|
 | `GET` | `/membership/plans` | List active subscription plans for current tenant. |
 | `POST` | `/membership/subscriptions` | Body `{plan_id}`. Creates Razorpay sub, returns `{subscription_id, short_url}`. Customer redirected to `short_url`. |
-| `GET` | `/membership/me` | Current subscription + active packs + `has_active_subscription`. |
+| `GET` | `/membership/me` | Current subscription + active packs + computed `has_active_subscription` boolean. |
 | `GET` | `/membership/me/subscription` | Just the subscription row (404 if none). |
 | `GET` | `/membership/me/packs` | Active packs only. |
 
@@ -688,7 +683,7 @@ Mutations invalidate `["membership", "me"]` (and admin variants) on success.
 ### Pages
 
 **`/me/membership`** (customer):
-- Hero card: "Become a member" CTA if `has_active_subscription === false` → opens plan picker modal → triggers `useCreateSubscription` → redirects to returned `short_url`.
+- Hero card: "Become a member" CTA if computed `has_active_subscription === false` → opens plan picker modal → triggers `useCreateSubscription` → redirects to returned `short_url`.
 - Current subscription card (if any): plan name, price (`INR X`), current period end, trial countdown if applicable. "Contact us to cancel" stub text (no button).
 - Active packs list: each with `visits_remaining`, `expires_at`, progress bar (`visits_remaining / definition.visit_count`).
 
@@ -791,12 +786,12 @@ Following the red-green-refactor TDD pattern used by the payments module.
 - `consume_pack_visit` with stale `expected_remaining` raises `Conflict`
 
 **`test_webhook_handler.py`**:
-- Each Razorpay event type → correct state transition + correct `customers.has_active_subscription` flip
+- Each Razorpay event type → correct state transition on `subscriptions.status`
 - Replay (same event_id) is no-op
 
 ### Integration (`tests/membership/integration/`)
 
-- `test_subscription_webhook_flow.py`: full round-trip — stub Razorpay → POST synthetic `subscription.activated` to `/webhooks/razorpay` → assert DB updated + `customers.has_active_subscription=true` + gate returns `free=True`.
+- `test_subscription_webhook_flow.py`: full round-trip — stub Razorpay → POST synthetic `subscription.activated` to `/webhooks/razorpay` → assert `subscriptions.status == ACTIVE` + gate returns `free=True`.
 - `test_pack_expiry_sweeper.py`: insert pack with `expires_at` in past → run `expire_overdue_packs` → assert status flipped to `expired`.
 - `test_concurrent_pack_consumption.py`: two simultaneous `consume_pack_visit` calls with `expected_remaining=5` — exactly one succeeds, one raises `Conflict`. Use `asyncio.gather` against real DB.
 
@@ -847,10 +842,9 @@ The booking-with-coverage flow is covered by integration tests, not E2E (no Razo
 
 ## Migrations
 
-Two Alembic migrations, both RLS-aware:
+One Alembic migration, RLS-aware:
 
-1. `20240101_0005a_customers_has_active_subscription.py` — adds `customers.has_active_subscription BOOL NOT NULL DEFAULT false`.
-2. `20240101_0005b_membership_tables.py` — creates `subscription_plans`, `subscriptions`, `pack_definitions`, `pack_purchases` with RLS enabled and policies attached; adds `bookings.coverage_source` and `bookings.pack_purchase_id`.
+1. `20240101_0005_membership.py` — creates `subscription_plans`, `subscriptions`, `pack_definitions`, `pack_purchases` with RLS enabled and policies attached; adds `bookings.coverage_source` and `bookings.pack_purchase_id`.
 
 No data backfill needed (no existing rows to migrate).
 
@@ -882,6 +876,6 @@ No data backfill needed (no existing rows to migrate).
 - Booking with active subscription or pack visit decrements (pack) and skips invoice creation — booking flow returns `price_cents=0, coverage_source="subscription"|"pack"`.
 - Concurrent bookings on the same pack with one visit remaining: exactly one succeeds, one rolls back cleanly.
 - Pack expiry sweeper marks overdue packs as `expired` within 1 hour of expiry.
-- Admin can cancel a subscription at period end; customer keeps access until period end, then `subscription.cancelled` webhook fires and `customers.has_active_subscription` flips to false.
+- Admin can cancel a subscription at period end; customer keeps access until period end, then `subscription.cancelled` webhook fires and the gate stops granting coverage.
 - All RLS policies prevent cross-tenant access (verified by integration test).
 - No regression in existing payments / booking / customer test suites.
