@@ -4,8 +4,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from common.domain.exceptions import Validation
 from payments.application.payment_service import PaymentService
 from payments.interfaces.http.deps import get_current_user, get_payment_service, idempotency_key
 from payments.interfaces.http.schemas import (
@@ -178,3 +179,25 @@ async def refund_invoice(
         idempotency_key=idem_key,
     )
     return RefundResponse.model_validate(refund)
+
+
+@router.post("/webhooks/razorpay")
+async def razorpay_webhook(
+    request: Request,
+    *,
+    service: PaymentService = Depends(get_payment_service),
+) -> dict:
+    """Handle incoming Razorpay webhook events.
+
+    The webhook signature is verified via the provider's verify_webhook method.
+    Returns 400 if the signature is missing or invalid.
+    """
+    payload = await request.body()
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing X-Razorpay-Signature header")
+    try:
+        await service.handle_webhook(raw_payload=payload, signature=signature)
+    except Validation as e:
+        raise HTTPException(status_code=400, detail=f"Invalid webhook: {e}")
+    return {"received": True}
