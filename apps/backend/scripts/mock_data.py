@@ -267,3 +267,136 @@ def _pick_time_slot(rng: random.Random, day: datetime) -> datetime:
     else:
         hour = rng.randint(17, 20)
     return day.replace(hour=hour, minute=0, second=0, microsecond=0)
+
+
+# ----- DB helpers (integration-tested) -----
+
+from auth.domain.entities import Tenant, User, UserRole  # noqa: E402
+from auth.infrastructure.models import TenantModel, UserModel  # noqa: E402
+from auth.infrastructure.password_hasher import Argon2PasswordHasher  # noqa: E402
+from auth.infrastructure.repositories import TenantRepository, UserRepository  # noqa: E402
+from customer.domain.entities import Customer  # noqa: E402
+from customer.infrastructure.models import CustomerModel  # noqa: E402
+from customer.infrastructure.repositories import CustomerRepository  # noqa: E402
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
+
+
+async def seed_tenant(session: AsyncSession, *, stdout: TextIO | None = None) -> "uuid.UUID":
+    """Idempotently create the demo tenant. Returns the tenant id."""
+    result = await session.execute(
+        select(TenantModel).where(TenantModel.slug == TENANT_SLUG)
+    )
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        return existing.id
+
+    tenants = TenantRepository(session)
+    tenant = Tenant.create(
+        name=TENANT_NAME,
+        slug=TENANT_SLUG,
+        primary_contact_email=TENANT_CONTACT_EMAIL,
+    )
+    tenant = await tenants.add(tenant)
+    # Activate (status moves ONBOARDING -> ACTIVE)
+    tenant.activate()
+    m = await session.get(TenantModel, tenant.id)
+    m.status = tenant.status.value
+    await session.flush()
+    return tenant.id
+
+
+async def seed_users(
+    session: AsyncSession, tenant_id, *, stdout: TextIO | None = None
+) -> dict[str, "uuid.UUID"]:
+    """Idempotently create the admin + 3 customer users. Returns {email: user_id}."""
+    users_repo = UserRepository(session)
+    hasher = Argon2PasswordHasher()
+
+    # Admin user
+    admin = await users_repo.get_by_email(tenant_id, ADMIN_EMAIL)
+    if admin is None:
+        admin = User.create(
+            tenant_id=tenant_id,
+            email=ADMIN_EMAIL,
+            password_hash=hasher.hash(ADMIN_PASSWORD),
+            full_name=ADMIN_FULL_NAME,
+            roles=[UserRole.TENANT_ADMIN],
+        )
+        admin = await users_repo.add(admin)
+
+    user_ids: dict[str, "uuid.UUID"] = {ADMIN_EMAIL: admin.id}
+
+    # 3 customer users
+    for spec in CUSTOMER_USERS:
+        u = await users_repo.get_by_email(tenant_id, spec.email)
+        if u is None:
+            u = User.create(
+                tenant_id=tenant_id,
+                email=spec.email,
+                password_hash=hasher.hash(spec.password),
+                full_name=spec.full_name,
+                roles=[UserRole(spec.role)],
+            )
+            u = await users_repo.add(u)
+        user_ids[spec.email] = u.id
+
+    return user_ids
+
+
+async def seed_customers(
+    session: AsyncSession,
+    tenant_id,
+    user_ids_by_email: dict[str, "uuid.UUID"],
+    *,
+    stdout: TextIO | None = None,
+) -> dict[str, "uuid.UUID"]:
+    """Idempotently create 15 customer profiles. Returns {email: customer_id}."""
+    customers_repo = CustomerRepository(session)
+    users_repo = UserRepository(session)
+    hasher = Argon2PasswordHasher()
+
+    # Build a quick lookup of existing customers by email
+    existing_rows = (
+        await session.execute(
+            select(CustomerModel).where(CustomerModel.tenant_id == tenant_id)
+        )
+    ).scalars().all()
+    existing_by_email: dict[str, CustomerModel] = {c.email: c for c in existing_rows}
+
+    # Track which emails already have users (from CUSTOMER_USERS)
+    # For other customer emails, we'll need to create users
+
+    customer_ids: dict[str, "uuid.UUID"] = {}
+    for spec in DEMO_CUSTOMERS:
+        if spec.email in existing_by_email:
+            customer_ids[spec.email] = existing_by_email[spec.email].id
+            continue
+
+        # Check if we already have a user for this email (from CUSTOMER_USERS)
+        user_id = user_ids_by_email.get(spec.email)
+
+        # If no user exists for this customer email, create one
+        if user_id is None:
+            # Create a new user for this customer (without login credentials stored)
+            new_user = User.create(
+                tenant_id=tenant_id,
+                email=spec.email,
+                password_hash=hasher.hash("Customer!Demo"),  # Default password
+                full_name=spec.full_name,
+                roles=[UserRole.CUSTOMER],
+            )
+            new_user = await users_repo.add(new_user)
+            user_id = new_user.id
+
+        customer = Customer.create(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            full_name=spec.full_name,
+            email=spec.email,
+            phone=_to_e164(spec.phone),
+        )
+        customer = await customers_repo.add(customer)
+        customer_ids[spec.email] = customer.id
+
+    return customer_ids
