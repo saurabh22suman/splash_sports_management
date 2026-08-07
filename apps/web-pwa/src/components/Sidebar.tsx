@@ -45,7 +45,7 @@ export function Sidebar({
                   )
                 }
               >
-                <span>{item.icon}</span>
+                <span aria-hidden="true">{item.icon}</span>
                 <span>{item.label}</span>
               </NavLink>
             </li>

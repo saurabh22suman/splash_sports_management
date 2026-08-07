@@ -33,13 +33,13 @@ describe("Sidebar", () => {
 
   it("renders a NavLink for each item with the label and icon", () => {
     renderSidebar();
-    expect(screen.getByRole("link", { name: /🏊.*Browse/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /📅.*My bookings/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Browse" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "My bookings" })).toBeInTheDocument();
   });
 
   it("marks the current route's link as active (sky-50 background)", () => {
     renderSidebar("/book");
-    const browse = screen.getByRole("link", { name: /🏊.*Browse/ });
+    const browse = screen.getByRole("link", { name: "Browse" });
     expect(browse.className).toMatch(/bg-sky-50/);
   });
 
@@ -55,7 +55,7 @@ describe("Sidebar", () => {
         <Sidebar items={items} mobileOpen={true} onClose={onClose} />
       </MemoryRouter>,
     );
-    await userEvent.click(screen.getByRole("link", { name: /Browse/ }));
+    await userEvent.click(screen.getByRole("link", { name: "Browse" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
