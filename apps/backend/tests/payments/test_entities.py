@@ -1,14 +1,21 @@
-import pytest
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from uuid import uuid4
-from payments.domain.entities import Invoice, LineItem, Payment, Refund, TenantPaymentConfig
-from payments.domain.value_objects import InvoiceStatus, Money, PaymentStatus, RefundStatus
-from common.domain.exceptions import Conflict
 
-UTC = timezone.utc
+import pytest
+
+from common.domain.exceptions import Conflict
+from payments.domain.entities import Invoice, LineItem, Payment
+from payments.domain.value_objects import InvoiceStatus, Money, PaymentStatus
+
 
 def make_line_item(total_paise: int = 150000) -> LineItem:
-    return LineItem(id=uuid4(), description="Lane 4", quantity=1, unit_price=Money(total_paise, "INR"), total=Money(total_paise, "INR"))
+    return LineItem(
+        id=uuid4(),
+        description="Lane 4",
+        quantity=1,
+        unit_price=Money(total_paise, "INR"),
+        total=Money(total_paise, "INR"),
+    )
 
 def make_invoice(status: InvoiceStatus = InvoiceStatus.PENDING) -> Invoice:
     return Invoice(
@@ -70,17 +77,33 @@ class TestInvoiceInvariants:
 
 class TestPaymentInvariants:
     def test_mark_captured_from_pending(self):
-        p = Payment(id=uuid4(), tenant_id=uuid4(), invoice_id=uuid4(),
-                   amount=Money(150000, "INR"), status=PaymentStatus.PENDING,
-                   razorpay_payment_id=None, razorpay_payment_link_id=None,
-                   idempotency_key=None, captured_at=None, created_at=datetime.now(UTC))
+        p = Payment(
+            id=uuid4(),
+            tenant_id=uuid4(),
+            invoice_id=uuid4(),
+            amount=Money(150000, "INR"),
+            status=PaymentStatus.PENDING,
+            razorpay_payment_id=None,
+            razorpay_payment_link_id=None,
+            idempotency_key=None,
+            captured_at=None,
+            created_at=datetime.now(UTC),
+        )
         p.mark_captured(datetime.now(UTC))
         assert p.status == PaymentStatus.CAPTURED
 
     def test_mark_captured_from_captured_raises(self):
-        p = Payment(id=uuid4(), tenant_id=uuid4(), invoice_id=uuid4(),
-                   amount=Money(150000, "INR"), status=PaymentStatus.CAPTURED,
-                   razorpay_payment_id=None, razorpay_payment_link_id=None,
-                   idempotency_key=None, captured_at=datetime.now(UTC), created_at=datetime.now(UTC))
+        p = Payment(
+            id=uuid4(),
+            tenant_id=uuid4(),
+            invoice_id=uuid4(),
+            amount=Money(150000, "INR"),
+            status=PaymentStatus.CAPTURED,
+            razorpay_payment_id=None,
+            razorpay_payment_link_id=None,
+            idempotency_key=None,
+            captured_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+        )
         with pytest.raises(Conflict):
             p.mark_captured(datetime.now(UTC))

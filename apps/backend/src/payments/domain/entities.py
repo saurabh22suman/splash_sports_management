@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
-from uuid import UUID
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 
 from common.domain.exceptions import Conflict
-from payments.domain.value_objects import InvoiceStatus, Money, PaymentStatus
+from payments.domain.value_objects import InvoiceStatus, Money, PaymentStatus, RefundStatus
 
-UTC = timezone.utc
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 @dataclass
@@ -51,13 +52,19 @@ class Invoice:
 
     def mark_failed(self) -> None:
         if self.status not in (InvoiceStatus.PENDING, InvoiceStatus.DRAFT):
-            raise Conflict("Invoice cannot transition to failed", details={"status": self.status.value})
+            raise Conflict(
+                "Invoice cannot transition to failed",
+                details={"status": self.status.value},
+            )
         self.status = InvoiceStatus.FAILED
         self.updated_at = datetime.now(UTC)
 
     def mark_refunded(self, when: datetime) -> None:
         if self.status != InvoiceStatus.PAID:
-            raise Conflict("Only paid invoices can be refunded", details={"status": self.status.value})
+            raise Conflict(
+                "Only paid invoices can be refunded",
+                details={"status": self.status.value},
+            )
         self.status = InvoiceStatus.REFUNDED
         self.updated_at = when
 
@@ -77,7 +84,10 @@ class Payment:
 
     def mark_captured(self, when: datetime) -> None:
         if self.status != PaymentStatus.PENDING:
-            raise Conflict("Payment cannot transition to captured", details={"status": self.status.value})
+            raise Conflict(
+                "Payment cannot transition to captured",
+                details={"status": self.status.value},
+            )
         self.status = PaymentStatus.CAPTURED
         self.captured_at = when
 
@@ -88,7 +98,7 @@ class Refund:
     tenant_id: UUID
     payment_id: UUID
     amount: Money
-    status: str  # RefundStatus
+    status: RefundStatus
     razorpay_refund_id: str | None
     reason: str
     created_at: datetime
