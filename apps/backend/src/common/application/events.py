@@ -6,12 +6,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
 
 @dataclass(frozen=True)
 class DomainEvent:
-    event_id: UUID = field(default_factory=UUID)
+    event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     tenant_id: UUID | None = None
 
