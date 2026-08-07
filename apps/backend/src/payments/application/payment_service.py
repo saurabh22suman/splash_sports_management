@@ -4,11 +4,11 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from common.domain.exceptions import Validation
+from common.domain.exceptions import Conflict, NotFound, Validation
 from payments.application.events import InvoiceCreated
 from payments.domain.entities import Invoice, InvoiceStatus, LineItem
-from payments.domain.value_objects import Money
-from payments.infrastructure.models import InvoiceLineItemModel, InvoiceModel
+from payments.domain.value_objects import Money, PaymentStatus
+from payments.infrastructure.models import InvoiceLineItemModel, InvoiceModel, PaymentModel
 from payments.infrastructure.repositories import (  # noqa: F401
     InvoiceRepository,
     TenantPaymentConfigRepository,
@@ -16,7 +16,7 @@ from payments.infrastructure.repositories import (  # noqa: F401
 
 if TYPE_CHECKING:
     from common.application.events import EventPublisher
-    from payments.application.provider import PaymentProvider
+    from payments.application.provider import PaymentLinkResult, PaymentProvider
     from payments.infrastructure.repositories import (  # noqa: F401
         IdempotencyKeyRepository,
         PaymentRepository,
@@ -125,3 +125,43 @@ class PaymentService:
             created_at=inv.created_at,
             updated_at=inv.updated_at,
         )
+
+    async def create_payment_link(
+        self, *, tenant_id: UUID, customer_id: UUID, invoice_id: UUID, idempotency_key: str,
+    ) -> PaymentLinkResult:
+        inv = await self._invoices.get_for_update(tenant_id, invoice_id)
+        if inv is None:
+            raise NotFound("Invoice not found", details={"invoice_id": str(invoice_id)})
+        if inv.customer_id != customer_id:
+            # 404 to avoid leaking
+            raise NotFound("Invoice not found", details={"invoice_id": str(invoice_id)})
+        if not (inv.status == "pending"):
+            raise Conflict("Invoice is not payable", details={"status": inv.status})
+
+        payment = PaymentModel(
+            id=uuid4(), tenant_id=tenant_id, invoice_id=invoice_id,
+            amount_paise=inv.total_paise, currency=inv.currency,
+            status=PaymentStatus.PENDING.value,
+            razorpay_payment_id=None, razorpay_payment_link_id=None,
+            idempotency_key=idempotency_key, captured_at=None,
+            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+        )
+        await self._payments.save(payment)
+
+        inv_dict = {
+            "id": inv.id, "tenant_id": tenant_id, "customer_id": inv.customer_id,
+            "line_items": [{"description": li.description, "quantity": li.quantity,
+                            "unit_price_paise": li.unit_price_paise, "total_paise": li.total_paise}
+                           for li in inv.line_items],
+            "currency": inv.currency,
+        }
+        app_url = self._settings.app_url
+        result = await self._provider.create_payment_link(
+            invoice=inv_dict, payment_id=payment.id, idempotency_key=idempotency_key,
+            success_url=f"{app_url}/book/pay/{invoice_id}/return?payment_link_id={{PAYMENT_LINK_ID}}",
+            cancel_url=f"{app_url}/book/pay/{invoice_id}",
+            customer={"id": str(inv.customer_id)},
+        )
+        payment.razorpay_payment_link_id = result.razorpay_payment_link_id
+        await self._payments.save(payment)
+        return result
