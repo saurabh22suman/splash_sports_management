@@ -7,6 +7,7 @@ import pytest
 import responses
 from razorpay.errors import SignatureVerificationError
 
+from common.domain.exceptions import Validation
 from payments.application.provider import RazorpayAdapter
 
 RAZORPAY_BASE = "https://api.razorpay.com/v1"
@@ -90,6 +91,8 @@ async def test_razorpay_adapter_create_payment_link_sends_correct_payload():
             },
         )
         sent_body = json.loads(rsps.calls[0].request.body)
+        # Must check header inside context manager - calls are cleared on exit
+        idempotency_key_sent = rsps.calls[0].request.headers["Idempotency-Key"]
 
     assert result.short_url == "https://rzp.io/i/abc"
     assert result.razorpay_payment_link_id == plink_id
@@ -102,6 +105,7 @@ async def test_razorpay_adapter_create_payment_link_sends_correct_payload():
     assert sent_body["customer"]["name"] == "Alex"
     assert sent_body["customer"]["email"] == "alex@example.com"
     assert sent_body["customer"]["contact"] == "+919999999999"
+    assert idempotency_key_sent == "key-1"
 
 
 async def test_razorpay_adapter_create_refund_calls_payment_refund():
@@ -123,11 +127,14 @@ async def test_razorpay_adapter_create_refund_calls_payment_refund():
             idempotency_key="k1",
         )
         sent_body = json.loads(rsps.calls[0].request.body)
+        # Must check header inside context manager - calls are cleared on exit
+        idempotency_key_sent = rsps.calls[0].request.headers["Idempotency-Key"]
 
     assert refund["id"] == "rfnd_test_001"
     assert refund["status"] == "processed"
     assert refund["amount"] == 150000
     assert sent_body["amount"] == 150000
+    assert idempotency_key_sent == "k1"
 
 
 def test_razorpay_adapter_verify_webhook_signature():
@@ -141,3 +148,30 @@ def test_razorpay_adapter_verify_webhook_signature():
 def test_razorpay_adapter_verify_webhook_rejects_bad_signature():
     with pytest.raises(SignatureVerificationError):
         _make_adapter().verify_webhook(b'{"event":"x"}', "badsig")
+
+
+async def test_razorpay_adapter_rejects_non_inr_currency():
+    inv = {
+        "id": uuid.uuid4(),
+        "customer_id": uuid.uuid4(),
+        "tenant_id": uuid.uuid4(),
+        "line_items": [
+            {
+                "description": "Test",
+                "quantity": 1,
+                "unit_price_paise": 150000,
+                "total_paise": 150000,
+            }
+        ],
+        "currency": "USD",  # Not INR
+    }
+    with pytest.raises(Validation) as exc_info:
+        await _make_adapter().create_payment_link(
+            invoice=inv,
+            payment_id=uuid.uuid4(),
+            idempotency_key="key-1",
+            success_url="https://app.example/return",
+            cancel_url="https://app.example/cancel",
+            customer={"name": "Test"},
+        )
+    assert "INR" in str(exc_info.value)

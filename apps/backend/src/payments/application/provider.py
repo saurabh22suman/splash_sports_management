@@ -9,6 +9,8 @@ from uuid import UUID, uuid4
 
 import razorpay
 
+from common.domain.exceptions import Validation
+
 
 @dataclass(frozen=True)
 class PaymentLinkResult:
@@ -110,6 +112,8 @@ class RazorpayAdapter:
         cancel_url: str,
         customer: dict,
     ) -> PaymentLinkResult:
+        if invoice.get("currency") != "INR":
+            raise Validation("Only INR currency is supported in v1")
         amount_paise = sum(li["total_paise"] for li in invoice["line_items"])
         description = "; ".join(li["description"] for li in invoice["line_items"])
         plink = await asyncio.to_thread(
@@ -136,6 +140,7 @@ class RazorpayAdapter:
                 "callback_method": "get",
                 "cancel_url": cancel_url,
             },
+            headers={"Idempotency-Key": idempotency_key},
         )
         expire_by_timestamp = plink.get("expire_by")
         if expire_by_timestamp is not None:
@@ -164,6 +169,7 @@ class RazorpayAdapter:
             self._client.payment.refund,
             razorpay_payment_id,
             {"amount": amount_paise},
+            headers={"Idempotency-Key": idempotency_key},
         )
         return {"id": refund["id"], "amount": refund["amount"], "status": refund["status"]}
 
