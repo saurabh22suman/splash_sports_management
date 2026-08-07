@@ -509,3 +509,131 @@ async def seed_facilities_and_resources(
         result[spec.slug] = {"facility_id": facility_id, "resource_id": resource_id}
 
     return result
+
+
+from booking.domain.entities import Booking, BookingStatus, CancellationReason  # noqa: E402
+from booking.infrastructure.models import BookingModel  # noqa: E402
+from booking.infrastructure.repositories import BookingRepository  # noqa: E402
+
+
+async def seed_bookings(
+    session: AsyncSession,
+    tenant_id,
+    customer_ids: dict[str, "uuid.UUID"],
+    resource_ids: list["uuid.UUID"],
+    *,
+    stdout: TextIO | None = None,
+) -> dict[str, int]:
+    """Idempotently create 3-8 bookings per customer with the documented status distribution.
+
+    Returns counts with keys: created, skipped, confirmed, completed, cancelled, no_show.
+    """
+    bookings_repo = BookingRepository(session)
+    rng = random.Random(RNG_SEED)
+    now = datetime.now(timezone.utc)
+
+    # 1. Distribute total bookings across customers (3-8 each)
+    customer_id_list = list(customer_ids.values())
+    per_customer = [rng.randint(3, 8) for _ in customer_id_list]
+    total = sum(per_customer)
+
+    # 2. Pre-allocate status counts to match 60/20/10/10 distribution
+    target = {
+        "confirmed": round(total * 0.60),
+        "completed": round(total * 0.20),
+        "cancelled": round(total * 0.10),
+        "no_show": total - round(total * 0.60) - round(total * 0.20) - round(total * 0.10),
+    }
+    # Materialize the status sequence
+    status_sequence: list[str] = []
+    for status, count in target.items():
+        status_sequence.extend([status] * count)
+    rng.shuffle(status_sequence)
+
+    # Check if bookings already exist for this tenant (idempotency)
+    existing_count = (
+        await session.execute(
+            select(BookingModel).where(BookingModel.tenant_id == tenant_id)
+        )
+    ).scalars().all()
+    if existing_count:
+        # Bookings already exist, count them and return
+        counts = {
+            "created": 0,
+            "skipped": len(existing_count),
+            "confirmed": 0,
+            "completed": 0,
+            "cancelled": 0,
+            "no_show": 0,
+        }
+        # Just count statuses (don't update, just return)
+        for b in existing_count:
+            if b.status == "confirmed":
+                counts["confirmed"] += 1
+            elif b.status == "completed":
+                counts["completed"] += 1
+            elif b.status == "cancelled":
+                counts["cancelled"] += 1
+            elif b.status == "no_show":
+                counts["no_show"] += 1
+        await session.commit()
+        return counts
+
+    counts = {
+        "created": 0,
+        "skipped": 0,
+        "confirmed": 0,
+        "completed": 0,
+        "cancelled": 0,
+        "no_show": 0,
+    }
+
+    status_idx = 0
+    for customer_id, n_bookings in zip(customer_id_list, per_customer, strict=True):
+        for _ in range(n_bookings):
+            if status_idx >= len(status_sequence):
+                break
+            status = status_sequence[status_idx]
+            status_idx += 1
+
+            start_at, end_at = _pick_window(status, rng, now)
+            resource_id = rng.choice(resource_ids)
+
+            # ~30% of bookings get a note
+            notes = rng.choice(BOOKING_NOTES) if rng.random() < 0.30 else None
+            price_cents = rng.randint(1500, 5000)
+
+            booking = Booking.create(
+                tenant_id=tenant_id,
+                customer_id=customer_id,
+                resource_id=resource_id,
+                start_at=start_at,
+                end_at=end_at,
+                price_cents=price_cents,
+                currency="AUD",
+                notes=notes,
+            )
+            try:
+                booking = await bookings_repo.add_safe(booking)
+            except Exception:
+                # If resource is locked or overlap occurs (rare with curated customers),
+                # skip and continue.
+                counts["skipped"] += 1
+                continue
+
+            # Mutate status if needed
+            if status == "completed":
+                booking.complete()
+                await bookings_repo.update(booking)
+            elif status == "cancelled":
+                booking.cancel(reason=CancellationReason.CUSTOMER_REQUEST)
+                await bookings_repo.update(booking)
+            elif status == "no_show":
+                booking.mark_no_show()
+                await bookings_repo.update(booking)
+
+            counts["created"] += 1
+            counts[status] += 1
+
+    await session.commit()
+    return counts

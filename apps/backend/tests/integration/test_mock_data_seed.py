@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from auth.infrastructure.models import TenantModel, UserModel
 from common.infrastructure.db import Base
 from customer.infrastructure.models import CustomerModel
-from scripts.mock_data import seed_tenant, seed_users, seed_customers, seed_facilities_and_resources
+from scripts.mock_data import seed_tenant, seed_users, seed_customers, seed_facilities_and_resources, seed_bookings
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -167,3 +167,68 @@ async def test_seed_facilities_is_idempotent(session):
         )
     ).scalars().all()
     assert len(rows) == 5
+
+
+async def test_seed_bookings_creates_at_least_thirty(session):
+    from booking.infrastructure.models import BookingModel
+
+    tenant_id = await seed_tenant(session)
+    user_ids = await seed_users(session, tenant_id)
+    customer_ids = await seed_customers(session, tenant_id, user_ids)
+    fr = await seed_facilities_and_resources(session, tenant_id)
+    resource_ids = [ids["resource_id"] for ids in fr.values()]
+
+    counts = await seed_bookings(session, tenant_id, customer_ids, resource_ids)
+
+    rows = (
+        await session.execute(
+            select(BookingModel).where(BookingModel.tenant_id == tenant_id)
+        )
+    ).scalars().all()
+    assert len(rows) >= 30
+    assert counts["created"] == len(rows)
+
+
+async def test_seed_bookings_status_distribution_within_tolerance(session):
+    from booking.infrastructure.models import BookingModel
+
+    tenant_id = await seed_tenant(session)
+    user_ids = await seed_users(session, tenant_id)
+    customer_ids = await seed_customers(session, tenant_id, user_ids)
+    fr = await seed_facilities_and_resources(session, tenant_id)
+    resource_ids = [ids["resource_id"] for ids in fr.values()]
+
+    counts = await seed_bookings(session, tenant_id, customer_ids, resource_ids)
+
+    total = sum(counts[s] for s in ("confirmed", "completed", "cancelled", "no_show"))
+    assert total > 0
+    confirmed_pct = counts["confirmed"] / total * 100
+    completed_pct = counts["completed"] / total * 100
+    cancelled_pct = counts["cancelled"] / total * 100
+    no_show_pct = counts["no_show"] / total * 100
+
+    assert 50 <= confirmed_pct <= 70, f"confirmed={confirmed_pct}"
+    assert 15 <= completed_pct <= 25, f"completed={completed_pct}"
+    assert 5 <= cancelled_pct <= 15, f"cancelled={cancelled_pct}"
+    assert 5 <= no_show_pct <= 15, f"no_show={no_show_pct}"
+
+
+async def test_seed_bookings_is_idempotent(session):
+    from booking.infrastructure.models import BookingModel
+
+    tenant_id = await seed_tenant(session)
+    user_ids = await seed_users(session, tenant_id)
+    customer_ids = await seed_customers(session, tenant_id, user_ids)
+    fr = await seed_facilities_and_resources(session, tenant_id)
+    resource_ids = [ids["resource_id"] for ids in fr.values()]
+
+    first = await seed_bookings(session, tenant_id, customer_ids, resource_ids)
+    second = await seed_bookings(session, tenant_id, customer_ids, resource_ids)
+
+    rows = (
+        await session.execute(
+            select(BookingModel).where(BookingModel.tenant_id == tenant_id)
+        )
+    ).scalars().all()
+    assert len(rows) == first["created"]
+    assert second["created"] == 0
