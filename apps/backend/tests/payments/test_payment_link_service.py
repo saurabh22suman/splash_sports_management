@@ -139,3 +139,25 @@ async def test_create_payment_link_409_on_paid_invoice(session):
             invoice_id=inv_entity.id,
             idempotency_key="k",
         )
+
+
+async def test_create_payment_link_404_on_customer_id_mismatch(session):
+    """404 to avoid leaking: different customer_id for an existing invoice returns NotFound."""
+    tid = uuid4()
+    session.add(TenantPaymentConfigModel(
+        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
+        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+    ))
+    await session.commit()
+
+    svc, _ = make_service(session)
+    inv = await svc.create_invoice(
+        tenant_id=tid, customer_id=uuid4(),
+        line_items=[{"description": "x", "quantity": 1, "unit_price_paise": 10000}],
+        description="x", due_date=date(2026, 9, 1), idempotency_key=None,
+    )
+    with pytest.raises(NotFound):
+        await svc.create_payment_link(
+            tenant_id=tid, customer_id=uuid4(),  # different customer_id
+            invoice_id=inv.id, idempotency_key="k",
+        )
