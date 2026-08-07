@@ -13,9 +13,13 @@ type FormData = z.infer<typeof schema>;
 export function LoginForm({
   onSuccess,
   mode = "customer",
+  emailRef,
+  headingLevel = "h3",
 }: {
   onSuccess: (roles: string[]) => void;
   mode?: "customer" | "staff";
+  emailRef?: React.Ref<HTMLInputElement>;
+  headingLevel?: "h1" | "h2" | "h3";
 }) {
   const {
     register,
@@ -33,10 +37,25 @@ export function LoginForm({
     }
   });
 
+  // Create email register without ref - we'll manually set up the ref
+  const emailRegister = register("email");
+
+  // Create a ref callback that also calls the register's ref
+  const handleEmailRef = (el: HTMLInputElement | null) => {
+    // Set the external ref
+    if (typeof emailRef === "function") {
+      emailRef(el);
+    } else if (emailRef && "current" in emailRef) {
+      (emailRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+    }
+    // Call the register's ref
+    emailRegister.ref(el);
+  };
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-xl">
+        <CardTitle as={headingLevel} className="text-xl">
           {mode === "staff" ? "Admin log in" : "Log in"}
         </CardTitle>
       </CardHeader>
@@ -47,8 +66,12 @@ export function LoginForm({
               id="email"
               type="email"
               autoComplete="email"
+              ref={handleEmailRef}
+              onChange={emailRegister.onChange}
+              onBlur={emailRegister.onBlur}
+              name={emailRegister.name}
+              className="text-base"
               aria-invalid={errors.email ? "true" : "false"}
-              {...register("email")}
             />
           </FormField>
           <FormField label="Password" htmlFor="password" error={errors.password?.message}>
@@ -56,12 +79,13 @@ export function LoginForm({
               id="password"
               type="password"
               autoComplete="current-password"
+              className="text-base"
               aria-invalid={errors.password ? "true" : "false"}
               {...register("password")}
             />
           </FormField>
           {login.error && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" aria-live="assertive" className="text-sm text-destructive">
               {(login.error as Error).message || "Login failed"}
             </p>
           )}
