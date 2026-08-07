@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from common.domain.exceptions import Conflict, NotFound, Validation
-from payments.application.events import InvoiceCreated
+from payments.application.events import InvoiceCreated, InvoicePaid, PaymentFailed, RefundIssued
 from payments.domain.entities import Invoice, InvoiceStatus, LineItem
 from payments.domain.value_objects import Money, PaymentStatus
 from payments.infrastructure.models import InvoiceLineItemModel, InvoiceModel, PaymentModel
@@ -165,3 +165,110 @@ class PaymentService:
         payment.razorpay_payment_link_id = result.razorpay_payment_link_id
         await self._payments.save(payment)
         return result
+
+    async def handle_webhook(self, *, raw_payload: bytes, signature: str) -> None:
+        # Verify webhook signature (sync call)
+        try:
+            event = self._provider.verify_webhook(raw_payload, signature)
+        except Exception as e:
+            raise Validation("Invalid webhook signature", details={"error": str(e)}) from e
+
+        # Dedup check
+        if await self._processed_events.exists(event["id"]):
+            return  # Already processed
+
+        etype = event.get("event")
+        payload = event.get("payload", {})
+
+        if etype == "payment.captured":
+            ent = payload.get("payment", {}).get("entity", {})
+            notes = ent.get("notes", {}) or {}
+            payment_id = UUID(notes["payment_id"])
+            tenant_id = UUID(notes["tenant_id"])
+            invoice_id = UUID(notes["invoice_id"])
+
+            payment = await self._payments.get_by_id(tenant_id, payment_id)
+            if payment is None:
+                await self._processed_events.mark_processed(event["id"], tenant_id, etype)
+                return
+
+            inv = await self._invoices.get_for_update(tenant_id, invoice_id)
+            now = datetime.now(UTC)
+            payment.razorpay_payment_id = ent.get("id") or payment.razorpay_payment_id
+            payment.status = "captured"
+            payment.captured_at = now
+            inv.status = "paid"
+            inv.paid_at = now
+            await self._payments.save(payment)
+            await self._invoices.save(inv)
+            await self._processed_events.mark_processed(event["id"], tenant_id, etype)
+
+            await self._events.publish(InvoicePaid(
+                tenant_id=tenant_id,
+                invoice_id=inv.id,
+                payment_id=payment.id,
+                customer_id=inv.customer_id,
+                amount_paise=inv.total_paise,
+                currency=inv.currency,
+            ))
+
+        elif etype == "payment.failed":
+            ent = payload.get("payment", {}).get("entity", {})
+            notes = ent.get("notes", {}) or {}
+            payment_id = UUID(notes["payment_id"])
+            tenant_id = UUID(notes["tenant_id"])
+            invoice_id = UUID(notes["invoice_id"])
+            reason = ent.get("error_code") or ent.get("error_description") or "payment_failed"
+
+            payment = await self._payments.get_by_id(tenant_id, payment_id)
+            if payment is None:
+                await self._processed_events.mark_processed(event["id"], tenant_id, etype)
+                return
+
+            inv = await self._invoices.get_for_update(tenant_id, invoice_id)
+            payment.status = "failed"
+            inv.status = "failed"
+            await self._payments.save(payment)
+            await self._invoices.save(inv)
+            await self._processed_events.mark_processed(event["id"], tenant_id, etype)
+
+            await self._events.publish(PaymentFailed(
+                tenant_id=tenant_id,
+                invoice_id=inv.id,
+                payment_id=payment.id,
+                customer_id=inv.customer_id,
+                reason=reason,
+            ))
+
+        elif etype == "refund.processed":
+            ent = payload.get("refund", {}).get("entity", {})
+            razorpay_refund_id = ent.get("id")
+
+            refund = await self._refunds.get_by_razorpay_refund_id_any_tenant(razorpay_refund_id)
+            if refund is None:
+                await self._processed_events.mark_processed(event["id"], uuid4(), etype)
+                return
+
+            tenant_id = refund.tenant_id
+            payment = await self._payments.get_by_id(tenant_id, refund.payment_id)
+            inv = await self._invoices.get_for_update(tenant_id, payment.invoice_id)
+            now = datetime.now(UTC)
+            refund.status = "completed"
+            inv.status = "refunded"
+            await self._refunds.save(refund)
+            await self._invoices.save(inv)
+            await self._processed_events.mark_processed(event["id"], tenant_id, etype)
+
+            await self._events.publish(RefundIssued(
+                tenant_id=tenant_id,
+                invoice_id=inv.id,
+                payment_id=payment.id,
+                refund_id=refund.id,
+                customer_id=inv.customer_id,
+                amount_paise=refund.amount_paise,
+                currency=refund.currency,
+            ))
+
+        else:
+            # Unknown event type - mark processed and move on
+            await self._processed_events.mark_processed(event["id"], uuid4(), etype)

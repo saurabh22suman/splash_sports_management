@@ -204,6 +204,17 @@ class RefundRepository:
             )
         ).scalar_one_or_none()
 
+    async def get_by_razorpay_refund_id_any_tenant(
+        self, razorpay_refund_id: str
+    ) -> RefundModel | None:
+        return (
+            await self._s.execute(
+                select(RefundModel).where(
+                    RefundModel.razorpay_refund_id == razorpay_refund_id
+                )
+            )
+        ).scalar_one_or_none()
+
 
 class ProcessedRazorpayEventRepository:
     """Global dedup log keyed by globally-unique Razorpay event id."""
