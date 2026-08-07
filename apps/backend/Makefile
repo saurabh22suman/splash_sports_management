@@ -11,3 +11,6 @@ test:
 
 seed-demo:
 	PYTHONPATH=src uv run python scripts/seed_demo.py
+
+seed-mock:
+	PYTHONPATH=src uv run python scripts/seed_demo.py --mock
