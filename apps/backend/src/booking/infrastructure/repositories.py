@@ -244,12 +244,20 @@ class BookingRepository(BaseRepository[Booking]):
         )
 
         if facility_id:
-            # Join with resources to filter by facility
-            from facility.infrastructure.models import ResourceModel
-
-            stmt = stmt.join(ResourceModel, BookingModel.resource_id == ResourceModel.id).where(
-                ResourceModel.facility_id == facility_id
+            # F-10 fix: Use FacilityService instead of importing facility.infrastructure.models
+            # (ADR-0001 — bounded-context isolation)
+            if self.facility_service is None:
+                raise RuntimeError(
+                    "BookingRepository.facility_service is required when filtering by facility_id. "
+                    "Inject FacilityService via BookingService(facility_service=...)."
+                )
+            resources = await self.facility_service.list_resources(
+                tenant_id=tenant_id, facility_id=facility_id
             )
+            resource_ids = [r.id for r in resources]
+            if not resource_ids:
+                return []
+            stmt = stmt.where(BookingModel.resource_id.in_(resource_ids))
 
         if resource_id:
             stmt = stmt.where(BookingModel.resource_id == resource_id)
