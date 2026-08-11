@@ -17,6 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv (fast Python package manager)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Create non-root user for runtime
+RUN groupadd --system --gid 1000 appuser \
+    && useradd --system --uid 1000 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser
+
 WORKDIR /app
 
 # Copy workspace config + backend package
@@ -32,6 +36,11 @@ RUN cd apps/backend && uv sync --frozen --no-dev || uv sync --no-dev
 ENV PATH="/app/apps/backend/.venv/bin:$PATH"
 
 WORKDIR /app/apps/backend
+
+# Hand ownership of the app tree to the non-root user
+RUN chown -R appuser:appuser /app
+
+USER appuser
 
 EXPOSE 8000
 
