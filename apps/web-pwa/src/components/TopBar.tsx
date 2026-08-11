@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { cn, Menu, Waves } from "@splashh/ui";
 import { titleForPath } from "@/lib/page-titles";
+import { UserMenu } from "./UserMenu";
 
 export function TopBar({
   mobileOpen,
@@ -43,6 +44,9 @@ export function TopBar({
           aria-hidden="true"
           className="hidden md:block w-4 h-4 text-primary/40 animate-wave-drift motion-reduce:animate-none"
         />
+        <div className="md:hidden">
+          <UserMenu />
+        </div>
       </div>
     </header>
   );

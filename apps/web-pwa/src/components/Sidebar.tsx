@@ -90,7 +90,7 @@ export function Sidebar({
           })}
         </ul>
       </nav>
-      <div className="absolute bottom-0 left-0 right-0 p-2 border-t border-border bg-card">
+      <div className="hidden md:block absolute bottom-0 left-0 right-0 p-2 border-t border-border bg-card">
         <UserMenu />
       </div>
     </aside>
