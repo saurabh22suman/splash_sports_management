@@ -7,8 +7,7 @@ requires_role dependency. Verifies that:
 """
 from __future__ import annotations
 
-import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
@@ -18,9 +17,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-# Set JWT algorithm to HS256 for tests - must be set BEFORE any imports
-os.environ["JWT_ALGORITHM"] = "HS256"
-os.environ["JWT_SECRET"] = "dev-only-jwt-secret-change-me-in-prod-please-32chars"
+JWT_TEST_SECRET = "dev-only-jwt-secret-change-me-in-prod-please-32chars"
 
 
 def _create_token(
@@ -28,7 +25,6 @@ def _create_token(
     user_id: UUID,
     roles: list[str],
     customer_id: UUID | None = None,
-    secret: str = "dev-only-jwt-secret-change-me-in-prod-please-32chars",
 ) -> str:
     """Create a JWT access token for testing."""
     now = datetime.now(timezone.utc)
@@ -42,7 +38,29 @@ def _create_token(
         "iat": now,
         "jti": str(uuid4()),
     }
-    return jwt.encode(payload, secret, algorithm="HS256")
+    return jwt.encode(payload, JWT_TEST_SECRET, algorithm="HS256")
+
+
+@pytest.fixture(autouse=True)
+def jwt_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Set JWT env vars per-test using monkeypatch (auto-restored after each test).
+
+    Replaces the previous module-level os.environ mutation, which leaked state
+    across tests when run alongside other test files (causing 8/25 RBAC tests
+    to receive 401 instead of the expected 403). monkeypatch is pytest's
+    standard env-isolation primitive — its teardown restores prior env values
+    automatically.
+
+    Also resets the Pydantic Settings cache so the new env values are picked up
+    by `_get_public_key()` and `_get_jwt_algorithm()` in
+    apps/backend/src/auth/interfaces/http/dependencies.py.
+    """
+    monkeypatch.setenv("JWT_ALGORITHM", "HS256")
+    monkeypatch.setenv("JWT_SECRET", JWT_TEST_SECRET)
+    from common.infrastructure.settings import reset_settings_cache
+    reset_settings_cache()
+    yield
+    reset_settings_cache()
 
 
 @pytest.fixture
