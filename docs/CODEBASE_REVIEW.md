@@ -929,3 +929,12 @@ For implementation, work the **§27 Roadmap** in order. After each P0 close, **r
 - Vendor risk analysis (Razorpay, Postmark, etc.)
 - Cost / billing analysis
 - Legal / regulatory analysis (DPDPA, PCI-DSS)
+
+## Appendix C — Known Pre-existing Baseline Failures (observed 2026-08-12)
+
+These failures exist on a clean tree before any change in the Phase 0 PR cycle. They are not regressions from F-02/F-03/F-05/F-07/F-08/F-15 audit-doc updates, and they should be resolved independently:
+
+- **F-40 not yet implemented** (P2): `common/domain/types.py` uses Pydantic `StringConstraints`, which has zero runtime validation. `tests/unit/test_domain_types.py` was written for the **target** pure-Python implementation (F-40) and asserts `pytest.raises(ValueError)` on invalid `EmailStr`/`SlugStr`/`PhoneStr` inputs. Today, no exception is raised, so 27+ tests fail. Resolve by implementing F-40 (replace `StringConstraints` with pure-Python regex validators per §20 L2 in `FINDINGS_ROADMAP.md`).
+- **Missing test-env packages** (`aiosqlite`, `responses`): some payment-model tests cannot collect (`tests/payments/test_models_round_trip.py` and similar). Resolve by adding both to `apps/backend/pyproject.toml` `[tool.pytest.ini_options]` test extras or dev requirements.
+
+When this audit is re-run after F-40 lands, the test scorecard should jump by ~34 tests passing.
