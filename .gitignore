@@ -62,3 +62,6 @@ coverage/
 
 # Superpowers scratch (brainstorm mockups, SDD progress)
 .superpowers/
+
+# Playwright MCP session output (scratch artifacts)
+.playwright-mcp/
