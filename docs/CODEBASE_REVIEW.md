@@ -674,7 +674,7 @@ The **single highest drift risk** is L1 (no contract-first). Without generated t
 
 | ID | Track | Severity | File:Line | Summary | Status |
 |---|---|---|---|---|---|
-| **F-01** | Security | **P0** | `auth/infrastructure/token_service.py:34-113` | JWT uses HS256 instead of RS256 | ❌ Open |
+| **F-01** | Security | **P0** | `auth/infrastructure/token_service.py:34-113` | JWT uses HS256 instead of RS256 | ✅ Resolved (`ba12454`) — RS256 is production path; HS256 retained for dev/test only |
 | **F-02** | Security | **P0** | All routers | No RBAC enforcement on any endpoint | ❌ Open |
 | **F-03** | Security | **P0** | `alembic/versions/*` (8 of 9 tables) | Missing PostgreSQL RLS | ❌ Open |
 | **F-04** | Security | **P0** | `auth/interfaces/http/dependencies.py:46-48` | Hardcoded default JWT secret | ✅ Resolved (`ba12454`) |
