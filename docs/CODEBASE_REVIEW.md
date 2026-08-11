@@ -672,53 +672,53 @@ The **single highest drift risk** is L1 (no contract-first). Without generated t
 
 ## 21. Findings (Consolidated)
 
-| ID | Track | Severity | File:Line | Summary |
-|---|---|---|---|---|
-| **F-01** | Security | **P0** | `auth/infrastructure/token_service.py:34-113` | JWT uses HS256 instead of RS256 |
-| **F-02** | Security | **P0** | All routers | No RBAC enforcement on any endpoint |
-| **F-03** | Security | **P0** | `alembic/versions/*` (8 of 9 tables) | Missing PostgreSQL RLS |
-| **F-04** | Security | **P0** | `auth/interfaces/http/dependencies.py:46-48` | Hardcoded default JWT secret |
-| **F-05** | Booking | **P0** | `booking/interfaces/http/schemas.py:17` | Client-controlled `price_cents` |
-| **F-06** | Backend | **P0** | `auth/infrastructure/repositories.py:162-166` | RefreshToken lookup missing `tenant_id` |
-| **F-07** | Payment | **P0** | `payments/application/payment_service.py:192` | `tenant_id` read from webhook `notes` |
-| **F-08** | Payment | **P0** | `payments/application/payment_service.py:252` | Explicit cross-tenant refund lookup |
-| **F-09** | Payment | **P0** | `common/infrastructure/settings.py:68-72` | Missing `app_url` setting |
-| **F-10** | Architecture | **P0** | `booking/infrastructure/repositories.py:81,152` | Cross-module DB model import |
-| **F-11** | Architecture | **P0** | `common/application/events.py:26-43` | Event bus not Redis Streams |
-| **F-12** | AI-readiness | **P0** | `packages/api-client/src/types/domain.ts` | No OpenAPI codegen |
-| **F-13** | DevOps | **P0** | `.github/workflows/` | CI/CD missing |
-| **F-14** | DevOps | **P0** | `apps/backend/scripts/` | Backup infrastructure missing |
-| **F-15** | Testing | **P0** | `tests/integration/` | Tests broken (FK naming) |
-| **F-16** | Testing | **P0** | `tests/` (none) | Zero tenant-isolation tests |
-| **F-17** | Testing | **P0** | `tests/api/` (none) | Zero booking API endpoint tests |
-| **F-18** | UX | **P0** | `pages/admin/BookingsPage.tsx:7` | Admin bookings page is a placeholder |
-| **F-19** | PWA | **P0** | `features/bookings/useCreateBooking.ts` | No offline booking queue |
-| **F-20** | Database | P1 | `customer/infrastructure/models.py:20-22` | `tenant_id` lacks FK |
-| **F-21** | Database | P1 | `common/infrastructure/mixins.py:44-46` | `AuditMixin` defined but unused |
-| **F-22** | Database | P1 | `payments/infrastructure/repositories.py:111-123` | Invoice number race |
-| **F-23** | Backend | P1 | `common/application/middleware.py:40-44` | Context not reset in `finally` |
-| **F-24** | Backend | P1 | `payments/interfaces/http/router.py:136,172` | Idempotency-Key optional |
-| **F-25** | Booking | P1 | `booking/application/booking_service.py:7` | No availability rule validation |
-| **F-26** | Booking | P1 | `booking/application/booking_service.py` | No membership enforcement |
-| **F-27** | Performance | P1 | `apps/web-pwa/vite.config.ts` | Bundle 365 KB > 250 KB |
-| **F-28** | Performance | P1 | `booking/infrastructure/models.py` | Missing composite time-range index |
-| **F-29** | Frontend | P1 | `App.tsx` | No React ErrorBoundary |
-| **F-30** | PWA | P1 | `apps/web-pwa/index.html` | Missing iOS meta tags |
-| **F-31** | PWA | P1 | `components/Sidebar.tsx:93-95` | User menu inaccessible on mobile |
-| **F-32** | UX | P1 | (no module) | No membership UI |
-| **F-33** | UX | P1 | (no module) | No check-in UI |
-| **F-34** | Security | P2 | `common/infrastructure/settings.py:62-63` | No rate limiting |
-| **F-35** | Security | P2 | `payments/application/payment_service.py:166-167` | No SSRF allowlist |
-| **F-36** | UX | P2 | `InvoicesPage.tsx:145` | Customer is truncated UUID |
-| **F-37** | UX | P2 | (no route) | No `/coach` or `/owner` dashboard |
-| **F-38** | DevOps | P2 | `apps/backend/Dockerfile` | Backend runs as root |
-| **F-39** | Architecture | P2 | `docs/18-modules/{membership,notifications,analytics}.md` | Doc-code drift |
-| **F-40** | AI-readiness | P2 | `common/domain/types.py:12` | Domain imports Pydantic |
-| **F-41** | AI-readiness | P2 | `db.py:43-46` | Magic numbers in pool config |
-| **F-42** | Database | P2 | all tables | Soft-delete inconsistent |
-| **F-43** | Frontend | P3 | `tokens.ts` + `globals.css` | Two parallel token systems |
-| **F-44** | Database | P3 | all tables | UUIDv4 not sortable |
-| **F-45** | Performance | P3 | `api/client.ts` | No query batching |
+| ID | Track | Severity | File:Line | Summary | Status |
+|---|---|---|---|---|---|
+| **F-01** | Security | **P0** | `auth/infrastructure/token_service.py:34-113` | JWT uses HS256 instead of RS256 | ❌ Open |
+| **F-02** | Security | **P0** | All routers | No RBAC enforcement on any endpoint | ❌ Open |
+| **F-03** | Security | **P0** | `alembic/versions/*` (8 of 9 tables) | Missing PostgreSQL RLS | ❌ Open |
+| **F-04** | Security | **P0** | `auth/interfaces/http/dependencies.py:46-48` | Hardcoded default JWT secret | ✅ Resolved (`ba12454`) |
+| **F-05** | Booking | **P0** | `booking/interfaces/http/schemas.py:17` | Client-controlled `price_cents` | ❌ Open |
+| **F-06** | Backend | **P0** | `auth/infrastructure/repositories.py:162-166` | RefreshToken lookup missing `tenant_id` | ❌ Open |
+| **F-07** | Payment | **P0** | `payments/application/payment_service.py:192` | `tenant_id` read from webhook `notes` | ❌ Open |
+| **F-08** | Payment | **P0** | `payments/application/payment_service.py:252` | Explicit cross-tenant refund lookup | ❌ Open |
+| **F-09** | Payment | **P0** | `common/infrastructure/settings.py:68-72` | Missing `app_url` setting | ❌ Open |
+| **F-10** | Architecture | **P0** | `booking/infrastructure/repositories.py:81,152` | Cross-module DB model import | ❌ Open |
+| **F-11** | Architecture | **P0** | `common/application/events.py:26-43` | Event bus not Redis Streams | ❌ Open |
+| **F-12** | AI-readiness | **P0** | `packages/api-client/src/types/domain.ts` | No OpenAPI codegen | ❌ Open |
+| **F-13** | DevOps | **P0** | `.github/workflows/` | CI/CD missing | ❌ Open |
+| **F-14** | DevOps | **P0** | `apps/backend/scripts/` | Backup infrastructure missing | ❌ Open |
+| **F-15** | Testing | **P0** | `tests/integration/` | Tests broken (FK naming) | ❌ Open |
+| **F-16** | Testing | **P0** | `tests/` (none) | Zero tenant-isolation tests | ❌ Open |
+| **F-17** | Testing | **P0** | `tests/api/` (none) | Zero booking API endpoint tests | ❌ Open |
+| **F-18** | UX | **P0** | `pages/admin/BookingsPage.tsx:7` | Admin bookings page is a placeholder | ❌ Open |
+| **F-19** | PWA | **P0** | `features/bookings/useCreateBooking.ts` | No offline booking queue | ❌ Open |
+| **F-20** | Database | P1 | `customer/infrastructure/models.py:20-22` | `tenant_id` lacks FK | ✅ Resolved (`59c4e2b`) |
+| **F-21** | Database | P1 | `common/infrastructure/mixins.py:44-46` | `AuditMixin` defined but unused | ❌ Open |
+| **F-22** | Database | P1 | `payments/infrastructure/repositories.py:111-123` | Invoice number race | ❌ Open |
+| **F-23** | Backend | P1 | `common/application/middleware.py:40-44` | Context not reset in `finally` | ❌ Open |
+| **F-24** | Backend | P1 | `payments/interfaces/http/router.py:136,172` | Idempotency-Key optional | ❌ Open |
+| **F-25** | Booking | P1 | `booking/application/booking_service.py:7` | No availability rule validation | ❌ Open |
+| **F-26** | Booking | P1 | `booking/application/booking_service.py` | No membership enforcement | ❌ Open |
+| **F-27** | Performance | P1 | `apps/web-pwa/vite.config.ts` | Bundle 365 KB > 250 KB | ✅ Resolved (`e8afd26`) |
+| **F-28** | Performance | P1 | `booking/infrastructure/models.py` | Missing composite time-range index | ✅ Resolved (`43f04fa`) |
+| **F-29** | Frontend | P1 | `App.tsx` | No React ErrorBoundary | ✅ Resolved (`d59ca91`) |
+| **F-30** | PWA | P1 | `apps/web-pwa/index.html` | Missing iOS meta tags | ✅ Resolved (`64028d9`) |
+| **F-31** | PWA | P1 | `components/Sidebar.tsx:93-95` | User menu inaccessible on mobile | ✅ Resolved (`318e04e`) |
+| **F-32** | UX | P1 | (no module) | No membership UI | ❌ Open |
+| **F-33** | UX | P1 | (no module) | No check-in UI | ❌ Open |
+| **F-34** | Security | P2 | `common/infrastructure/settings.py:62-63` | No rate limiting | ❌ Open |
+| **F-35** | Security | P2 | `payments/application/payment_service.py:166-167` | No SSRF allowlist | ❌ Open |
+| **F-36** | UX | P2 | `InvoicesPage.tsx:145` | Customer is truncated UUID | ❌ Open |
+| **F-37** | UX | P2 | (no route) | No `/coach` or `/owner` dashboard | ❌ Open |
+| **F-38** | DevOps | P2 | `apps/backend/Dockerfile` | Backend runs as root | ✅ Resolved (`d3e29a2`) |
+| **F-39** | Architecture | P2 | `docs/18-modules/{membership,notifications,analytics}.md` | Doc-code drift | ✅ Resolved (`48301e4`) |
+| **F-40** | AI-readiness | P2 | `common/domain/types.py:12` | Domain imports Pydantic | ❌ Open |
+| **F-41** | AI-readiness | P2 | `db.py:43-46` | Magic numbers in pool config | ❌ Open |
+| **F-42** | Database | P2 | all tables | Soft-delete inconsistent | ❌ Open |
+| **F-43** | Frontend | P3 | `tokens.ts` + `globals.css` | Two parallel token systems | ❌ Open |
+| **F-44** | Database | P3 | all tables | UUIDv4 not sortable | ❌ Open |
+| **F-45** | Performance | P3 | `api/client.ts` | No query batching | ❌ Open |
 
 ---
 
