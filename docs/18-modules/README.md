@@ -64,17 +64,17 @@ flowchart TB
 
 ## Module List
 
-| Module | Purpose | Owner |
-|---|---|---|
-| [auth](./auth.md) | Identity, authentication, sessions | Security |
-| [customer](./customer.md) | Member profiles, guardians, waivers | Customer Team |
-| [membership](./membership.md) | Plans, subscriptions, renewals | Billing Team |
-| [facility](./facility.md) | Courts, pools, resources, availability | Operations Team |
-| [booking](./booking.md) | Reservations, slots, check-in | Operations Team |
-| [payments](./payments.md) | Invoices, payments, refunds | Billing Team |
-| [notifications](./notifications.md) | Email, SMS, push notifications | Platform Team |
-| [analytics](./analytics.md) | Reports, dashboards, exports | Product Team |
-| [common](./common.md) | Shared utilities, base classes | All |
+| Module | Purpose | Owner | Status |
+|---|---|---|---|
+| [auth](./auth.md) | Identity, authentication, sessions | Security | ✅ Shipped |
+| [customer](./customer.md) | Member profiles, guardians, waivers | Customer Team | ✅ Shipped |
+| [membership](./membership.md) | Plans, subscriptions, renewals | Billing Team | ⏳ Not yet implemented |
+| [facility](./facility.md) | Courts, pools, resources, availability | Operations Team | ✅ Shipped |
+| [booking](./booking.md) | Reservations, slots, check-in | Operations Team | ✅ Shipped (admin view in progress) |
+| [payments](./payments.md) | Invoices, payments, refunds | Billing Team | ✅ Shipped (Razorpay) |
+| [notifications](./notifications.md) | Email, SMS, push notifications | Platform Team | ⏳ Not yet implemented |
+| [analytics](./analytics.md) | Reports, dashboards, exports | Product Team | ⏳ Not yet implemented |
+| [common](./common.md) | Shared utilities, base classes | All | ✅ Shipped |
 
 ---
 
