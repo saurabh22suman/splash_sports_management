@@ -4,6 +4,13 @@
 
 The membership module manages **subscription lifecycle** — plans, subscriptions, renewals, cancellations, and freezes.
 
+> **Status — Not yet implemented.** The backend module folder,
+> alembic migration, FastAPI router, and PWA pages do not exist in
+> `apps/backend/src/` or `apps/web-pwa/src/`. Implementation is in
+> progress on `feature/membership-v1`. For the current intent, see
+> [Membership Flow](../../02-architecture/flow-membership.md) and the
+> membership design doc.
+
 ---
 
 ## Purpose
