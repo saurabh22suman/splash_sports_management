@@ -41,17 +41,19 @@ class CurrentPrincipal:
 
 
 def _get_jwt_algorithm() -> str:
-    """Get JWT algorithm from environment or settings."""
+    """JWT algorithm from env, defaulting to RS256."""
     return os.environ.get("JWT_ALGORITHM", "RS256")
 
 
 def _get_public_key() -> str:
-    """Get the public key for JWT verification.
+    """Return the key/secret used to verify incoming access tokens.
 
-    In production: requires JWT_PUBLIC_KEY_PATH env var.
-    In development: can use ephemeral keys or JWT_SECRET (HS256 fallback).
+    Production: RS256 only. Requires `JWT_PUBLIC_KEY_PATH`.
+    Dev/test:   RS256 (file or ephemeral) or HS256 (requires `JWT_SECRET`,
+                ≥32 chars). HS256 is forbidden in production.
     """
     algorithm = _get_jwt_algorithm()
+    environment = os.environ.get("ENVIRONMENT", "development")
 
     if algorithm == "RS256":
         public_key_path = os.environ.get("JWT_PUBLIC_KEY_PATH")
@@ -59,22 +61,23 @@ def _get_public_key() -> str:
             path = Path(public_key_path)
             if path.is_file():
                 return path.read_text(encoding="utf-8").strip()
-        # Production must have key file
-        environment = os.environ.get("ENVIRONMENT", "development")
         if environment == "production":
             msg = "JWT public key not configured. Set JWT_PUBLIC_KEY_PATH."
             raise RuntimeError(msg)
-        # Development: generate ephemeral keypair (caller must also use ephemeral)
-        # For now, fall through to HS256 or error
-        msg = "JWT_PUBLIC_KEY_PATH not set and no ephemeral key available"
+        # Dev/test: ephemeral RS256 keypair per process
+        from auth.infrastructure.token_service import RS256TokenService
+        _, public_pem = RS256TokenService.generate_ephemeral_keypair()
+        return public_pem
+
+    # algorithm == "HS256"
+    if environment == "production":
+        msg = "HS256 is forbidden in production. Use RS256 with JWT keys."
         raise RuntimeError(msg)
-    else:
-        # HS256 - requires JWT_SECRET
-        secret = os.environ.get("JWT_SECRET")
-        if not secret:
-            msg = "JWT_SECRET environment variable is required when using HS256"
-            raise RuntimeError(msg)
-        return secret
+    secret = os.environ.get("JWT_SECRET")
+    if not secret or len(secret) < 32:
+        msg = "JWT_SECRET must be set and ≥32 chars when JWT_ALGORITHM=HS256"
+        raise RuntimeError(msg)
+    return secret
 
 
 def _decode_access_token(token: str) -> CurrentPrincipal:

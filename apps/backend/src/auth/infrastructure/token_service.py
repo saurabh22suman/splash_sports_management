@@ -286,14 +286,3 @@ class RS256TokenService:
 
     def _decode(self, token: str) -> dict[str, object]:
         return jwt.decode(token, self._public_key, algorithms=["RS256"])
-
-
-def build_token_service(
-    *, secret: str, access_ttl_seconds: int, refresh_ttl_seconds: int
-) -> HS256TokenService:
-    """Factory used by the FastAPI dependency."""
-    return HS256TokenService(
-        secret=secret,
-        access_ttl=timedelta(seconds=access_ttl_seconds),
-        refresh_ttl=timedelta(seconds=refresh_ttl_seconds),
-    )

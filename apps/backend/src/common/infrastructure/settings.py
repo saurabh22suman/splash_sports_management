@@ -42,11 +42,14 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0")
 
     # ---- JWT ----
-    jwt_algorithm: Literal["RS256", "HS256"] = "RS256"
+    jwt_algorithm: Literal["RS256", "HS256"] = Field(
+        default="RS256",
+        description="Production must use RS256. HS256 is for tests only.",
+    )
     jwt_private_key_path: Path = Field(default=Path("./secrets/jwt_private.pem"))
     jwt_public_key_path: Path = Field(default=Path("./secrets/jwt_public.pem"))
-    jwt_access_token_ttl_seconds: int = 300  # 5 min (shortened; silent refresh handles renewal)
-    jwt_refresh_token_ttl_seconds: int = 30 * 24 * 3600  # 30 days
+    jwt_access_token_ttl_seconds: int = 300
+    jwt_refresh_token_ttl_seconds: int = 30 * 24 * 3600
 
     # ---- CORS ----
     cors_allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://localhost:5174"])

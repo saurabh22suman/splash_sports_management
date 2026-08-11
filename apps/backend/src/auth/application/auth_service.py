@@ -16,6 +16,7 @@ import hashlib
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID
 
 from auth.domain.entities import RefreshToken, Tenant, User, UserRole
@@ -27,6 +28,7 @@ from auth.infrastructure.repositories import (
 )
 from auth.infrastructure.token_service import (
     HS256TokenService,
+    RS256KeyPaths,
     RS256TokenService,
     TokenPair,
 )
@@ -294,41 +296,45 @@ class AuthService:
         return secrets.token_urlsafe(16)
 
 
+def _read_keypair(key_paths: "RS256KeyPaths") -> tuple[str, str]:
+    return (
+        Path(key_paths.private_key_path).read_text(encoding="utf-8").strip(),
+        Path(key_paths.public_key_path).read_text(encoding="utf-8").strip(),
+    )
+
+
 def build_auth_service(session: AsyncSession, settings) -> AuthService:  # type: ignore[no-untyped-def]
     """Wire up the AuthService with all dependencies."""
     import datetime as dt
 
     if settings.jwt_algorithm == "RS256":
-        # Try to get key paths from environment (production mode)
         key_paths = RS256TokenService.get_secret(settings.environment)
-
-        if key_paths is not None:
-            # Production: keys must exist
-            token_service = RS256TokenService.from_key_paths(
-                private_key_path=key_paths.private_key_path,
-                public_key_path=key_paths.public_key_path,
-                access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),
-                refresh_ttl=dt.timedelta(seconds=settings.jwt_refresh_token_ttl_seconds),
-            )
-        else:
-            # Development/Test: generate ephemeral keys
+        if key_paths is None and settings.environment in {"development", "test"}:
             private_pem, public_pem = RS256TokenService.generate_ephemeral_keypair()
-            token_service = RS256TokenService(
-                private_key_pem=private_pem,
-                public_key_pem=public_pem,
-                access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),
-                refresh_ttl=dt.timedelta(seconds=settings.jwt_refresh_token_ttl_seconds),
+        elif key_paths is None:
+            msg = (
+                "JWT keys not configured for production. "
+                "Set JWT_PRIVATE_KEY_PATH and JWT_PUBLIC_KEY_PATH."
             )
+            raise RuntimeError(msg)
+        else:
+            private_pem, public_pem = _read_keypair(key_paths)
+        token_service = RS256TokenService(
+            private_key_pem=private_pem,
+            public_key_pem=public_pem,
+            access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),
+            refresh_ttl=dt.timedelta(seconds=settings.jwt_refresh_token_ttl_seconds),
+        )
     elif settings.jwt_algorithm == "HS256":
-        # HS256 only for dev/testing - must have explicit secret
+        if settings.environment not in {"development", "test"}:
+            msg = "HS256 is forbidden in production. Use RS256."
+            raise RuntimeError(msg)
         import os
         secret = os.environ.get("JWT_SECRET")
-        if not secret:
-            msg = "JWT_SECRET environment variable is required when using HS256"
+        if not secret or len(secret) < 32:
+            msg = "JWT_SECRET must be set and ≥32 chars in HS256 dev/test mode"
             raise RuntimeError(msg)
-        if len(secret) < 32:
-            msg = "JWT_SECRET must be at least 32 characters"
-            raise ValueError(msg)
+        from auth.infrastructure.token_service import HS256TokenService
         token_service = HS256TokenService(
             secret=secret,
             access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),
