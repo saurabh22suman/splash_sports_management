@@ -678,10 +678,10 @@ The **single highest drift risk** is L1 (no contract-first). Without generated t
 | **F-02** | Security | **P0** | All routers | No RBAC enforcement on any endpoint | ✅ Resolved (`ba12454` — requires_role applied to all routers; test isolation regression fixed in this plan) |
 | **F-03** | Security | **P0** | `alembic/versions/*` (8 of 9 tables) | Missing PostgreSQL RLS | ✅ Resolved (migration `0005_enable_rls_all_tables` in `main`) |
 | **F-04** | Security | **P0** | `auth/interfaces/http/dependencies.py:46-48` | Hardcoded default JWT secret | ✅ Resolved (`ba12454`) |
-| **F-05** | Booking | **P0** | `booking/interfaces/http/schemas.py:17` | Client-controlled `price_cents` | ❌ Open |
+| **F-05** | Booking | **P0** | `booking/interfaces/http/schemas.py:17` | Client-controlled `price_cents` | ✅ Resolved (`7af5802`) — BookingTariffModel + migration 0006; BookingCreate no longer accepts price_cents; server computes via compute_price() |
 | **F-06** | Backend | **P0** | `auth/infrastructure/repositories.py:162-166` | RefreshToken lookup missing `tenant_id` | ❌ Open |
-| **F-07** | Payment | **P0** | `payments/application/payment_service.py:192` | `tenant_id` read from webhook `notes` | ❌ Open |
-| **F-08** | Payment | **P0** | `payments/application/payment_service.py:252` | Explicit cross-tenant refund lookup | ❌ Open |
+| **F-07** | Payment | **P0** | `payments/application/payment_service.py:192` | `tenant_id` read from webhook `notes` | ✅ Resolved (`7af5802`) — webhook resolves tenant_id from payment.tenant_id (DB), never from notes |
+| **F-08** | Payment | **P0** | `payments/application/payment_service.py:252` | Explicit cross-tenant refund lookup | ✅ Resolved (`7af5802`) — refund lookup uses get_by_razorpay_id_with_payment (tenant-scoped) |
 | **F-09** | Payment | **P0** | `common/infrastructure/settings.py:68-72` | Missing `app_url` setting | ❌ Open |
 | **F-10** | Architecture | **P0** | `booking/infrastructure/repositories.py:81,152` | Cross-module DB model import | ❌ Open |
 | **F-11** | Architecture | **P0** | `common/application/events.py:26-43` | Event bus not Redis Streams | ❌ Open |
