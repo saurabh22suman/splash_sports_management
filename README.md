@@ -102,13 +102,14 @@ This scopes the shadcn CLI to `packages/ui` per the root `ui:add` script.
 | `customer` | Working | Customer profiles, CRUD endpoints |
 | `facility` | Working | Facilities, resources, availability rules |
 | `booking` | Working | Slot reservation, double-booking prevention via row-level lock |
+| `payments` | Working | Razorpay payment links + webhooks (INR); admin invoice list, customer pay page; HMAC-verified webhooks |
 | `web-pwa` | Working | Single PWA with role-based routing: /login (customer), /admin/login (admin), role-specific home pages, /admin/users for user management |
 
 ## Next phase
 
 - Push notifications (VAPID + backend endpoint + SW handler)
 - OpenAPI client codegen (replace hand-written `domain.ts` types)
-- Stripe/Razorpay integration
 - SMS / email notifications
 - Background workers
 - Production deploy / CI-CD
+- `membership` module — in progress on `feature/membership-v1` worktree
