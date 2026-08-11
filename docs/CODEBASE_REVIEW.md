@@ -683,7 +683,7 @@ The **single highest drift risk** is L1 (no contract-first). Without generated t
 | **F-07** | Payment | **P0** | `payments/application/payment_service.py:192` | `tenant_id` read from webhook `notes` | ✅ Resolved (`7af5802`) — webhook resolves tenant_id from payment.tenant_id (DB), never from notes |
 | **F-08** | Payment | **P0** | `payments/application/payment_service.py:252` | Explicit cross-tenant refund lookup | ✅ Resolved (`7af5802`) — refund lookup uses get_by_razorpay_id_with_payment (tenant-scoped) |
 | **F-09** | Payment | **P0** | `common/infrastructure/settings.py:68-72` | Missing `app_url` setting | ❌ Open |
-| **F-10** | Architecture | **P0** | `booking/infrastructure/repositories.py:81,152` | Cross-module DB model import | ❌ Open |
+| **F-10** | Architecture | **P0** | `booking/infrastructure/repositories.py:81,152` | Cross-module DB model import | ✅ Resolved (`c943664`) — replaced in-method SQL JOIN against facility.infrastructure.models with FacilityService.list_resources() call; architecture test now passes |
 | **F-11** | Architecture | **P0** | `common/application/events.py:26-43` | Event bus not Redis Streams | ❌ Open |
 | **F-12** | AI-readiness | **P0** | `packages/api-client/src/types/domain.ts` | No OpenAPI codegen | ❌ Open |
 | **F-13** | DevOps | **P0** | `.github/workflows/` | CI/CD missing | ❌ Open |
