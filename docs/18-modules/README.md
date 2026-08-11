@@ -107,23 +107,43 @@ Forbidden:  auth -> customer
 
 ## Module Structure
 
-Each module follows this structure:
+Each backend module is organized by **DDD layer**, not by file role. The
+layering enforces boundary discipline: the `domain/` layer has no
+SQLAlchemy, Redis, or FastAPI imports, which keeps the core business
+logic testable in isolation and keeps multi-tenant RLS concerns in
+`infrastructure/`.
 
 ```
 module_name/
-├── __init__.py          # Public API exports
-├── router.py            # FastAPI routes
-├── service.py           # Business logic
-├── repository.py        # Data access
-├── models.py            # SQLAlchemy models
-├── schemas.py           # Pydantic schemas
-├── events.py            # Domain events
-├── exceptions.py        # Module-specific exceptions
-└── tests/
-    ├── __init__.py
-    ├── test_service.py
-    └── test_integration.py
+├── application/             # Use cases / orchestration (depends on domain + infrastructure)
+│   ├── service.py           # Public service class (e.g. PaymentService, BookingService)
+│   ├── events.py            # Domain event publishers
+│   └── providers.py         # External integrations (e.g. Razorpay, email)
+├── domain/                  # Pure business logic, no I/O
+│   ├── entities.py          # Aggregates and entities (dataclasses)
+│   └── value_objects.py     # Money, IDs, status enums
+├── infrastructure/          # Persistence and side-effecting adapters
+│   ├── models.py            # SQLAlchemy ORM models
+│   ├── repositories.py      # Data access
+│   └── idempotency.py       # Module-specific persistence (only when needed)
+└── interfaces/              # Transport adapters
+    ├── __init__.py          # Public API exports (router, deps)
+    └── http/                # FastAPI adapter
+        ├── router.py        # Route handlers
+        ├── schemas.py       # Pydantic request/response models
+        └── deps.py          # FastAPI dependency-injection wiring
 ```
+
+`common/` follows the same shape but contributes shared base classes
+(`AggregateRoot`, `BaseRepository`) used by 3+ modules.
+
+**Do not:**
+- Add SQLAlchemy or Redis imports to `domain/`
+- Put business logic in `interfaces/` — handlers should be thin
+- Create a top-level `service.py` or `router.py` in the module root
+
+**Test files** live inside the module at `tests/test_<layer>.py`
+(e.g. `tests/test_service.py`, `tests/test_integration.py`).
 
 ---
 
