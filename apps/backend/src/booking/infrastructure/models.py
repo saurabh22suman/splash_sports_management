@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, SmallInteger, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, SmallInteger, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,6 +17,10 @@ class BookingModel(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("end_at > start_at", name="ck_bookings_window_valid"),
         CheckConstraint("price_cents >= 0", name="ck_bookings_price_non_negative"),
+        Index(
+            "ix_bookings_resource_window",
+            "tenant_id", "resource_id", "start_at",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
