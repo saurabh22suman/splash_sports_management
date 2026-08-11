@@ -1,4 +1,5 @@
 import { BrowserRouter } from "react-router-dom";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NoIndexOnAdmin } from "./components/NoIndexOnAdmin";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
@@ -10,7 +11,9 @@ export default function App() {
     <BrowserRouter>
       <NoIndexOnAdmin />
       <UpdateBanner />
-      <AppRouter />
+      <ErrorBoundary>
+        <AppRouter />
+      </ErrorBoundary>
       <PWAInstallPrompt />
       <OfflineBanner />
     </BrowserRouter>
