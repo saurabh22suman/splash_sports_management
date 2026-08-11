@@ -122,6 +122,24 @@ class FacilityRepository(BaseRepository[Facility]):
         await self.session.refresh(m)
         return _facility_to_domain(m)
 
+    async def update(self, facility: Facility) -> Facility:
+        m = await self.session.get(FacilityModel, facility.id)
+        if m is None:
+            raise LookupError(facility.id)
+        m.name = facility.name
+        m.address_line1 = facility.address_line1
+        m.address_line2 = facility.address_line2
+        m.city = facility.city
+        m.state = facility.state
+        m.postal_code = facility.postal_code
+        m.country = facility.country
+        m.timezone = facility.timezone
+        m.phone = facility.phone
+        m.status = facility.status.value
+        await self.session.flush()
+        await self.session.refresh(m)
+        return _facility_to_domain(m)
+
 
 class ResourceRepository(BaseRepository[Resource]):
     model = ResourceModel
@@ -158,6 +176,18 @@ class ResourceRepository(BaseRepository[Resource]):
             status=resource.status.value,
         )
         self.session.add(m)
+        await self.session.flush()
+        await self.session.refresh(m)
+        return _resource_to_domain(m)
+
+    async def update(self, resource: Resource) -> Resource:
+        m = await self.session.get(ResourceModel, resource.id)
+        if m is None:
+            raise LookupError(resource.id)
+        m.name = resource.name
+        m.capacity = resource.capacity
+        m.attributes = resource.attributes
+        m.status = resource.status.value
         await self.session.flush()
         await self.session.refresh(m)
         return _resource_to_domain(m)

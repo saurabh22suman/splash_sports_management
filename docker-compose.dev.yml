@@ -1,0 +1,139 @@
+# Local development stack for Splashh Sports Platform.
+#
+# Brings up Postgres, Redis, the FastAPI backend (with --reload), and the
+# Vite dev server for web-pwa. All services talk to each other over the
+# `splashh_dev` network. Web-pwa proxies /v1/* to the backend container.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d                 # start infra + backend
+#   docker compose -f docker-compose.dev.yml --profile ui up -d   # also start Vite dev server
+#   docker compose -f docker-compose.dev.yml --profile tools run --rm migrate
+#   docker compose -f docker-compose.dev.yml down -v              # tear down + delete volumes
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: splashh_postgres
+    environment:
+      POSTGRES_USER: splashh
+      POSTGRES_PASSWORD: splashh_dev
+      POSTGRES_DB: splashh
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U splashh"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: splashh_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: splashh_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://splashh:splashh_dev@postgres:5432/splashh
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      JWT_ALGORITHM: HS256
+      CORS_ALLOWED_ORIGINS: '["http://localhost:5173","http://localhost:4173"]'
+      APP_URL: http://localhost:5173
+    ports:
+      - "8765:8000" # host port 8765 matches apps/web-pwa/vite.config.ts dev proxy
+    volumes:
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./apps/backend/alembic:/app/apps/backend/alembic
+      - ./apps/backend/alembic.ini:/app/apps/backend/alembic.ini
+    command:
+      - uvicorn
+      - common.interfaces.http.app:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://splashh:splashh_dev@postgres:5432/splashh
+      JWT_ALGORITHM: HS256
+    volumes:
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./apps/backend/alembic:/app/apps/backend/alembic
+      - ./apps/backend/alembic.ini:/app/apps/backend/alembic.ini
+    command: ["alembic", "upgrade", "head"]
+    profiles: ["tools"]
+
+  seed-demo:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://splashh:splashh_dev@postgres:5432/splashh
+      JWT_ALGORITHM: HS256
+    volumes:
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./apps/backend/scripts:/app/apps/backend/scripts
+    command: ["python", "scripts/seed_demo.py"]
+    profiles: ["tools"]
+
+  web-pwa:
+    image: node:20-alpine
+    container_name: splashh_web_pwa
+    profiles: ["ui"]
+    working_dir: /repo/apps/web-pwa
+    environment:
+      # Vite picks this up; backend lives on the `backend` host on the compose network.
+      VITE_API_BASE_URL: http://localhost:8765
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./:/repo
+      - web_pwa_node_modules:/repo/apps/web-pwa/node_modules
+      - web_pwa_pkg_node_modules:/repo/node_modules
+    command:
+      - sh
+      - -lc
+      - corepack enable && pnpm install --frozen-lockfile && pnpm dev --host 0.0.0.0
+
+volumes:
+  postgres_data:
+  redis_data:
+  web_pwa_node_modules:
+  web_pwa_pkg_node_modules:
+
+networks:
+  default:
+    name: splashh_dev

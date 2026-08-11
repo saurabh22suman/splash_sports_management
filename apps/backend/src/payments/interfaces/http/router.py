@@ -6,9 +6,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from auth.interfaces.http.dependencies import auth_required, requires_role
 from common.domain.exceptions import Validation
 from payments.application.payment_service import PaymentService
-from payments.interfaces.http.deps import get_current_user, get_payment_service, idempotency_key
+from payments.interfaces.http.deps import get_current_user, get_payment_service, idempotency_key, required_idempotency_key
 from payments.interfaces.http.schemas import (
     InvoiceCreateRequest,
     InvoiceResponse,
@@ -18,7 +19,7 @@ from payments.interfaces.http.schemas import (
     RefundResponse,
 )
 
-router = APIRouter(tags=["payments"])
+router = APIRouter(tags=["payments"], dependencies=[Depends(auth_required)])
 
 if TYPE_CHECKING:
     from payments.domain.entities import Invoice
@@ -54,7 +55,12 @@ def _invoice_to_response(inv: Invoice) -> InvoiceResponse:
     )
 
 
-@router.post("/payments/invoices", status_code=201, response_model=InvoiceResponse)
+@router.post(
+    "/invoices",
+    status_code=201,
+    response_model=InvoiceResponse,
+    dependencies=[Depends(requires_role("tenant_admin"))],
+)
 async def create_invoice(
     body: InvoiceCreateRequest,
     user: dict = Depends(get_current_user),
@@ -73,7 +79,7 @@ async def create_invoice(
     return _invoice_to_response(inv)
 
 
-@router.get("/payments/invoices", response_model=list[InvoiceResponse])
+@router.get("/invoices", response_model=list[InvoiceResponse])
 async def list_invoices(
     status_filter: str | None = Query(default=None, alias="status"),
     customer_id: UUID | None = None,
@@ -98,7 +104,7 @@ async def list_invoices(
     return [InvoiceResponse.model_validate(i) for i in invoices]
 
 
-@router.get("/payments/invoices/{invoice_id}", response_model=InvoiceResponse)
+@router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice(
     invoice_id: UUID,
     user: dict = Depends(get_current_user),
@@ -120,7 +126,7 @@ async def get_invoice(
 
 
 @router.post(
-    "/payments/invoices/{invoice_id}/payment-link",
+    "/invoices/{invoice_id}/payment-link",
     status_code=200,
     response_model=PaymentLinkResponse,
 )
@@ -128,14 +134,9 @@ async def create_payment_link(
     invoice_id: UUID,
     user: dict = Depends(get_current_user),
     service: PaymentService = Depends(get_payment_service),
-    idem_key: str | None = Depends(idempotency_key),
+    idem_key: str = Depends(required_idempotency_key),
 ) -> PaymentLinkResponse:
-    """Create a payment link for an invoice (customer only, requires idempotency key)."""
-    if "customer" not in user["roles"]:
-        raise HTTPException(status_code=403, detail="Only customers can pay invoices")
-    if idem_key is None:
-        raise HTTPException(status_code=400, detail="Idempotency-Key header required")
-
+    """Create a payment link for an invoice (any authenticated user, requires idempotency key)."""
     try:
         result = await service.create_payment_link(
             tenant_id=user["tenant_id"],
@@ -155,23 +156,19 @@ async def create_payment_link(
 
 
 @router.post(
-    "/payments/invoices/{invoice_id}/refund",
+    "/invoices/{invoice_id}/refund",
     status_code=200,
     response_model=RefundResponse,
+    dependencies=[Depends(requires_role("tenant_admin"))],
 )
 async def refund_invoice(
     invoice_id: UUID,
     body: RefundRequest,
     user: dict = Depends(get_current_user),
     service: PaymentService = Depends(get_payment_service),
-    idem_key: str | None = Depends(idempotency_key),
+    idem_key: str = Depends(required_idempotency_key),
 ) -> RefundResponse:
     """Refund a paid invoice (tenant_admin only, requires idempotency key)."""
-    if "tenant_admin" not in user["roles"]:
-        raise HTTPException(status_code=403, detail="Only tenant_admin can refund")
-    if idem_key is None:
-        raise HTTPException(status_code=400, detail="Idempotency-Key header required")
-
     refund = await service.refund_invoice(
         tenant_id=user["tenant_id"],
         invoice_id=invoice_id,

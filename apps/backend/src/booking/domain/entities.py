@@ -11,6 +11,10 @@ Invariants:
   same resource
 - Cancellation transitions: CONFIRMED -> CANCELLED, CONFIRMED -> COMPLETED,
   CONFIRMED -> NO_SHOW (terminal states)
+
+BookingTariff defines the price for a resource based on:
+- day_of_week (0=Monday, 6=Sunday)
+- time of day (hour, e.g., 6 = 6:00 AM to 7:00 AM)
 """
 from __future__ import annotations
 
@@ -132,3 +136,41 @@ class Booking:
             raise Validation("start_at and end_at must be timezone-aware")
         if start_at >= end_at:
             raise Validation("start_at must be before end_at")
+
+
+@dataclass(slots=True)
+class BookingTariff:
+    """Price rule for a resource by day-of-week and time-of-day.
+
+    This is the authoritative source of truth for booking prices.
+    The server computes price from this table instead of accepting
+    client-controlled price_cents (P0 security fix for F-05).
+    """
+
+    id: UUID
+    tenant_id: UUID
+    resource_id: UUID
+    day_of_week: int  # 0=Monday, 6=Sunday
+    time_start: int    # Hour of day (0-23) - start of the time slot
+    time_end: int     # Hour of day (0-23) - end of the time slot (exclusive)
+    price_cents: int
+    currency: str
+    # Computed duration_hours: time_end - time_start (typically 1 hour slots)
+
+    def __post_init__(self) -> None:
+        # Validate day_of_week
+        if not (0 <= self.day_of_week <= 6):
+            raise Validation("day_of_week must be 0-6 (Monday-Sunday)")
+        # Validate time window
+        if not (0 <= self.time_start <= 23):
+            raise Validation("time_start must be 0-23")
+        if not (0 <= self.time_end <= 23):
+            raise Validation("time_end must be 0-23")
+        if self.time_start >= self.time_end:
+            raise Validation("time_start must be before time_end")
+        # Validate price
+        if self.price_cents < 0:
+            raise Validation("price_cents cannot be negative")
+        # Validate currency
+        if not self.currency or len(self.currency) != 3:
+            raise Validation("currency must be a 3-letter ISO 4217 code")

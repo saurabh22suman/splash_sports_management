@@ -1,0 +1,95 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Splashh Sports Platform API",
+    "version": "0.1.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "FacilityOut": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "tenant_id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "address_line1": {"type": "string"},
+          "address_line2": {"type": "string", "nullable": true},
+          "city": {"type": "string"},
+          "state": {"type": "string"},
+          "postal_code": {"type": "string"},
+          "country": {"type": "string"},
+          "timezone": {"type": "string"},
+          "phone": {"type": "string", "nullable": true},
+          "status": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "tenant_id", "name", "slug", "address_line1", "city", "state", "postal_code", "country", "timezone", "status", "created_at", "updated_at"]
+      },
+      "FacilityListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/FacilityOut"}}
+        },
+        "required": ["data"]
+      },
+      "ResourceOut": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "tenant_id": {"type": "string", "format": "uuid"},
+          "facility_id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "resource_type": {"type": "string"},
+          "capacity": {"type": "integer"},
+          "attributes": {"type": "object"},
+          "status": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "tenant_id", "facility_id", "name", "slug", "resource_type", "capacity", "attributes", "status", "created_at", "updated_at"]
+      },
+      "ResourceListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/ResourceOut"}}
+        },
+        "required": ["data"]
+      },
+      "BookingOut": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "tenant_id": {"type": "string", "format": "uuid"},
+          "customer_id": {"type": "string", "format": "uuid"},
+          "resource_id": {"type": "string", "format": "uuid"},
+          "facility_name": {"type": "string", "nullable": true},
+          "resource_name": {"type": "string", "nullable": true},
+          "start_at": {"type": "string", "format": "date-time"},
+          "end_at": {"type": "string", "format": "date-time"},
+          "status": {"type": "string"},
+          "price_cents": {"type": "integer"},
+          "currency": {"type": "string"},
+          "notes": {"type": "string", "nullable": true},
+          "cancellation_reason": {"type": "string", "nullable": true},
+          "cancelled_at": {"type": "string", "format": "date-time", "nullable": true},
+          "checked_in_at": {"type": "string", "format": "date-time", "nullable": true},
+          "completed_at": {"type": "string", "format": "date-time", "nullable": true},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "tenant_id", "customer_id", "resource_id", "start_at", "end_at", "status", "price_cents", "currency", "created_at", "updated_at"]
+      },
+      "BookingListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/BookingOut"}}
+        },
+        "required": ["data"]
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ from auth.application.auth_service import AuthService, build_auth_service
 from auth.application.user_admin_service import UserAdminService
 from auth.infrastructure.password_hasher import Argon2PasswordHasher
 from auth.infrastructure.repositories import UserRepository
-from auth.interfaces.http.dependencies import auth_required, CurrentPrincipal
+from auth.interfaces.http.dependencies import auth_required, CurrentPrincipal, requires_role
 from auth.interfaces.http.schemas import (
     CreateUserRequest,
     CreateUserResponse,
@@ -21,7 +21,7 @@ from auth.interfaces.http.schemas import (
     UserListItem,
     UserListResponse,
 )
-from common.domain.exceptions import Forbidden, Unauthorized
+from common.domain.exceptions import Unauthorized
 from common.infrastructure.db import get_session
 from common.infrastructure.settings import get_settings
 
@@ -45,6 +45,7 @@ def _to_token_response(result) -> TokenResponse:  # type: ignore[no-untyped-def]
         user_id=result.user_id,
         tenant_id=result.tenant_id,
         roles=getattr(result, "roles", []),
+        customer_id=getattr(result, "customer_id", None),
     )
 
 
@@ -149,14 +150,17 @@ def _user_admin_service(
     )
 
 
-@router.post("/users", response_model=CreateUserResponse, status_code=201)
+@router.post(
+    "/users",
+    response_model=CreateUserResponse,
+    status_code=201,
+    dependencies=[Depends(requires_role("tenant_admin"))],
+)
 async def create_user(
     payload: CreateUserRequest,
     principal: CurrentPrincipal = Depends(auth_required),
     svc: UserAdminService = Depends(_user_admin_service),
 ) -> CreateUserResponse:
-    if "tenant_admin" not in principal.roles:
-        raise Forbidden("Only tenant admins can create users")
     from auth.domain.entities import UserRole
 
     user = await svc.create_user(
@@ -173,13 +177,15 @@ async def create_user(
     )
 
 
-@router.get("/users", response_model=UserListResponse)
+@router.get(
+    "/users",
+    response_model=UserListResponse,
+    dependencies=[Depends(requires_role("tenant_admin"))],
+)
 async def list_users(
     principal: CurrentPrincipal = Depends(auth_required),
     svc: UserAdminService = Depends(_user_admin_service),
 ) -> UserListResponse:
-    if "tenant_admin" not in principal.roles:
-        raise Forbidden("Only tenant admins can list users")
     users = await svc.list_users()
     return UserListResponse(
         data=[

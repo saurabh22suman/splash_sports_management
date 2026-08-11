@@ -1,47 +1,325 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Splashh design tokens — dark athletic palette + Oswald / Plus Jakarta Sans.
+   Declared via Tailwind 4's @theme so utilities like bg-charcoal-900,
+   text-volt, font-display, animate-rise-up work out of the box.
+
+   Apps that consume @splashh/ui only need to import this stylesheet
+   (apps/web-pwa does it via @import "@splashh/ui/styles.css").
+   --------------------------------------------------------------------------- */
+@theme {
+  /* Brand */
+  --color-volt: #ccff00;
+  --color-volt-hover: #b3e600;
+  --color-volt-soft: #ccff001a;
+
+  /* Warm accent — used for hero glows, illustration accents, lane-line cues */
+  --color-accent-warm: #ff8a3d;
+  --color-accent-warm-soft: #ff8a3d33;
+
+  /* Cool accent — pool-blue glows */
+  --color-accent-cool: #2bb1ff;
+
+  /* Charcoal neutrals — surface + ink */
+  --color-charcoal-50: #f5f6f7;
+  --color-charcoal-100: #e6e7eb;
+  --color-charcoal-200: #c8cbd2;
+  --color-charcoal-300: #a4a9b3;
+  --color-charcoal-400: #7a808c;
+  --color-charcoal-500: #555b66;
+  --color-charcoal-600: #3a3f48;
+  --color-charcoal-700: #2a2d34;
+  --color-charcoal-800: #1d1f24;
+  --color-charcoal-900: #0a0a0b;
+  --color-charcoal-950: #050506;
+
+  /* Semantic surface / ink — shadcn-style aliases */
+  --color-background: var(--color-charcoal-900);
+  --color-foreground: #ffffff;
+
+  --color-card: var(--color-charcoal-800);
+  --color-card-foreground: #ffffff;
+
+  --color-popover: var(--color-charcoal-800);
+  --color-popover-foreground: #ffffff;
+
+  --color-primary: var(--color-volt);
+  --color-primary-hover: var(--color-volt-hover);
+  --color-primary-foreground: #000000;
+
+  --color-secondary: var(--color-charcoal-700);
+  --color-secondary-foreground: #ffffff;
+
+  --color-muted: var(--color-charcoal-700);
+  --color-muted-foreground: #a4a9b3;
+
+  --color-accent: var(--color-charcoal-700);
+  --color-accent-foreground: #ffffff;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  --color-success: #22c55e;
+  --color-success-foreground: #000000;
+
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #000000;
+
+  --color-border: var(--color-charcoal-600);
+  --color-input: var(--color-charcoal-700);
+  --color-ring: var(--color-volt);
+
+  /* Borders — macha/neon: sharp corners, hard 2px strokes */
+  --radius: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-display: "Oswald", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Animations */
+  --animate-rise-up: rise-up 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-score-pop: score-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-lane-glow: lane-glow 2.4s ease-in-out infinite;
+  --animate-wave-drift: wave-drift 6s ease-in-out infinite;
+  --animate-slide-in-left: slide-in-left 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-swim-bob: swim-bob 2.6s ease-in-out infinite;
+  --animate-whistle: whistle 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-stroke: stroke 1.2s cubic-bezier(0.65, 0, 0.35, 1) both;
+  --animate-neon-pulse: neon-pulse 2s ease-in-out infinite;
+  --animate-flicker: flicker 3.5s linear infinite;
+
+  /* Neon glow shadows */
+  --shadow-volt-sm: 0 0 6px var(--color-volt-soft);
+  --shadow-volt-md: 0 0 14px var(--color-volt-soft), 0 0 2px var(--color-volt);
+  --shadow-volt-lg: 0 0 24px var(--color-volt-soft), 0 0 4px var(--color-volt), inset 0 0 2px var(--color-volt);
+  --shadow-warm-sm: 0 0 6px var(--color-accent-warm-soft);
+  --shadow-warm-md: 0 0 14px var(--color-accent-warm-soft), 0 0 2px var(--color-accent-warm);
+  --shadow-cool-md: 0 0 14px color-mix(in oklab, var(--color-accent-cool) 30%, transparent), 0 0 2px var(--color-accent-cool);
+  --shadow-hard-volt: 4px 4px 0 0 var(--color-volt);
+  --shadow-hard-warm: 4px 4px 0 0 var(--color-accent-warm);
+  --shadow-hard-cool: 4px 4px 0 0 var(--color-accent-cool);
+  --shadow-hard-foreground: 4px 4px 0 0 #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Base — body + display heading defaults.
+   --------------------------------------------------------------------------- */
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 199 89% 48%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 199 89% 48%;
-    --radius: 0.5rem;
+  html,
+  body,
+  #root {
+    height: 100%;
   }
-  .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
-    --primary: 199 89% 60%;
-    --primary-foreground: 222 47% 7%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 199 89% 60%;
-    --accent-foreground: 222 47% 7%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 199 89% 60%;
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  h1 {
+    text-transform: uppercase;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Keyframes — sports-club motion vocabulary.
+   --------------------------------------------------------------------------- */
+@keyframes rise-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes score-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lane-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(204, 255, 0, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(204, 255, 0, 0.18);
+  }
+}
+
+@keyframes wave-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-12px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes swim-bob {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -2px, 0) rotate(-2deg);
+  }
+}
+
+@keyframes whistle {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes stroke {
+  from {
+    stroke-dashoffset: 100%;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 6px color-mix(in oklab, var(--color-volt) 40%, transparent),
+      0 0 12px color-mix(in oklab, var(--color-volt) 20%, transparent);
+    opacity: 1;
+  }
+  50% {
+    box-shadow:
+      0 0 12px color-mix(in oklab, var(--color-volt) 70%, transparent),
+      0 0 24px color-mix(in oklab, var(--color-volt) 40%, transparent),
+      0 0 2px var(--color-volt);
+    opacity: 0.92;
+  }
+}
+
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    opacity: 1;
+  }
+  20%, 24%, 55% {
+    opacity: 0.55;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion — every animation short-circuits to a static end state.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utilities — chrome niceties.
+   --------------------------------------------------------------------------- */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-charcoal-600) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-charcoal-600);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .lane-underline {
+    background-image: linear-gradient(
+      to right,
+      var(--color-volt) 0%,
+      var(--color-volt) 100%
+    );
+    background-repeat: no-repeat;
+    background-size: 0% 2px;
+    background-position: 0 100%;
+    transition: background-size 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .lane-underline:hover,
+  .lane-underline:focus-visible {
+    background-size: 100% 2px;
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

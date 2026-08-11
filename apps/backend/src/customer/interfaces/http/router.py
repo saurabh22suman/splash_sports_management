@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.interfaces.http.dependencies import auth_required, auth_tenant
+from auth.interfaces.http.dependencies import auth_required, auth_tenant, requires_role
 from common.application.context import require_tenant_id
 from common.domain.types import TenantId
 from common.infrastructure.db import get_session
@@ -31,7 +31,12 @@ def _to_out(c) -> CustomerOut:  # type: ignore[no-untyped-def]
     return CustomerOut.model_validate(c, from_attributes=True)
 
 
-@router.post("", response_model=CustomerOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CustomerOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requires_role("tenant_admin"))],
+)
 async def create_customer(
     payload: CustomerCreate,
     svc: CustomerService = Depends(_customer_service),
@@ -70,7 +75,11 @@ async def get_customer(
     return _to_out(c)
 
 
-@router.patch("/{customer_id}", response_model=CustomerOut)
+@router.patch(
+    "/{customer_id}",
+    response_model=CustomerOut,
+    dependencies=[Depends(requires_role("tenant_admin"))],
+)
 async def update_customer(
     customer_id: UUID,
     payload: CustomerUpdate,
@@ -85,4 +94,15 @@ async def update_customer(
         date_of_birth=payload.date_of_birth,
         notes=payload.notes,
     )
+    return _to_out(c)
+
+
+@router.get("/by-user/{user_id}", response_model=CustomerOut)
+async def get_customer_by_user(
+    user_id: UUID,
+    svc: CustomerService = Depends(_customer_service),
+    tenant_id: TenantId = Depends(auth_tenant),
+) -> CustomerOut:
+    """Get a customer by their associated user_id."""
+    c = await svc.get_customer_by_user(tenant_id=tenant_id, user_id=user_id)
     return _to_out(c)

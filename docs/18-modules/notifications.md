@@ -4,6 +4,11 @@
 
 The notifications module handles **outbound communication** — sending emails, SMS, push notifications, and in-app messages to users.
 
+> **Status — NOT YET IMPLEMENTED.** The backend module folder,
+> alembic migration, FastAPI router, and PWA pages do not exist in
+> `apps/backend/src/` or `apps/web-pwa/src/`. This module is a design
+> placeholder; implementation has not started.
+
 ---
 
 ## Purpose

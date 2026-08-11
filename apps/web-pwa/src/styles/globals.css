@@ -1,10 +1,4 @@
+/* All design tokens, base styles, keyframes and utilities live in @splashh/ui. */
 @import "@splashh/ui/styles.css";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-html,
-body,
-#root {
-  height: 100%;
-}
+/* App-specific overrides go below. */

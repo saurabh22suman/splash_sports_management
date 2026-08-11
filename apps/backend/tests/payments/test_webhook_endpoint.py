@@ -2,13 +2,30 @@
 import hashlib
 import hmac
 import json
+from collections.abc import AsyncIterator
+from datetime import datetime, timedelta, UTC
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+import auth.infrastructure.models  # noqa: F401
+from auth.infrastructure.models import TenantModel
+from auth.interfaces.http.dependencies import auth_required, CurrentPrincipal
 from common.domain.exceptions import Validation
+from common.infrastructure import db as db_module
+from payments.infrastructure.models import (
+    InvoiceLineItemModel,
+    InvoiceModel,
+    PaymentModel,
+    ProcessedRazorpayEventModel,
+    RefundModel,
+    TenantPaymentConfigModel,
+)
 from payments.interfaces.http.deps import get_payment_service
 from payments.interfaces.http.router import router as payments_router
 
@@ -19,10 +36,72 @@ def _sign(payload: bytes, secret: str = WEBHOOK_SECRET) -> str:
     return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
 
 
-@pytest.fixture
-async def client():
+@pytest_asyncio.fixture
+async def client() -> AsyncIterator[AsyncClient]:
+    """Build FastAPI app with payments router and dependency overrides for testing."""
+    from common.interfaces.http.errors import register_error_handlers
+
     app = FastAPI()
-    app.include_router(payments_router, prefix="/v1")
+    # Register error handlers to convert domain exceptions to HTTP responses
+    register_error_handlers(app)
+    # Include router at /v1/payments to match main app behavior
+    app.include_router(payments_router, prefix="/v1/payments")
+
+    # Create in-memory SQLite for testing - needed for F-07 tenant resolution
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(TenantModel.__table__.create)
+        await conn.run_sync(TenantPaymentConfigModel.__table__.create)
+        await conn.run_sync(InvoiceModel.__table__.create)
+        await conn.run_sync(InvoiceLineItemModel.__table__.create)
+        await conn.run_sync(PaymentModel.__table__.create)
+        await conn.run_sync(RefundModel.__table__.create)
+        await conn.run_sync(ProcessedRazorpayEventModel.__table__.create)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    # Seed test data with a tenant for F-07 webhook tenant resolution
+    tenant_id = uuid4()
+    async with factory() as session:
+        # Create tenant
+        tenant = TenantModel(
+            id=tenant_id,
+            name="Test Tenant",
+            slug="test-tenant",
+            primary_contact_email="test@example.com",
+            status="onboarding",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        session.add(tenant)
+
+        # Create tenant payment config
+        cfg = TenantPaymentConfigModel(
+            tenant_id=tenant_id,
+            razorpay_account_id="acc_test_123",
+            default_currency="INR",
+        )
+        session.add(cfg)
+
+        await session.commit()
+
+    _factory = factory
+
+    async def override_get_session():
+        async with _factory() as s:
+            yield s
+
+    # Override get_session for the webhook endpoint
+    app.dependency_overrides[db_module.get_session] = override_get_session
+
+    # Override auth_required so the webhook doesn't require auth
+    # The webhook uses signature verification instead
+    test_principal = CurrentPrincipal(
+        user_id=uuid4(),
+        tenant_id=tenant_id,
+        roles=("tenant_admin",),
+        jti="webhook-test-jti",
+    )
+    app.dependency_overrides[auth_required] = lambda: test_principal
 
     # Create a mock provider that simulates signature verification
     mock_provider = MagicMock()
@@ -60,7 +139,8 @@ async def client():
         yield c
 
 
-async def test_webhook_returns_200(client):
+@pytest.mark.asyncio
+async def test_webhook_returns_200(client: AsyncClient) -> None:
     """Test that a valid signed webhook returns 200."""
     payload_dict = {
         "id": "evt_1",
@@ -69,36 +149,40 @@ async def test_webhook_returns_200(client):
     }
     payload = json.dumps(payload_dict).encode()
     response = await client.post(
-        "/v1/webhooks/razorpay",
+        "/v1/payments/webhooks/razorpay",
         content=payload,
         headers={"X-Razorpay-Signature": _sign(payload)},
     )
     assert response.status_code == 200
 
 
-async def test_webhook_400_on_invalid_signature(client):
+@pytest.mark.asyncio
+async def test_webhook_400_on_invalid_signature(client: AsyncClient) -> None:
     """Test that an invalid signature returns 400."""
     payload = b"{}"
     response = await client.post(
-        "/v1/webhooks/razorpay",
+        "/v1/payments/webhooks/razorpay",
         content=payload,
         headers={"X-Razorpay-Signature": "badsig"},
     )
     assert response.status_code == 400
 
 
-async def test_webhook_400_on_missing_signature_header(client):
+@pytest.mark.asyncio
+async def test_webhook_400_on_missing_signature_header(client: AsyncClient) -> None:
     """Test that missing signature header returns 400."""
-    response = await client.post("/v1/webhooks/razorpay", content=b"{}")
+    response = await client.post("/v1/payments/webhooks/razorpay", content=b"{}")
     assert response.status_code == 400
 
 
-async def test_webhook_end_to_end_with_real_signature():
+@pytest.mark.asyncio
+async def test_webhook_end_to_end_with_real_signature() -> None:
     """End-to-end: verifies webhook with real RazorpayAdapter verifies signature correctly.
 
     Note: Full E2E with database state changes requires production-like session management.
     This test verifies the signature verification path works correctly.
     """
+    from datetime import datetime
     from payments.application.provider import RazorpayAdapter
 
     # Test that the real RazorpayAdapter correctly verifies HMAC-SHA256 signatures

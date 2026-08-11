@@ -8,14 +8,18 @@ This is the bridge between the stateless JWT in the `Authorization` header
 and the contextvars-based request context used by services. Without it, the
 contextvar is empty for every authenticated request and service-layer guards
 like `require_tenant_id` raise "Tenant context required".
+
+For RS256: uses public key from JWT_PUBLIC_KEY_PATH env var (or file).
+For HS256 (dev only): uses JWT_SECRET env var.
 """
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import jwt
-from fastapi import Header, status
+from fastapi import Depends, Header, status
 from fastapi.exceptions import HTTPException
 
 from common.application.context import RequestContext, bind_context
@@ -36,18 +40,55 @@ class CurrentPrincipal:
     jti: str
 
 
+def _get_jwt_algorithm() -> str:
+    """Get JWT algorithm from environment or settings."""
+    return os.environ.get("JWT_ALGORITHM", "RS256")
+
+
+def _get_public_key() -> str:
+    """Get the public key for JWT verification.
+
+    In production: requires JWT_PUBLIC_KEY_PATH env var.
+    In development: can use ephemeral keys or JWT_SECRET (HS256 fallback).
+    """
+    algorithm = _get_jwt_algorithm()
+
+    if algorithm == "RS256":
+        public_key_path = os.environ.get("JWT_PUBLIC_KEY_PATH")
+        if public_key_path:
+            path = Path(public_key_path)
+            if path.is_file():
+                return path.read_text(encoding="utf-8").strip()
+        # Production must have key file
+        environment = os.environ.get("ENVIRONMENT", "development")
+        if environment == "production":
+            msg = "JWT public key not configured. Set JWT_PUBLIC_KEY_PATH."
+            raise RuntimeError(msg)
+        # Development: generate ephemeral keypair (caller must also use ephemeral)
+        # For now, fall through to HS256 or error
+        msg = "JWT_PUBLIC_KEY_PATH not set and no ephemeral key available"
+        raise RuntimeError(msg)
+    else:
+        # HS256 - requires JWT_SECRET
+        secret = os.environ.get("JWT_SECRET")
+        if not secret:
+            msg = "JWT_SECRET environment variable is required when using HS256"
+            raise RuntimeError(msg)
+        return secret
+
+
 def _decode_access_token(token: str) -> CurrentPrincipal:
     """Decode + validate a JWT access token.
 
     Raises HTTP 401 on any failure (missing/invalid/expired/wrong type).
-    The signing secret is taken from `JWT_SECRET` to match the dev fallback
-    in [`auth.application.auth_service.build_auth_service`].
+    Uses RS256 with public key file (production) or HS256 with JWT_SECRET (dev).
     """
-    secret = os.environ.get(
-        "JWT_SECRET", "dev-only-jwt-secret-change-me-in-prod-please-32chars"
-    )
+    algorithm = _get_jwt_algorithm()
+    secret = _get_public_key()
+    algorithms = [algorithm]
+
     try:
-        claims = jwt.decode(token, secret, algorithms=["HS256"])
+        claims = jwt.decode(token, secret, algorithms=algorithms)
     except jwt.ExpiredSignatureError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -134,3 +175,46 @@ def auth_tenant(
     so other deps in the same request share it.
     """
     return principal.tenant_id
+
+
+def requires_role(*allowed_roles: str):
+    """FastAPI dependency factory: enforce role-based access control.
+
+    Returns a dependency that checks if the authenticated principal has at least
+    one of the specified roles. Raises HTTP 403 if the principal lacks permission.
+
+    Usage:
+        @router.post("/invoices", dependencies=[Depends(requires_role("tenant_admin"))])
+        async def create_invoice(...):
+            ...
+
+    Or as a parameter dependency:
+        @router.post("/invoices")
+        async def create_invoice(
+            principal: CurrentPrincipal = Depends(requires_role("tenant_admin"))
+        ):
+            ...
+
+    Args:
+        *allowed_roles: Role names that are permitted to access the endpoint.
+
+    Returns:
+        A FastAPI dependency that enforces role-based authorization.
+
+    Raises:
+        HTTPException: 403 if the principal's roles don't include any allowed role.
+    """
+
+    def role_checker(
+        principal: CurrentPrincipal = Depends(auth_required),
+    ) -> CurrentPrincipal:
+        """Dependency that validates the principal has an allowed role."""
+        principal_has_role = any(role in principal.roles for role in allowed_roles)
+        if not principal_has_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires one of roles: {', '.join(allowed_roles)}",
+            )
+        return principal
+
+    return role_checker

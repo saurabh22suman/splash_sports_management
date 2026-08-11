@@ -123,31 +123,18 @@ flowchart TB
 
 ## Container Descriptions
 
-### Admin PWA
+### web-pwa (single PWA, role-routed)
 
 | Attribute | Detail |
 |---|---|
-| Technology | Vite + React 18 + TypeScript |
-| Purpose | Staff and admin operational interface |
-| Deployment | Static assets on CDN, fetches from Backend API |
-| Authentication | JWT Bearer token stored in memory (not localStorage for security) |
-| State management | TanStack Query for server state, React Context for UI state |
-| Key features | Dashboard, facility management, booking management, member search, reports |
+| Technology | Vite 6 + React 19 + TypeScript + Tailwind 4 (via `@tailwindcss/vite`) + `vite-plugin-pwa` |
+| Purpose | Both staff/admin and customer surfaces in a single installable PWA; role-based home after login (`/admin` for staff, `/book` for customers) |
+| Deployment | Static assets behind nginx (multi-stage build in `apps/web-pwa/Dockerfile`); Dokploy + Traefik in `docker-compose.prod.yml` |
+| Authentication | JWT Bearer access token in memory + opaque refresh token in httpOnly cookie; `next-themes` for class-on-`<html>` dark mode |
+| State management | TanStack Query for server state, Zustand for auth store |
+| Key features | Dashboard, facility management, booking management, member search, payments/invoices, Razorpay checkout flow |
 
-> **Why React for Admin?** The admin interface requires complex state management, data-intensive tables, and form-heavy workflows. React's ecosystem provides the best tooling for this class of application.
-
-### Customer PWA
-
-| Attribute | Detail |
-|---|---|
-| Technology | Vite + React 18 + TypeScript + Vite PWA Plugin |
-| Purpose | Member booking, account management, check-in |
-| Deployment | Static assets on CDN, fetches from Backend API |
-| Authentication | JWT Bearer token with refresh token rotation |
-| State management | TanStack Query + offline queue via IndexedDB |
-| Key features | Slot booking, membership purchase, payment, QR check-in, push notifications |
-
-> **Why PWA?** Members access the platform on mobile devices in club environments with variable connectivity. The PWA provides installability, offline capability (booking queue), and push notifications — critical for a club experience.
+> **Why a single PWA?** One install, one home, role-gated routes. The same code path serves an operator at the front desk and a customer at the lane. Splitting into two apps was the original plan; collapsing them reduced install friction and let admin features (e.g. invoice management) live next to the surfaces they pay for.
 
 ### Backend API
 

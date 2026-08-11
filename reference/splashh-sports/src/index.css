@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Oswald', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  
+  --color-volt: #CCFF00;
+  --color-volt-hover: #b3e600;
+  
+  --color-charcoal-950: #050505;
+  --color-charcoal-900: #0a0a0b;
+  --color-charcoal-800: #121214;
+  --color-charcoal-700: #1a1a1d;
+  --color-charcoal-600: #27272a;
+}
+
+@layer base {
+  body {
+    @apply bg-charcoal-900 text-white font-sans antialiased selection:bg-volt selection:text-black;
+  }
+  
+  h1, h2, h3, h4, h5, h6, .font-display {
+    @apply font-display tracking-wide uppercase;
+  }
+}
+
+/* Custom scrollbar for operations horizontal scroll */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

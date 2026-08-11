@@ -63,7 +63,7 @@ def tenant_fk_column() -> Mapped[uuid.UUID]:
     """Helper for FK columns referencing tenants(id)."""
     return mapped_column(  # type: ignore[return-value]
         UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="CASCADE"),
+        ForeignKey("tenants.id", ondelete="CASCADE", name="fk_tenants_tenant_id"),
         nullable=False,
         index=True,
     )

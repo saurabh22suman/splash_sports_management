@@ -10,15 +10,19 @@ bookings, before inserting.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import and_, exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from booking.domain.entities import Booking, BookingStatus, CancellationReason
-from booking.infrastructure.models import BookingModel
+from booking.domain.entities import Booking, BookingStatus, BookingTariff, CancellationReason
+from booking.infrastructure.models import BookingModel, BookingTariffModel
 from common.domain.exceptions import Conflict, InvariantViolation, NotFound
 from common.infrastructure.repository import BaseRepository
+
+if TYPE_CHECKING:
+    from facility.application.facility_service import FacilityService
 
 
 def _to_domain(m: BookingModel) -> Booking:
@@ -44,6 +48,14 @@ def _to_domain(m: BookingModel) -> Booking:
 
 class BookingRepository(BaseRepository[Booking]):
     model = BookingModel
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        facility_service: "FacilityService | None" = None,
+    ) -> None:
+        super().__init__(session)
+        self.facility_service = facility_service
 
     async def get_by_id(self, tenant_id: UUID, booking_id: UUID) -> Booking | None:
         m = await super().get(tenant_id, booking_id)
@@ -78,20 +90,19 @@ class BookingRepository(BaseRepository[Booking]):
         then asserts no overlapping confirmed booking exists. This is the
         canonical booking creation path.
         """
-        from facility.infrastructure.models import ResourceModel
-
-        # 1. Lock the resource row. This serializes concurrent bookings
-        #    against the same resource.
-        resource_lock = (
-            select(ResourceModel)
-            .where(
-                ResourceModel.id == booking.resource_id,
-                ResourceModel.tenant_id == booking.tenant_id,
+        # 1. Lock the resource row via FacilityService. This serializes
+        #    concurrent bookings against the same resource.
+        if self.facility_service is None:
+            raise RuntimeError(
+                "FacilityService is required for add_safe. "
+                "Please inject it via the repository constructor."
             )
-            .with_for_update()
-        )
-        resource = (await self.session.execute(resource_lock)).scalar_one_or_none()
-        if resource is None:
+        try:
+            await self.facility_service.lock_resource_for_update(
+                tenant_id=booking.tenant_id,
+                resource_id=booking.resource_id,
+            )
+        except NotFound:
             raise NotFound(
                 "Resource not found",
                 details={"resource_id": str(booking.resource_id)},
@@ -146,23 +157,38 @@ class BookingRepository(BaseRepository[Booking]):
         statuses: list[BookingStatus] | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> list[Booking]:
-        stmt = (
-            select(BookingModel)
-            .where(
-                BookingModel.tenant_id == tenant_id,
-                BookingModel.customer_id == customer_id,
-            )
-            .order_by(BookingModel.start_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
+    ) -> list[tuple[Booking, str | None, str | None]]:
+        """Returns (booking, facility_name, resource_name) tuples for richer UI."""
+        # Fetch bookings first
+        stmt = select(BookingModel).where(
+            BookingModel.tenant_id == tenant_id,
+            BookingModel.customer_id == customer_id,
+        ).order_by(BookingModel.start_at.desc()).limit(limit).offset(offset)
+
         if statuses:
-            stmt = stmt.where(
-                BookingModel.status.in_([s.value for s in statuses])
-            )
+            stmt = stmt.where(BookingModel.status.in_([s.value for s in statuses]))
+
         result = await self.session.execute(stmt)
-        return [_to_domain(m) for m in result.scalars().all()]
+        bookings = [_to_domain(m) for m in result.scalars().all()]
+
+        if not bookings:
+            return [(b, None, None) for b in bookings]
+
+        # Get resource and facility names via FacilityService
+        resource_ids = list({b.resource_id for b in bookings})
+
+        if self.facility_service:
+            names_map = await self.facility_service.get_resource_and_facility_names(
+                tenant_id=tenant_id,
+                resource_ids=resource_ids,
+            )
+            return [
+                (b, names_map.get(b.resource_id, (None, None))[1], names_map.get(b.resource_id, (None, None))[0])
+                for b in bookings
+            ]
+
+        # No facility service - return bookings without names
+        return [(b, None, None) for b in bookings]
 
     async def list_for_resource(
         self,
@@ -187,3 +213,98 @@ class BookingRepository(BaseRepository[Booking]):
             stmt = stmt.where(BookingModel.status.in_([s.value for s in statuses]))
         result = await self.session.execute(stmt)
         return [_to_domain(m) for m in result.scalars().all()]
+
+    async def list_admin_bookings(
+        self,
+        tenant_id: UUID,
+        *,
+        from_at: datetime,
+        to_at: datetime,
+        facility_id: UUID | None = None,
+        resource_id: UUID | None = None,
+        statuses: list[BookingStatus] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Booking]:
+        """List bookings for admin view with optional filters.
+
+        This method returns bookings within a date range, optionally filtered
+        by facility, resource, and/or status.
+        """
+        stmt = (
+            select(BookingModel)
+            .where(
+                BookingModel.tenant_id == tenant_id,
+                BookingModel.start_at < to_at,
+                BookingModel.end_at > from_at,
+            )
+            .order_by(BookingModel.start_at)
+            .limit(limit)
+            .offset(offset)
+        )
+
+        if facility_id:
+            # Join with resources to filter by facility
+            from facility.infrastructure.models import ResourceModel
+
+            stmt = stmt.join(ResourceModel, BookingModel.resource_id == ResourceModel.id).where(
+                ResourceModel.facility_id == facility_id
+            )
+
+        if resource_id:
+            stmt = stmt.where(BookingModel.resource_id == resource_id)
+
+        if statuses:
+            stmt = stmt.where(BookingModel.status.in_([s.value for s in statuses]))
+
+        result = await self.session.execute(stmt)
+        return [_to_domain(m) for m in result.scalars().all()]
+
+
+def _tariff_to_domain(m: BookingTariffModel) -> BookingTariff:
+    return BookingTariff(
+        id=m.id,
+        tenant_id=m.tenant_id,
+        resource_id=m.resource_id,
+        day_of_week=m.day_of_week,
+        time_start=m.time_start,
+        time_end=m.time_end,
+        price_cents=m.price_cents,
+        currency=m.currency,
+    )
+
+
+class BookingTariffRepository:
+    """Repository for managing booking tariff prices."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def get_for_resource(
+        self,
+        tenant_id: UUID,
+        resource_id: UUID,
+    ) -> list[BookingTariff]:
+        """Get all tariffs for a resource."""
+        stmt = select(BookingTariffModel).where(
+            BookingTariffModel.tenant_id == tenant_id,
+            BookingTariffModel.resource_id == resource_id,
+        )
+        result = await self.session.execute(stmt)
+        return [_tariff_to_domain(m) for m in result.scalars().all()]
+
+    async def add(self, tariff: BookingTariff) -> BookingTariff:
+        """Create a new tariff."""
+        m = BookingTariffModel(
+            tenant_id=tariff.tenant_id,
+            resource_id=tariff.resource_id,
+            day_of_week=tariff.day_of_week,
+            time_start=tariff.time_start,
+            time_end=tariff.time_end,
+            price_cents=tariff.price_cents,
+            currency=tariff.currency,
+        )
+        self.session.add(m)
+        await self.session.flush()
+        await self.session.refresh(m)
+        return _tariff_to_domain(m)

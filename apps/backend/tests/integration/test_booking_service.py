@@ -25,19 +25,19 @@ from auth.infrastructure.repositories import (
 )
 from auth.infrastructure.token_service import HS256TokenService
 from booking.application.booking_service import BookingService
-from booking.infrastructure.repositories import BookingRepository
+from booking.infrastructure.repositories import BookingRepository, BookingTariffRepository
 from common.domain.exceptions import Conflict, NotFound
-from common.domain.types import UserId
-from common.infrastructure.db import Base
-from customer.application.customer_service import CustomerService
-from customer.infrastructure.repositories import CustomerRepository
 from facility.application.facility_service import FacilityService
-from facility.domain.entities import ResourceType
 from facility.infrastructure.repositories import (
     AvailabilityRuleRepository,
     FacilityRepository,
     ResourceRepository,
 )
+from common.domain.types import UserId
+from common.infrastructure.db import Base
+from customer.application.customer_service import CustomerService
+from customer.infrastructure.repositories import CustomerRepository
+from facility.domain.entities import ResourceType
 
 
 pytestmark = pytest.mark.integration
@@ -75,10 +75,13 @@ async def session(session_factory) -> AsyncIterator[AsyncSession]:
 
 @pytest_asyncio.fixture
 async def seeded(session) -> dict:
-    """Create a tenant + admin + customer + facility + resource.
+    """Create a tenant + admin + customer + facility + resource + tariff.
 
     Returns a dict of domain objects useful for booking tests.
     """
+    from booking.domain.entities import BookingTariff
+    from booking.infrastructure.repositories import BookingTariffRepository
+
     auth_svc = AuthService(
         session,
         password_hasher=Argon2PasswordHasher(),
@@ -150,6 +153,22 @@ async def seeded(session) -> dict:
         capacity=2,
     )
 
+    # Create tariffs for the resource (cover all days 0-6, hours 6-22 for 1-hour slots)
+    tariff_repo = BookingTariffRepository(session)
+    for day in range(7):  # 0=Monday to 6=Sunday
+        for hour in range(6, 22):  # 6 AM to 10 PM
+            tariff = BookingTariff(
+                id=uuid4(),
+                tenant_id=tenant.id,
+                resource_id=resource.id,
+                day_of_week=day,
+                time_start=hour,
+                time_end=hour + 1,
+                price_cents=5000,  # 50.00 per hour
+                currency="INR",
+            )
+            await tariff_repo.add(tariff)
+
     # Commit so the seeded data is visible to other sessions (e.g. the
     # concurrent-booking test which spawns 5 independent sessions).
     await session.commit()
@@ -166,7 +185,17 @@ async def seeded(session) -> dict:
 
 @pytest_asyncio.fixture
 async def booking_service(session) -> BookingService:
-    return BookingService(session, BookingRepository(session))
+    facility_svc = FacilityService(
+        session,
+        FacilityRepository(session),
+        ResourceRepository(session),
+        AvailabilityRuleRepository(session),
+    )
+    return BookingService(
+        session,
+        BookingRepository(session, facility_service=facility_svc),
+        facility_service=facility_svc,
+    )
 
 
 @pytest.mark.asyncio
@@ -182,10 +211,10 @@ class TestBookingCreation:
             resource_id=seeded["resource_id"],
             start_at=start,
             end_at=end,
-            price_cents=50000,
         )
         assert booking.id is not None
         assert booking.status.value == "confirmed"
+        assert booking.price_cents == 5000  # From tariff
 
     async def test_double_booking_is_prevented(
         self, booking_service: BookingService, seeded: dict
@@ -261,7 +290,17 @@ class TestBookingCreation:
 
         async def try_book() -> str:
             async with session_factory() as s:
-                svc = BookingService(s, BookingRepository(s))
+                facility_svc = FacilityService(
+                    s,
+                    FacilityRepository(s),
+                    ResourceRepository(s),
+                    AvailabilityRuleRepository(s),
+                )
+                svc = BookingService(
+                    s,
+                    BookingRepository(s, facility_service=facility_svc),
+                    facility_service=facility_svc,
+                )
                 try:
                     await svc.create_booking(
                         tenant_id=seeded["tenant_id"],

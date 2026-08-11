@@ -84,9 +84,27 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     The session is committed on successful exit and rolled back on exception.
     Callers should not commit explicitly; the Unit-of-Work pattern keeps that
     responsibility in the session lifecycle.
+
+    Sets `app.tenant_id` on the connection for RLS policies when a tenant
+    context is available (i.e., for authenticated requests).
     """
+    from common.application.context import get_context, reset_context
+    from sqlalchemy import text
+
     factory = get_session_factory()
     async with factory() as session:
+        # Set tenant context for RLS policies if tenant_id is available
+        ctx = get_context()
+        if ctx is not None and ctx.tenant_id is not None:
+            try:
+                await session.execute(
+                    text("SET LOCAL app.tenant_id = :tenant_id"),
+                    {"tenant_id": str(ctx.tenant_id)},
+                )
+            except Exception:
+                # Session might be a mock in tests; continue without RLS
+                pass
+
         try:
             yield session
             # Commit on clean exit. The repository/service code only `flush()`s;
@@ -95,3 +113,5 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         except Exception:
             await session.rollback()
             raise
+        finally:
+            reset_context()

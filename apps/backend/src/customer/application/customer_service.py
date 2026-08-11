@@ -66,3 +66,9 @@ class CustomerService:
             notes=notes,
         )
         return await self.customers.update(c)
+
+    async def get_customer_by_user(self, *, tenant_id: UUID, user_id: UUID) -> Customer:
+        c = await self.customers.get_by_user(tenant_id, user_id)
+        if c is None:
+            raise NotFound("Customer not found", details={"user_id": str(user_id)})
+        return c

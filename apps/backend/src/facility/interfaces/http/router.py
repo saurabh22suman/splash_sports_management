@@ -10,7 +10,7 @@ from common.application.context import require_tenant_id
 from common.domain.types import TenantId
 from common.infrastructure.db import get_session
 
-from auth.interfaces.http.dependencies import auth_required, auth_tenant
+from auth.interfaces.http.dependencies import auth_required, auth_tenant, requires_role
 from facility.application.facility_service import FacilityService
 from facility.infrastructure.repositories import (
     AvailabilityRuleRepository,
@@ -24,9 +24,11 @@ from facility.interfaces.http.schemas import (
     FacilityCreate,
     FacilityListResponse,
     FacilityOut,
+    FacilityUpdate,
     ResourceCreate,
     ResourceListResponse,
     ResourceOut,
+    ResourceUpdate,
 )
 
 router = APIRouter(dependencies=[Depends(auth_required)])
@@ -43,7 +45,12 @@ def _facility_service(session: AsyncSession = Depends(get_session)) -> FacilityS
 
 # ---------- Facility ----------
 
-@router.post("", response_model=FacilityOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=FacilityOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requires_role("tenant_admin", "manager"))],
+)
 async def create_facility(
     payload: FacilityCreate,
     svc: FacilityService = Depends(_facility_service),
@@ -86,12 +93,46 @@ async def get_facility(
     return FacilityOut.model_validate(f, from_attributes=True)
 
 
+@router.patch(
+    "/{facility_id}",
+    response_model=FacilityOut,
+    dependencies=[Depends(requires_role("tenant_admin", "manager"))],
+)
+async def update_facility(
+    facility_id: UUID,
+    payload: FacilityUpdate,
+    svc: FacilityService = Depends(_facility_service),
+    tenant_id: TenantId = Depends(auth_tenant),
+) -> FacilityOut:
+    f = await svc.update_facility(
+        tenant_id=tenant_id,
+        facility_id=facility_id,
+        **payload.model_dump(exclude_unset=True),
+    )
+    return FacilityOut.model_validate(f, from_attributes=True)
+
+
+@router.delete(
+    "/{facility_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(requires_role("tenant_admin", "manager"))],
+)
+async def deactivate_facility(
+    facility_id: UUID,
+    svc: FacilityService = Depends(_facility_service),
+    tenant_id: TenantId = Depends(auth_tenant),
+) -> None:
+    """Soft-delete: sets the facility's status to inactive. Returns 204."""
+    await svc.deactivate_facility(tenant_id=tenant_id, facility_id=facility_id)
+
+
 # ---------- Resource ----------
 
 @router.post(
     "/{facility_id}/resources",
     response_model=ResourceOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requires_role("tenant_admin", "manager"))],
 )
 async def create_resource(
     facility_id: UUID,
@@ -126,12 +167,46 @@ async def list_resources(
     )
 
 
+@router.patch(
+    "/resources/{resource_id}",
+    response_model=ResourceOut,
+    dependencies=[Depends(requires_role("tenant_admin", "manager"))],
+)
+async def update_resource(
+    resource_id: UUID,
+    payload: ResourceUpdate,
+    svc: FacilityService = Depends(_facility_service),
+    tenant_id: TenantId = Depends(auth_tenant),
+) -> ResourceOut:
+    r = await svc.update_resource(
+        tenant_id=tenant_id,
+        resource_id=resource_id,
+        **payload.model_dump(exclude_unset=True),
+    )
+    return ResourceOut.model_validate(r, from_attributes=True)
+
+
+@router.delete(
+    "/resources/{resource_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(requires_role("tenant_admin", "manager"))],
+)
+async def deactivate_resource(
+    resource_id: UUID,
+    svc: FacilityService = Depends(_facility_service),
+    tenant_id: TenantId = Depends(auth_tenant),
+) -> None:
+    """Soft-delete: sets the resource's status to inactive. Returns 204."""
+    await svc.deactivate_resource(tenant_id=tenant_id, resource_id=resource_id)
+
+
 # ---------- Availability ----------
 
 @router.post(
     "/resources/{resource_id}/availability-rules",
     response_model=AvailabilityRuleOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requires_role("tenant_admin", "manager"))],
 )
 async def create_availability_rule(
     resource_id: UUID,

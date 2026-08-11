@@ -59,7 +59,7 @@ class TenantPaymentConfigModel(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         # use_alter defers FK constraint creation to avoid SQLite issues
-        ForeignKey("tenants.id", ondelete="CASCADE", use_alter=True),
+        ForeignKey("tenants.id", ondelete="CASCADE", use_alter=True, name="fk_payments_tenant_config_tenant_id"),
         primary_key=True
     )
     razorpay_account_id: Mapped[str | None] = mapped_column(Text)  # NULL in v1 (single platform account)
@@ -96,7 +96,7 @@ class InvoiceLineItemModel(Base):
     __table_args__ = (Index("payments_line_items_invoice_idx", "invoice_id"),)
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    invoice_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_invoices.id", ondelete="CASCADE"), nullable=False)
+    invoice_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_invoices.id", ondelete="CASCADE", name="fk_payments_invoice_line_items_invoice_id"), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -115,7 +115,7 @@ class PaymentModel(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
-    invoice_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_invoices.id", ondelete="RESTRICT"), nullable=False)
+    invoice_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_invoices.id", ondelete="RESTRICT", name="fk_payments_payments_invoice_id"), nullable=False)
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default="INR")
     status: Mapped[str] = mapped_column(Text, nullable=False)
@@ -133,7 +133,7 @@ class RefundModel(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
-    payment_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_payments.id", ondelete="RESTRICT"), nullable=False)
+    payment_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_payments.id", ondelete="RESTRICT", name="fk_payments_refunds_payment_id"), nullable=False)
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default="INR")
     status: Mapped[str] = mapped_column(Text, nullable=False)

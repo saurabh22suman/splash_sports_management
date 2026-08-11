@@ -49,6 +49,7 @@ class TokenResponse(BaseModel):
     user_id: UUID
     tenant_id: UUID
     roles: list[str] = Field(default_factory=list)
+    customer_id: UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

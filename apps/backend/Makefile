@@ -1,13 +1,15 @@
-.PHONY: dev test
+.PHONY: dev test generate-jwt-keys
 
 dev:
 	PYTHONPATH=src ENVIRONMENT=development DEBUG=false \
-	JWT_ALGORITHM=HS256 \
-	JWT_SECRET="dev-only-jwt-secret-change-me-in-prod-please-32chars" \
+	JWT_ALGORITHM=RS256 \
 	uv run uvicorn common.interfaces.http.app:create_app --factory --host 127.0.0.1 --port 8765
 
 test:
 	PYTHONPATH=src uv run pytest
+
+generate-jwt-keys:
+	PYTHONPATH=src uv run python scripts/generate-jwt-keys.py --output-dir ./secrets
 
 seed-demo:
 	PYTHONPATH=src uv run python scripts/seed_demo.py

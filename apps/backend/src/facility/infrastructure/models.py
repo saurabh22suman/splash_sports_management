@@ -41,7 +41,7 @@ class ResourceModel(Base, TimestampMixin):
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     facility_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("facilities.id", ondelete="CASCADE"),
+        ForeignKey("facilities.id", ondelete="CASCADE", name="fk_resources_facility_id"),
         index=True,
         nullable=False,
     )
@@ -61,7 +61,7 @@ class AvailabilityRuleModel(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     resource_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("resources.id", ondelete="CASCADE"),
+        ForeignKey("resources.id", ondelete="CASCADE", name="fk_availability_rules_resource_id"),
         index=True,
         nullable=False,
     )

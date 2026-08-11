@@ -23,12 +23,14 @@ async function doRefresh(): Promise<string> {
   const data = (await res.json()) as {
     access_token: string;
     user_id?: string;
+    customer_id?: string;
     tenant_id?: string;
     roles?: string[];
   };
   useAuthStore.getState().setSession({
     accessToken: data.access_token,
     userId: data.user_id ?? useAuthStore.getState().userId ?? "",
+    customerId: data.customer_id ?? useAuthStore.getState().customerId ?? "",
     tenantId: data.tenant_id ?? useAuthStore.getState().tenantId ?? "",
     roles: data.roles ?? useAuthStore.getState().roles,
   });

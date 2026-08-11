@@ -36,7 +36,7 @@ class UserModel(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE", name="fk_users_tenant_id"), index=True, nullable=False
     )
     email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -68,10 +68,10 @@ class RefreshTokenModel(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE", name="fk_refresh_tokens_tenant_id"), index=True, nullable=False
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE", name="fk_refresh_tokens_user_id"), index=True, nullable=False
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     family_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

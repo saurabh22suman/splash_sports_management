@@ -39,20 +39,20 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 p-2 rounded hover:bg-slate-100"
+        className="w-full flex items-center gap-2 p-2 hover:bg-secondary transition-colors duration-200"
       >
         <span
           aria-hidden
-          className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 text-white text-xs font-semibold flex items-center justify-center"
+          className="w-8 h-8 bg-primary text-primary-foreground border-2 border-black text-xs font-bold uppercase flex items-center justify-center"
         >
           {initials}
         </span>
-        <span className="text-sm text-slate-700">Account</span>
+        <span className="text-sm font-medium text-foreground">Account</span>
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 mb-1 w-44 bg-white rounded-lg shadow-xl border border-slate-200 py-1"
+          className="absolute bottom-full left-0 mb-1 w-44 bg-popover border-2 border-border shadow-volt-md py-1"
         >
           <button
             role="menuitem"
@@ -61,7 +61,7 @@ export function UserMenu() {
               setOpen(false);
               logout.mutate();
             }}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+            className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors duration-200"
           >
             Log out
           </button>

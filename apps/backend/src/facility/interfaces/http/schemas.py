@@ -29,6 +29,26 @@ class FacilityCreate(BaseModel):
         return v.upper()
 
 
+class FacilityUpdate(BaseModel):
+    """Partial update — every field is optional. Slug is intentionally not
+    editable here (slug is the canonical URL identifier)."""
+
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    address_line1: str | None = Field(default=None, min_length=1, max_length=255)
+    address_line2: str | None = Field(default=None, max_length=255)
+    city: str | None = Field(default=None, min_length=1, max_length=100)
+    state: str | None = Field(default=None, min_length=1, max_length=100)
+    postal_code: str | None = Field(default=None, min_length=1, max_length=20)
+    country: str | None = Field(default=None, min_length=2, max_length=2)
+    timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("country")
+    @classmethod
+    def _upper_country(cls, v: str | None) -> str | None:
+        return v.upper() if v is not None else None
+
+
 class FacilityOut(BaseModel):
     id: UUID
     tenant_id: UUID
@@ -61,6 +81,12 @@ class ResourceCreate(BaseModel):
     resource_type: ResourceType
     capacity: int = Field(default=1, ge=1, le=1000)
     attributes: dict[str, object] = Field(default_factory=dict)
+
+
+class ResourceUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    capacity: int | None = Field(default=None, ge=1, le=1000)
+    attributes: dict[str, object] | None = None
 
 
 class ResourceOut(BaseModel):

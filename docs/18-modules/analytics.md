@@ -4,6 +4,11 @@
 
 The analytics module provides **business intelligence** — aggregating data for reports, dashboards, and exports. It is primarily a read model that consumes events from other modules.
 
+> **Status — NOT YET IMPLEMENTED.** The backend module folder,
+> alembic migration, FastAPI router, and PWA pages do not exist in
+> `apps/backend/src/` or `apps/web-pwa/src/`. This module is a design
+> placeholder; implementation has not started.
+
 ---
 
 ## Purpose

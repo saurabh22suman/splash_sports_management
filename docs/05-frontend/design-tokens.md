@@ -1,370 +1,165 @@
 # Design Tokens
 
-> Three-layer tokens. Tailwind config maps to tokens. CSS custom properties for runtime theming. Token naming.
+> All tokens declared in `packages/ui/src/styles/globals.css` under `@theme`. Tailwind 4 generates utility classes from CSS variables. One file owns the palette.
 
-This document establishes the design token architecture for the Splashh Sports Platform. Design tokens are the visual design atoms of the design system — specifically, they are named entities that store visual design attributes.
+Splashh uses a **two-layer token system** rather than the three-layer primitive → semantic → component model that's common in design systems. The reason: Tailwind 4's `@theme` directive already maps CSS variables to utilities, so we don't need a separate "primitive" layer — the raw values *are* the primitives.
 
----
-
-## Three-Layer Token System
-
-### 1. Primitive Tokens
-
-Raw values (colors, spacing, typography) — not used directly in components:
-
-```typescript
-// tailwind.config.ts - Primitive tokens
-export default {
-  theme: {
-    extend: {
-      // Colors - primitive
-      colors: {
-        // Blues
-        blue: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
-        },
-        // Grays
-        gray: {
-          50: '#f9fafb',
-          100: '#f3f4f6',
-          // ... full scale
-        },
-      },
-
-      // Spacing - primitive
-      spacing: {
-        '0': '0px',
-        '0.5': '0.125rem',  // 2px
-        '1': '0.25rem',     // 4px
-        '1.5': '0.375rem',  // 6px
-        '2': '0.5rem',      // 8px
-        // ... up to 96 (24rem)
-        '128': '32rem',
-        '144': '36rem',
-      },
-
-      // Typography - primitive
-      fontSize: {
-        'xs': ['0.75rem', { lineHeight: '1rem' }],     // 12px
-        'sm': ['0.875rem', { lineHeight: '1.25rem' }], // 14px
-        'base': ['1rem', { lineHeight: '1.5rem' }],    // 16px
-        'lg': ['1.125rem', { lineHeight: '1.75rem' }], // 18px
-        'xl': ['1.25rem', { lineHeight: '1.75rem' }], // 20px
-        // ... up to 9xl
-      },
-
-      // Border radius - primitive
-      borderRadius: {
-        'none': '0px',
-        'sm': '0.125rem',
-        'DEFAULT': '0.25rem',
-        'md': '0.375rem',
-        'lg': '0.5rem',
-        'xl': '0.75rem',
-        '2xl': '1rem',
-        'full': '9999px',
-      },
-    },
-  },
-};
 ```
-
-### 2. Semantic Tokens
-
-Abstract meanings tied to context:
-
-```typescript
-// tailwind.config.ts - Semantic tokens
-export default {
-  theme: {
-    extend: {
-      colors: {
-        // Brand colors - semantic
-        primary: {
-          DEFAULT: '{colors.blue.600}',
-          foreground: '#ffffff',
-          50: '{colors.blue.50}',
-          100: '{colors.blue.100}',
-          200: '{colors.blue.200}',
-          300: '{colors.blue.300}',
-          400: '{colors.blue.400}',
-          500: '{colors.blue.500}',
-          600: '{colors.blue.600}',
-          700: '{colors.blue.700}',
-          800: '{colors.blue.800}',
-          900: '{colors.blue.900}',
-          950: '{colors.blue.950}',
-        },
-
-        // Functional colors - semantic
-        success: {
-          DEFAULT: '#22c55e',
-          foreground: '#ffffff',
-        },
-        warning: {
-          DEFAULT: '#f59e0b',
-          foreground: '#000000',
-        },
-        destructive: {
-          DEFAULT: '#ef4444',
-          foreground: '#ffffff',
-        },
-
-        // Surface colors - semantic
-        background: {
-          DEFAULT: '#ffffff',
-          foreground: '{colors.gray.900}',
-        },
-        foreground: {
-          DEFAULT: '{colors.gray.900}',
-          muted: '{colors.gray.500}',
-        },
-        muted: {
-          DEFAULT: '{colors.gray.100}',
-          foreground: '{colors.gray.500}',
-        },
-        card: {
-          DEFAULT: '#ffffff',
-          foreground: '{colors.gray.900}',
-        },
-        border: {
-          DEFAULT: '{colors.gray.200}',
-          foreground: '{colors.gray.900}',
-        },
-        input: {
-          DEFAULT: '{colors.gray.200}',
-          foreground: '{colors.gray.900}',
-        },
-        ring: {
-          DEFAULT: '{colors.blue.600}',
-        },
-      },
-
-      // Typography - semantic
-      fontSize: {
-        'heading-1': ['2.25rem', { lineHeight: '2.5rem', fontWeight: '700' }],
-        'heading-2': ['1.875rem', { lineHeight: '2.25rem', fontWeight: '600' }],
-        'heading-3': ['1.5rem', { lineHeight: '2rem', fontWeight: '600' }],
-        'heading-4': ['1.25rem', { lineHeight: '1.75rem', fontWeight: '600' }],
-        'body': ['1rem', { lineHeight: '1.5rem' }],
-        'body-sm': ['0.875rem', { lineHeight: '1.25rem' }],
-        'caption': ['0.75rem', { lineHeight: '1rem' }],
-      },
-
-      // Spacing - semantic
-      spacing: {
-        'gutter': '1rem',        // Mobile gutter
-        'gutter-md': '1.5rem',    // Tablet gutter
-        'gutter-lg': '2rem',      // Desktop gutter
-        'section': '4rem',        // Section spacing
-        'card': '1.5rem',        // Card padding
-      },
-
-      // Border radius - semantic
-      borderRadius: {
-        'button': '0.375rem',
-        'input': '0.375rem',
-        'card': '0.5rem',
-        'modal': '0.75rem',
-      },
-    },
-  },
-};
-```
-
-### 3. Component Tokens
-
-Specific to components:
-
-```typescript
-// tailwind.config.ts - Component tokens
-export default {
-  theme: {
-    extend: {
-      // Button tokens
-      button: {
-        'height': {
-          'sm': '2rem',
-          'DEFAULT': '2.5rem',
-          'lg': '3rem',
-        },
-        'padding': {
-          'sm': '0.5rem 0.75rem',
-          'DEFAULT': '0.75rem 1.5rem',
-          'lg': '1rem 2rem',
-        },
-        'font-size': {
-          'sm': '0.875rem',
-          'DEFAULT': '1rem',
-          'lg': '1.125rem',
-        },
-      },
-
-      // Input tokens
-      input: {
-        'height': '2.5rem',
-        'padding': '0.5rem 0.75rem',
-      },
-
-      // Card tokens
-      card: {
-        'padding': '1.5rem',
-        'radius': '0.5rem',
-        'shadow': '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -2px rgb(0 0 0 / 0.1)',
-      },
-    },
-  },
-};
+Layer 1 (Primitives):  --color-charcoal-900: #0a0a0b     (raw values in @theme)
+Layer 2 (Semantic):    --color-background: var(--color-charcoal-900)   (aliases for usage)
+Layer 3 (Component):   n/a — components reference semantic utilities directly: bg-card, text-primary, …
 ```
 
 ---
 
-## CSS Custom Properties
+## Where tokens live
 
-For runtime theming support:
+A single file: [`packages/ui/src/styles/globals.css`](../../packages/ui/src/styles/globals.css). Apps import it via `@import "@splashh/ui/styles.css";`.
 
 ```css
-/* styles/themes.css */
-:root {
-  /* Primitive - Colors */
-  --color-blue-50: #eff6ff;
-  --color-blue-100: #dbeafe;
-  /* ... */
+/* packages/ui/src/styles/globals.css */
+@import "tailwindcss";
 
-  /* Semantic - Brand */
-  --color-primary: #2563eb;
-  --color-primary-foreground: #ffffff;
+@theme {
+  /* Brand */
+  --color-volt: #ccff00;
+  --color-volt-hover: #b3e600;
+  --color-volt-soft: #ccff001a;
+  --color-accent-warm: #ff8a3d;
+  --color-accent-warm-soft: #ff8a3d33;
+  --color-accent-cool: #2bb1ff;
 
-  /* Semantic - Functional */
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
+  /* Charcoal neutrals */
+  --color-charcoal-50:  #f5f6f7;
+  --color-charcoal-100: #e6e7eb;
+  --color-charcoal-200: #c8cbd2;
+  --color-charcoal-300: #a4a9b3;
+  --color-charcoal-400: #7a808c;
+  --color-charcoal-500: #555b66;
+  --color-charcoal-600: #3a3f48;
+  --color-charcoal-700: #2a2d34;
+  --color-charcoal-800: #1d1f24;
+  --color-charcoal-900: #0a0a0b;
+  --color-charcoal-950: #050506;
+
+  /* Semantic */
+  --color-background: var(--color-charcoal-900);
+  --color-foreground: #ffffff;
+  --color-card: var(--color-charcoal-800);
+  --color-card-foreground: #ffffff;
+  --color-popover: var(--color-charcoal-800);
+  --color-popover-foreground: #ffffff;
+  --color-primary: var(--color-volt);
+  --color-primary-hover: var(--color-volt-hover);
+  --color-primary-foreground: #000000;
+  --color-secondary: var(--color-charcoal-700);
+  --color-secondary-foreground: #ffffff;
+  --color-muted: var(--color-charcoal-700);
+  --color-muted-foreground: var(--color-charcoal-300);
+  --color-accent: var(--color-charcoal-700);
+  --color-accent-foreground: #ffffff;
   --color-destructive: #ef4444;
-
-  /* Semantic - Surface */
-  --color-background: #ffffff;
-  --color-foreground: #0f172a;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #2563eb;
-
-  /* Spacing */
-  --spacing-gutter: 1rem;
-  --spacing-section: 4rem;
-  --spacing-card: 1.5rem;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #22c55e;
+  --color-success-foreground: #000000;
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #000000;
+  --color-border: var(--color-charcoal-600);
+  --color-input: var(--color-charcoal-700);
+  --color-ring: var(--color-volt);
 
   /* Typography */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-display: "Oswald", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Border radius */
-  --radius-button: 0.375rem;
-  --radius-input: 0.375rem;
-  --radius-card: 0.5rem;
-}
-
-/* Dark theme */
-.dark {
-  --color-background: #0f172a;
-  --color-foreground: #f8fafc;
-  --color-muted: #1e293b;
-  --color-muted-foreground: #94a3b8;
-  --color-card: #1e293b;
-  --color-card-foreground: #f8fafc;
-  --color-border: #334155;
-  --color-input: #334155;
-}
-
-/* Tenant theming - apply via CSS variables on root */
-[data-theme="splashh"] {
-  --color-primary: #0066cc;
-}
-
-[data-theme="acme"] {
-  --color-primary: #e11d48;
+  /* Animations (sports-club motion vocabulary) */
+  --animate-rise-up: rise-up 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-score-pop: score-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-lane-glow: lane-glow 2.4s ease-in-out infinite;
+  --animate-wave-drift: wave-drift 6s ease-in-out infinite;
+  --animate-slide-in-left: slide-in-left 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-swim-bob: swim-bob 2.6s ease-in-out infinite;
+  --animate-whistle: whistle 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-stroke: stroke 1.2s cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 ```
 
----
-
-## Token Naming Conventions
-
-| Category | Pattern | Example |
-|----------|---------|---------|
-| Primitive colors | `{color}-{shade}` | `blue-500`, `gray-100` |
-| Semantic colors | `{role}` or `{role}-{state}` | `primary`, `destructive`, `success` |
-| Surface colors | `{surface}-{property}` | `background`, `card-foreground` |
-| Spacing | `{name}` | `gutter`, `section`, `card` |
-| Typography | `{element}-{property}` | `heading-1`, `body-sm` |
-| Border radius | `{element}` | `button`, `input`, `card` |
+**That's the entire token system.** No `tailwind.config.ts`. No `tailwind-preset.ts`. No `postcss.config.js`. Tailwind 4's Vite plugin reads the `@theme` block and generates utilities.
 
 ---
 
-## Using Tokens in Components
+## Layer 1 — Primitives
 
-```typescript
-// components/ui/Button.tsx
-export function Button({
-  variant = 'default',
-  size = 'default',
-  className,
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      className={cn(
-        // Use semantic tokens
-        'inline-flex items-center justify-center rounded-button font-medium',
-        'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        'disabled:pointer-events-none disabled:opacity-50',
+Raw values. The 9-step charcoal ramp + volt + accent-warm + accent-cool are the only color primitives. They're exposed as `bg-charcoal-{n}`, `text-charcoal-{n}`, etc.
 
-        // Variant tokens
-        variant === 'default' && 'bg-primary text-primary-foreground hover:bg-primary/90',
-        variant === 'destructive' && 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        variant === 'outline' && 'border border-input bg-background hover:bg-muted hover:text-muted-foreground',
-        variant === 'secondary' && 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        variant === 'ghost' && 'hover:bg-muted hover:text-muted-foreground',
-        variant === 'link' && 'text-primary underline-offset-4 hover:underline',
-
-        // Size tokens
-        size === 'sm' && 'h-9 px-3 text-sm',
-        size === 'default' && 'h-10 px-4',
-        size === 'lg' && 'h-11 px-8 text-lg',
-
-        className
-      )}
-      {...props}
-    />
-  );
-}
-```
+Why no Tailwind `theme.extend.colors.blue.50` style primitives? Because we don't need them. The palette is intentionally narrow — anything outside the charcoal + volt + warm/cool accent palette is a design smell and should be flagged in review.
 
 ---
 
-## Trade-offs
+## Layer 2 — Semantic
 
-| Decision | What we gain | What we give up |
-|----------|--------------|-----------------|
-| Three-layer tokens | Clear abstraction, easy theming | More config files |
-| CSS variables | Runtime theming, dynamic changes | Slightly more complex build |
-| Tailwind mapping | Type safety, IDE support | Learning curve |
+Aliases for *where* a color is used, not *what* it is. `bg-card` doesn't tell you the color, it tells you the role. This is the only layer most components ever reference.
+
+| Token | Resolves to | Used for |
+|---|---|---|
+| `bg-background` | `--color-charcoal-900` | page surface |
+| `bg-card` | `--color-charcoal-800` | elevated surfaces (Card, Popover) |
+| `bg-secondary` | `--color-charcoal-700` | hover / muted backgrounds |
+| `bg-muted` | `--color-charcoal-700` | placeholders, skeletons |
+| `text-foreground` | `#ffffff` | primary text |
+| `text-muted-foreground` | `--color-charcoal-300` | secondary text, captions |
+| `bg-primary` | `--color-volt` | primary CTA, active state |
+| `text-primary` | `--color-volt` | brand emphasis |
+| `border-border` | `--color-charcoal-600` | dividers, card outlines |
+| `bg-destructive` | `#ef4444` | destructive actions |
+| `bg-success` | `#22c55e` | confirmations |
+| `bg-warning` | `#f59e0b` | past-due, attention |
+
+If we ever ship a second tenant or a second theme, only the semantic layer changes — components don't.
 
 ---
 
-## Related Documents
+## Layer 3 — Component
 
-- [Theme Strategy](theme-strategy.md) — Dark mode and tenant theming
-- [Component Design](component-design.md) — Token usage in components
-- [Design Tokens W3C Draft](https://design-tokens.github.io/community-group/format/) — Full specification
+Tailwind 4 + `@theme` already gives us everything we need. Component-level wrappers (Button, Card, Input) live in `packages/ui` and apply semantic tokens via cva variants. **There is no separate component-token file.** If a component needs a one-off color, it should either:
+
+1. Promote that color to a semantic token (preferred), or
+2. Use an inline arbitrary value `[--my-color:#abc]` with a code-review comment explaining why it doesn't generalize.
+
+---
+
+## Naming conventions
+
+- **Colors**: `--color-{name}-{step}` for ramps (charcoal-50…950), `--color-{name}` for one-offs (volt, accent-warm, accent-cool).
+- **Semantic**: `--color-{role}` for surface/text/border, `--color-{role}-foreground` for ink on that surface (shadcn convention).
+- **Fonts**: `--font-{family}` — `display` (Oswald), `sans` (Plus Jakarta Sans), `mono` (system mono).
+- **Animations**: `--animate-{name}` where `{name}` is the keyframe name.
+- **Keyframes**: `animation: {name} {duration}ms {easing} both` — declared alongside the `--animate-*` token in `@theme`.
+
+---
+
+## Adding a new token
+
+1. Edit `packages/ui/src/styles/globals.css` and add the variable inside `@theme { … }`.
+2. Restart Vite (`pnpm dev`) so the new utility classes are generated.
+3. Reference it in components via the generated class (`bg-my-color`, `text-my-color`).
+4. If it's a color meant for a specific role (e.g. "info"), add a semantic alias alongside it (`--color-info: var(--color-accent-cool)`).
+
+**Don't:**
+- Add raw hex values to component classNames.
+- Define colors in JS/TS files.
+- Create a separate `tokens.ts` that mirrors `globals.css`.
+
+---
+
+## Token reference
+
+For an exhaustive list of every token currently exported, see the `@theme` block in [`packages/ui/src/styles/globals.css`](../../packages/ui/src/styles/globals.css). The file is the source of truth.
+
+---
+
+## Related documents
+
+- [`theme-strategy.md`](./theme-strategy.md) — why single dark + volt, FOUC prevention, next-themes wiring
+- [`component-design.md`](./component-design.md) — how primitives compose

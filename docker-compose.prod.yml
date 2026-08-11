@@ -1,0 +1,154 @@
+# Production stack for Splashh Sports Platform on Dokploy.
+#
+# Topology:
+#   * postgres  — primary database
+#   * redis     — cache + rate-limit store
+#   * backend   — FastAPI via uvicorn, exposes /v1/* (port 8000)
+#   * web-pwa   — static PWA served by nginx, proxies /v1/* to backend
+#
+# Routing:
+#   Both `web-pwa` and `backend` expose Traefik labels. Dokploy mounts its
+#   shared `dokploy-network` so Traefik can reach the services by container
+#   name. Configure two domains in Dokploy UI:
+#
+#     web-pwa → https://yourdomain.com   (Host(`yourdomain.com`))
+#     backend → https://api.yourdomain.com (Host(`api.yourdomain.com`))
+#
+# Required Dokploy env vars (set in the UI — they land in the same
+# directory's `.env` file and are picked up via `env_file`):
+#     POSTGRES_PASSWORD, DATABASE_URL, REDIS_URL,
+#     JWT_ALGORITHM (HS256|RS256), JWT_PRIVATE_KEY, JWT_PUBLIC_KEY,
+#     CORS_ALLOWED_ORIGINS (JSON array string),
+#     RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET,
+#     DOMAIN_WEB (e.g. yourdomain.com), DOMAIN_API (e.g. api.yourdomain.com)
+#
+# Usage from Dokploy:
+#   1. Create a new "Compose" service, point it at this file.
+#   2. Add the env vars above in the Dokploy UI.
+#   3. Bind the two domains (`DOMAIN_WEB`, `DOMAIN_API`) to the
+#      `web-pwa` and `backend` services respectively.
+#   4. Deploy.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-splashh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-splashh}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-splashh} -d ${POSTGRES_DB:-splashh}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    # No Traefik labels — Postgres stays on the internal network.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEBUG: "false"
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_private.pem
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-razorpay}
+      AUTH_REFRESH_COOKIE_SECURE: "true"
+      AUTH_REFRESH_COOKIE_SAMESITE: lax
+    secrets:
+      - jwt_private.pem
+      - jwt_public.pem
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      # HTTP → HTTPS redirect.
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-api-http.rule=Host(`${DOMAIN_API}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-api-http.entrypoints=web
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-api-http.middlewares=redirect-to-https
+      # HTTPS router.
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-api-https.rule=Host(`${DOMAIN_API}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-api-https.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-api-https.tls.certresolver=letsencrypt
+      - traefik.http.services.${COMPOSE_PROJECT_NAME:-splashh}-api.loadbalancer.server.port=8000
+      # Razorpay webhook is exempt from rate limiting (Dokploy provides
+      # a `global` rate-limit middleware; uncomment if you turn it on).
+      # - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-api-https.middlewares=skip-rate-limit
+
+  web-pwa:
+    build:
+      context: .
+      dockerfile: apps/web-pwa/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      # HTTP → HTTPS redirect.
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-web-http.rule=Host(`${DOMAIN_WEB}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-web-http.entrypoints=web
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-web-http.middlewares=redirect-to-https
+      # HTTPS router.
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-web-https.rule=Host(`${DOMAIN_WEB}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-web-https.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-splashh}-web-https.tls.certresolver=letsencrypt
+      - traefik.http.services.${COMPOSE_PROJECT_NAME:-splashh}-web.loadbalancer.server.port=80
+
+volumes:
+  postgres_data:
+    name: ${COMPOSE_PROJECT_NAME:-splashh}_postgres_data
+  redis_data:
+    name: ${COMPOSE_PROJECT_NAME:-splashh}_redis_data
+
+networks:
+  default:
+    name: dokploy-network
+
+secrets:
+  jwt_private.pem:
+    file: ./secrets/jwt_private.pem
+  jwt_public.pem:
+    file: ./secrets/jwt_public.pem

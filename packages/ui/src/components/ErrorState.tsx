@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "../lib/cn.js";
+import { Button } from "./ui/button.js";
 
 export interface ErrorStateProps {
   title?: string;
@@ -21,22 +22,18 @@ export function ErrorState({
       role="alert"
       data-testid={rest["data-testid"]}
       className={cn(
-        "flex flex-col items-center justify-center gap-3 px-4 py-12 text-center",
+        "flex flex-col items-center justify-center gap-4 border-2 border-destructive bg-destructive/10 px-4 py-12 text-center",
         className,
       )}
     >
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-destructive">{title}</h2>
       {description && (
         <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
       )}
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          Retry
-        </button>
+        <Button variant="outline" onClick={onRetry}>
+          Try again
+        </Button>
       )}
     </div>
   );

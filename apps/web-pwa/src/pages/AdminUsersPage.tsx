@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input } from "@splashh/ui";
+import { useState, useEffect, useMemo } from "react";
+import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input, Badge } from "@splashh/ui";
+import { Search } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -88,7 +89,7 @@ function AddUserForm({ onCreated }: { onCreated: () => void }) {
           </fieldset>
           {create.error && (
             <p role="alert" className="text-sm text-destructive">
-              {(create.error as Error).message}
+              Something went wrong. Please try again, or contact your club if the problem continues.
             </p>
           )}
           <Button type="submit" size="sm" disabled={isSubmitting || create.isPending}>
@@ -100,9 +101,33 @@ function AddUserForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+function getRoleBadgeVariant(role: string): "accent" | "default" | "muted" {
+  if (role === "tenant_admin") return "accent";
+  if (role === "customer") return "muted";
+  return "default";
+}
+
+function formatDate(dateString: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(dateString));
+}
+
 export function AdminUsersPage() {
   const { data, isLoading, error } = useUsers();
   const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    if (!data) return [];
+    if (!search.trim()) return data;
+    const q = search.toLowerCase();
+    return data.filter(
+      (u) => u.email.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q)
+    );
+  }, [data, search]);
 
   return (
     <div className="container py-6">
@@ -114,19 +139,64 @@ export function AdminUsersPage() {
       {isLoading && <p>Loading...</p>}
       {error && <p className="text-destructive">Failed to load users.</p>}
       <Card>
-        <CardHeader><CardTitle className="text-base">All users</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-end">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by email or name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-64 pl-9"
+              />
+            </div>
+          </div>
+        </CardHeader>
         <CardContent>
-          {data?.length === 0 && <p className="text-sm text-muted-foreground">No users yet.</p>}
-          <ul className="divide-y">
-            {data?.map((u) => (
-              <li key={u.id} className="flex items-center justify-between py-2 text-sm">
-                <span>
-                  {u.email} · {u.full_name}
-                </span>
-                <span className="text-muted-foreground">{u.roles.join(", ")}</span>
-              </li>
-            ))}
-          </ul>
+          {data && (
+            <p className="text-sm text-muted-foreground mb-3">
+              Showing {filteredUsers.length} of {data.length} users
+            </p>
+          )}
+          {filteredUsers.length === 0 && search && (
+            <p className="text-sm text-muted-foreground py-4">No users match your search.</p>
+          )}
+          {filteredUsers.length === 0 && !search && (
+            <p className="text-sm text-muted-foreground">No users yet.</p>
+          )}
+          {filteredUsers.length > 0 && (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b text-left text-sm text-muted-foreground">
+                  <th className="pb-2 font-medium">Email</th>
+                  <th className="pb-2 font-medium">Full Name</th>
+                  <th className="pb-2 font-medium">Role</th>
+                  <th className="pb-2 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => (
+                  <tr key={u.id} className="border-b last:border-0">
+                    <td className="py-3 text-sm">{u.email}</td>
+                    <td className="py-3 text-sm">{u.full_name}</td>
+                    <td className="py-3">
+                      <div className="flex gap-1 flex-wrap">
+                        {u.roles.map((role) => (
+                          <Badge key={role} variant={getRoleBadgeVariant(role)}>
+                            {role}
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 text-sm text-muted-foreground">
+                      {formatDate(u.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
     </div>

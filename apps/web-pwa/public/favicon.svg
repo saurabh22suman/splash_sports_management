@@ -1,1 +1,33 @@
-touch: cannot touch '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" fill="#0EA5E9"/></svg>': No such file or directory
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background: Deep ocean blue -->
+  <rect x="0" y="0" width="32" height="32" rx="6" fill="#0E6BA8"/>
+
+  <!-- Wave: Stylized water wave -->
+  <path
+    d="M4 22
+       C8 18, 10 20, 12 18
+       C16 14, 18 18, 20 16
+       C24 12, 26 16, 28 14
+       L28 22
+       C28 22, 24 26, 20 26
+       C16 26, 12 22, 8 22
+       C6 22, 4 22, 4 22
+       Z"
+    fill="#FAFBFC"
+    opacity="0.9"
+  />
+
+  <!-- Secondary wave: Accent orange cap suggestion -->
+  <path
+    d="M6 18
+       C9 15, 11 17, 14 14
+       C17 11, 19 14, 22 12
+       C25 10, 27 12, 27 12
+       L27 14
+       C27 14, 24 16, 20 16
+       C16 16, 12 13, 8 15
+       C6 16, 6 18, 6 18
+       Z"
+    fill="#E85D04"
+  />
+</svg>

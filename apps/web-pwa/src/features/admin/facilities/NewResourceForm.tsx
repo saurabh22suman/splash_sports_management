@@ -13,7 +13,13 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-export function NewResourceForm({ facilityId }: { facilityId: string }) {
+export function NewResourceForm({
+  facilityId,
+  onCreated,
+}: {
+  facilityId: string;
+  onCreated?: () => void;
+}) {
   const {
     register,
     handleSubmit,
@@ -42,6 +48,7 @@ export function NewResourceForm({ facilityId }: { facilityId: string }) {
       attributes,
     });
     reset();
+    onCreated?.();
   });
 
   return (
@@ -64,7 +71,7 @@ export function NewResourceForm({ facilityId }: { facilityId: string }) {
               <select
                 id="rtype"
                 {...register("resource_type")}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-11 w-full border-2 border-border bg-input px-4 py-2 text-sm text-foreground transition-all duration-200 ease-out focus-visible:outline-none focus-visible:border-primary focus-visible:shadow-volt-sm"
               >
                 <option value="court">Court</option>
                 <option value="lane">Lane</option>
@@ -84,13 +91,15 @@ export function NewResourceForm({ facilityId }: { facilityId: string }) {
             <Input id="rattr" placeholder='{"surface":"clay"}' {...register("attributes")} />
           </FormField>
           {create.error && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive">
               {(create.error as Error).message}
             </p>
           )}
-          <Button type="submit" size="sm" disabled={isSubmitting || create.isPending}>
-            {create.isPending ? "Adding…" : "Add resource"}
-          </Button>
+          <div className="flex justify-end border-t-2 border-border pt-3">
+            <Button type="submit" disabled={isSubmitting || create.isPending}>
+              {create.isPending ? "Adding…" : "Add resource"}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

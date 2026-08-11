@@ -187,19 +187,26 @@ class PaymentService:
 
         if etype == "payment.captured":
             ent = payload.get("payment", {}).get("entity", {})
-            notes = ent.get("notes", {}) or {}
-            payment_id = UUID(notes["payment_id"])
-            tenant_id = UUID(notes["tenant_id"])
-            invoice_id = UUID(notes["invoice_id"])
-
-            payment = await self._payments.get_by_id(tenant_id, payment_id)
-            if payment is None:
-                await self._processed_events.mark_processed(event["id"], tenant_id, etype)
+            # F-07 Fix: Resolve tenant from DB, not from user-controlled notes
+            # First, look up the payment by razorpay_payment_id to get tenant
+            razorpay_payment_id = ent.get("id")
+            if not razorpay_payment_id:
+                await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
+
+            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(razorpay_payment_id)
+            if payment is None:
+                await self._processed_events.mark_processed(event["id"], uuid4(), etype)
+                return
+
+            # Now use the tenant from DB, not from notes
+            tenant_id = payment.tenant_id
+            invoice_id = payment.invoice_id
+            notes = ent.get("notes", {}) or {}
 
             inv = await self._invoices.get_for_update(tenant_id, invoice_id)
             now = datetime.now(UTC)
-            payment.razorpay_payment_id = ent.get("id") or payment.razorpay_payment_id
+            payment.razorpay_payment_id = razorpay_payment_id
             payment.status = "captured"
             payment.captured_at = now
             inv.status = "paid"
@@ -219,16 +226,21 @@ class PaymentService:
 
         elif etype == "payment.failed":
             ent = payload.get("payment", {}).get("entity", {})
-            notes = ent.get("notes", {}) or {}
-            payment_id = UUID(notes["payment_id"])
-            tenant_id = UUID(notes["tenant_id"])
-            invoice_id = UUID(notes["invoice_id"])
-            reason = ent.get("error_code") or ent.get("error_description") or "payment_failed"
-
-            payment = await self._payments.get_by_id(tenant_id, payment_id)
-            if payment is None:
-                await self._processed_events.mark_processed(event["id"], tenant_id, etype)
+            # F-07 Fix: Resolve tenant from DB, not from user-controlled notes
+            razorpay_payment_id = ent.get("id")
+            if not razorpay_payment_id:
+                await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
+
+            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(razorpay_payment_id)
+            if payment is None:
+                await self._processed_events.mark_processed(event["id"], uuid4(), etype)
+                return
+
+            # Now use the tenant from DB, not from notes
+            tenant_id = payment.tenant_id
+            invoice_id = payment.invoice_id
+            reason = ent.get("error_code") or ent.get("error_description") or "payment_failed"
 
             inv = await self._invoices.get_for_update(tenant_id, invoice_id)
             payment.status = "failed"
@@ -248,14 +260,28 @@ class PaymentService:
         elif etype == "refund.processed":
             ent = payload.get("refund", {}).get("entity", {})
             razorpay_refund_id = ent.get("id")
+            # F-08 Fix: Get razorpay_payment_id from the refund entity to resolve tenant
+            razorpay_payment_id = ent.get("payment_id")
 
-            refund = await self._refunds.get_by_razorpay_refund_id_any_tenant(razorpay_refund_id)
+            if not razorpay_payment_id or not razorpay_refund_id:
+                await self._processed_events.mark_processed(event["id"], uuid4(), etype)
+                return
+
+            # First, look up the payment to get tenant_id
+            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(razorpay_payment_id)
+            if payment is None:
+                await self._processed_events.mark_processed(event["id"], uuid4(), etype)
+                return
+
+            # Now use tenant-scoped lookup for the refund
+            tenant_id = payment.tenant_id
+            refund = await self._refunds.get_by_razorpay_id_with_payment(
+                tenant_id, razorpay_payment_id, razorpay_refund_id
+            )
             if refund is None:
                 await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
 
-            tenant_id = refund.tenant_id
-            payment = await self._payments.get_by_id(tenant_id, refund.payment_id)
             inv = await self._invoices.get_for_update(tenant_id, payment.invoice_id)
             now = datetime.now(UTC)
             refund.status = "completed"

@@ -1,0 +1,6 @@
+{
+  "name": "Splashh Sports",
+  "description": "A modern Sports Club Management Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -124,6 +124,10 @@ class TestAuthEndpoints:
         result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
         result.user_id = uuid4()
         result.tenant_id = uuid4()
+        result.expires_in = 900  # 15 minutes in seconds
+        result.refresh_expires_in = 2592000  # 30 days in seconds
+        result.customer_id = uuid4()
+        result.roles = ["tenant_admin"]
 
         mock_svc = MagicMock()
         mock_svc.login = AsyncMock(return_value=result)
@@ -152,6 +156,10 @@ class TestAuthEndpoints:
         result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
         result.user_id = uuid4()
         result.tenant_id = uuid4()
+        result.expires_in = 900
+        result.refresh_expires_in = 2592000
+        result.customer_id = uuid4()
+        result.roles = ["tenant_admin"]
 
         mock_svc = MagicMock()
         mock_svc.login = AsyncMock(return_value=result)
@@ -181,6 +189,10 @@ class TestAuthEndpoints:
         result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
         result.user_id = uuid4()
         result.tenant_id = uuid4()
+        result.expires_in = 900
+        result.refresh_expires_in = 2592000
+        result.customer_id = uuid4()
+        result.roles = ["tenant_admin"]
 
         mock_svc = MagicMock()
         mock_svc.refresh = AsyncMock(return_value=result)
@@ -209,6 +221,10 @@ class TestAuthEndpoints:
         result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
         result.user_id = uuid4()
         result.tenant_id = uuid4()
+        result.expires_in = 900
+        result.refresh_expires_in = 2592000
+        result.customer_id = uuid4()
+        result.roles = ["tenant_admin"]
 
         mock_svc = MagicMock()
         mock_svc.refresh = AsyncMock(return_value=result)
@@ -268,6 +284,9 @@ class TestAuthEndpoints:
         result.refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
         result.user_id = uuid4()
         result.tenant_id = uuid4()
+        result.expires_in = 900
+        result.refresh_expires_in = 2592000
+        result.customer_id = uuid4()
         result.roles = ["tenant_admin", "customer"]
 
         mock_svc = MagicMock()

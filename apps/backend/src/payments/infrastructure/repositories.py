@@ -67,6 +67,19 @@ class InvoiceRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_razorpay_payment_link_id_any_tenant(
+        self, payment_link_id: str
+    ) -> InvoiceModel | None:
+        """Look up invoice by Razorpay payment link ID across all tenants (for webhook processing)."""
+        result = await self._s.execute(
+            select(InvoiceModel)
+            .join(PaymentModel, PaymentModel.invoice_id == InvoiceModel.id)
+            .where(
+                PaymentModel.razorpay_payment_link_id == payment_link_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def list_by_customer(
         self,
         tenant_id: UUID,
@@ -183,6 +196,18 @@ class PaymentRepository:
             )
         ).scalar_one_or_none()
 
+    async def get_by_razorpay_payment_id_for_any_tenant(
+        self, razorpay_payment_id: str
+    ) -> PaymentModel | None:
+        """Look up payment by Razorpay payment ID across all tenants (for webhook processing)."""
+        return (
+            await self._s.execute(
+                select(PaymentModel).where(
+                    PaymentModel.razorpay_payment_id == razorpay_payment_id
+                )
+            )
+        ).scalar_one_or_none()
+
 
 class RefundRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -204,16 +229,26 @@ class RefundRepository:
             )
         ).scalar_one_or_none()
 
-    async def get_by_razorpay_refund_id_any_tenant(
-        self, razorpay_refund_id: str
+    async def get_by_razorpay_id_with_payment(
+        self, tenant_id: UUID, razorpay_payment_id: str, razorpay_refund_id: str
     ) -> RefundModel | None:
+        """Look up refund by tenant_id, razorpay_payment_id, and razorpay_refund_id.
+
+        This is used for webhook processing where we first look up the payment
+        to get tenant_id, then use it to look up the refund in a tenant-scoped way.
+        """
         return (
             await self._s.execute(
-                select(RefundModel).where(
-                    RefundModel.razorpay_refund_id == razorpay_refund_id
+                select(RefundModel)
+                .join(PaymentModel, PaymentModel.id == RefundModel.payment_id)
+                .where(
+                    RefundModel.razorpay_refund_id == razorpay_refund_id,
+                    PaymentModel.razorpay_payment_id == razorpay_payment_id,
+                    RefundModel.tenant_id == tenant_id,
                 )
             )
         ).scalar_one_or_none()
+
 
 
 class ProcessedRazorpayEventRepository:

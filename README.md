@@ -9,11 +9,13 @@ The complete engineering reference lives in [`docs/`](./docs/README.md).
 ## Stack
 
 - **Backend:** FastAPI + SQLAlchemy 2 (async) + Alembic + PostgreSQL 16 + Redis 7
-- **Frontend:** `apps/web-pwa` (single installable PWA; role-based home after login; admin users can create other roles)
-- **Auth:** Argon2id passwords, HS256 JWT (5min access) + opaque refresh tokens (30d, rotated, httpOnly cookie)
+- **Frontend:** `apps/web-pwa` — React 19 + Vite 6 + Tailwind 4 (`@theme`-based tokens), single installable PWA with role-based home after login
+- **UI kit:** `packages/ui` — shadcn-style primitives (`Button`, `Card`, `Input`, `FormField`, `EmptyState`, `ErrorState`, `LoadingSkeleton`, `Badge`, `StatusPill`) styled against a single dark + volt athletic palette (Oswald display, Plus Jakarta Sans body)
+- **Auth:** Argon2id passwords, RS256/HS256 JWT (5min access) + opaque refresh tokens (30d, rotated, httpOnly cookie)
 - **Multi-tenancy:** shared schema with `tenant_id` on every business table + Postgres RLS
+- **Payments:** Razorpay payment links + webhooks (multi-currency)
 - **Quality:** Ruff + mypy strict + pytest (TDD) for backend; Vitest + RTL + Playwright + axe-core for frontend
-- **Infra:** Docker Compose for local dev
+- **Infra:** `docker-compose.dev.yml` (local Postgres + Redis + backend with `--reload`) and `docker-compose.prod.yml` (Dokploy + Traefik) — see [`docs/docker.md`](./docs/docker.md)
 
 ## Repository layout
 
@@ -26,17 +28,23 @@ apps/
       customer/           # Customer profiles, waivers
       facility/           # Facilities, Resources, AvailabilityRules
       booking/            # Slot reservation, double-booking prevention
+      payments/           # Razorpay invoices, payment links, webhooks
     tests/
     alembic/              # Database migrations
     pyproject.toml
+    Dockerfile
   web-pwa/                # Single PWA with role-based routing
+    Dockerfile            # Multi-stage Node build + nginx runtime
+    nginx.conf            # SPA fallback + asset cache headers
 packages/
-  ui/                     # @splashh/ui — shadcn primitives + brand tokens
+  ui/                     # @splashh/ui — shadcn primitives + dark+volt theme
   api-client/             # @splashh/api-client — axios + auth + query keys
   config/                 # @splashh/config — shared tsconfig/vitest/biome
 docs/                     # Engineering handbook (read this!)
 e2e/                      # Playwright smoke specs
-docker-compose.yml
+docker-compose.dev.yml    # Local dev: Postgres + Redis + backend (+ optional Vite in 'ui' profile)
+docker-compose.prod.yml   # Production: Dokploy + Traefik labels + secrets
+.env.prod.example         # Template for production env vars
 playwright.config.ts
 tsconfig.base.json
 biome.json
@@ -58,15 +66,14 @@ biome.json
 # 1. Install JS deps (workspace root)
 pnpm install
 
-# 2. Start Postgres + Redis
-docker compose up -d postgres redis
+# 2. Start Postgres + Redis + backend
+docker compose -f docker-compose.dev.yml up -d
 
-# 3. Apply migrations
-cd apps/backend
-uv run alembic upgrade head
-cd ../..
+# 3. Apply migrations + seed demo data
+docker compose -f docker-compose.dev.yml --profile tools run --rm migrate
+docker compose -f docker-compose.dev.yml --profile tools run --rm seed-demo
 
-# 4. Run everything
+# 4. Start the PWA (locally — or use the 'ui' profile to run it inside Docker)
 pnpm dev
 # → backend on :8765, web-pwa on :5173
 ```

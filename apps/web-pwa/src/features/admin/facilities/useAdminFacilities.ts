@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@splashh/api-client";
-import { adminFacilitiesApi, type FacilityInput, type ResourceInput } from "./api";
+import {
+  adminFacilitiesApi,
+  type FacilityInput,
+  type FacilityUpdateInput,
+  type ResourceInput,
+  type ResourceUpdateInput,
+} from "./api";
 
 export function useAdminFacilities() {
   return useQuery({ queryKey: queryKeys.facilities.list("me"), queryFn: adminFacilitiesApi.list });
@@ -28,10 +34,49 @@ export function useCreateFacility() {
     },
   });
 }
+export function useUpdateFacility() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: FacilityUpdateInput }) =>
+      adminFacilitiesApi.update(id, input),
+    onSuccess: (f) => {
+      qc.invalidateQueries({ queryKey: ["facilities"] });
+      qc.setQueryData(queryKeys.facilities.detail(f.id), f);
+    },
+  });
+}
+export function useDeactivateFacility() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminFacilitiesApi.deactivate(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["facilities"] });
+    },
+  });
+}
 export function useCreateResource(facilityId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ResourceInput) => adminFacilitiesApi.createResource(facilityId, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.resources.listByFacility(facilityId) });
+    },
+  });
+}
+export function useUpdateResource(facilityId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ResourceUpdateInput }) =>
+      adminFacilitiesApi.updateResource(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.resources.listByFacility(facilityId) });
+    },
+  });
+}
+export function useDeactivateResource(facilityId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminFacilitiesApi.deactivateResource(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.resources.listByFacility(facilityId) });
     },

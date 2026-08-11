@@ -126,6 +126,42 @@ class Facility:
         self.status = FacilityStatus.UNDER_MAINTENANCE
         self.updated_at = datetime.now(timezone.utc)
 
+    def update_details(
+        self,
+        *,
+        name: str | None = None,
+        address_line1: str | None = None,
+        address_line2: str | None = None,
+        city: str | None = None,
+        state: str | None = None,
+        postal_code: str | None = None,
+        country: str | None = None,
+        timezone_: str | None = None,
+        phone: str | None = None,
+    ) -> None:
+        """Apply a partial update. Only non-None arguments are applied."""
+        if name is not None:
+            if len(name.strip()) < 2:
+                raise Validation("Facility name required")
+            self.name = name.strip()
+        if address_line1 is not None:
+            self.address_line1 = address_line1.strip()
+        if address_line2 is not None:
+            self.address_line2 = address_line2.strip() or None
+        if city is not None:
+            self.city = city.strip()
+        if state is not None:
+            self.state = state.strip()
+        if postal_code is not None:
+            self.postal_code = postal_code.strip()
+        if country is not None:
+            self.country = country.strip()
+        if timezone_ is not None:
+            self.timezone = timezone_
+        if phone is not None:
+            self.phone = phone or None
+        self.updated_at = datetime.now(timezone.utc)
+
 
 @dataclass(slots=True)
 class Resource:
@@ -172,6 +208,29 @@ class Resource:
 
     def deactivate(self) -> None:
         self.status = ResourceStatus.INACTIVE
+        self.updated_at = datetime.now(timezone.utc)
+
+    def reactivate(self) -> None:
+        self.status = ResourceStatus.ACTIVE
+        self.updated_at = datetime.now(timezone.utc)
+
+    def update_details(
+        self,
+        *,
+        name: str | None = None,
+        capacity: int | None = None,
+        attributes: dict[str, object] | None = None,
+    ) -> None:
+        if name is not None:
+            if len(name.strip()) < 1:
+                raise Validation("Resource name required")
+            self.name = name.strip()
+        if capacity is not None:
+            if capacity < 1:
+                raise Validation("Capacity must be >= 1")
+            self.capacity = capacity
+        if attributes is not None:
+            self.attributes = attributes
         self.updated_at = datetime.now(timezone.utc)
 
 

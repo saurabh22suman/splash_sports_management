@@ -10,12 +10,15 @@ from booking.domain.entities import BookingStatus, CancellationReason
 
 
 class BookingCreate(BaseModel):
+    """Create a booking.
+
+    Note: price_cents is NOT accepted from client (F-05 security fix).
+    Price is computed server-side from BookingTariff table.
+    """
     customer_id: UUID
     resource_id: UUID
     start_at: datetime
     end_at: datetime
-    price_cents: int = Field(default=0, ge=0)
-    currency: str = Field(default="INR", min_length=3, max_length=3)
     notes: str | None = Field(default=None, max_length=1000)
 
 
@@ -27,7 +30,12 @@ class BookingOut(BaseModel):
     id: UUID
     tenant_id: UUID
     customer_id: UUID
+    customer_name: str | None = None  # For admin view with JOIN
+    customer_email: str | None = None  # For admin view with JOIN
     resource_id: UUID
+    facility_id: UUID | None = None  # For filtering
+    facility_name: str | None = None
+    resource_name: str | None = None
     start_at: datetime
     end_at: datetime
     status: str

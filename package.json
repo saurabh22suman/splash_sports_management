@@ -16,7 +16,9 @@
     "test:e2e": "playwright test",
     "seed:demo": "make -C apps/backend seed-demo",
     "seed:mock": "make -C apps/backend seed-mock",
-    "ui:add": "pnpm --filter @splashh/ui dlx shadcn@latest add"
+    "ui:add": "pnpm --filter @splashh/ui dlx shadcn@latest add",
+    "gen:types": "pnpm --filter web-pwa gen:types",
+    "gen:types:check": "pnpm --filter web-pwa gen:types:check"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

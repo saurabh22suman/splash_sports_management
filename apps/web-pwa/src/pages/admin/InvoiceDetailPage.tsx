@@ -4,6 +4,10 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@splash
 import { useInvoice, useRefundInvoice } from "@/features/payments/hooks";
 import { useAuthStore } from "@splashh/api-client";
 
+function formatCurrency(amountPaise: number, currency: string): string {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amountPaise / 100);
+}
+
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: inv, isLoading } = useInvoice(id);
@@ -32,12 +36,12 @@ export function InvoiceDetailPage() {
                 <span>
                   {li.description} x {li.quantity}
                 </span>
-                <span>INR {(li.total_paise / 100).toFixed(2)}</span>
+                <span>{formatCurrency(li.total_paise, inv.currency)}</span>
               </li>
             ))}
           </ul>
           <p className="mt-3 font-semibold">
-            Total: INR {(inv.total_paise / 100).toFixed(2)}
+            Total: {formatCurrency(inv.total_paise, inv.currency)}
           </p>
         </CardContent>
       </Card>

@@ -1,11 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
@@ -13,8 +15,8 @@ export default defineConfig({
         name: "Splashh",
         short_name: "Splashh",
         description: "Manage your sports club",
-        theme_color: "#0EA5E9",
-        background_color: "#ffffff",
+        theme_color: "#CCFF00",
+        background_color: "#0a0a0b",
         display: "standalone",
         start_url: "/",
         icons: [

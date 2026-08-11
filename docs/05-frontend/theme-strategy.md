@@ -1,350 +1,161 @@
 # Theme Strategy
 
-> Dark mode via class strategy. Tenant theming via CSS variables. Persisted preference. No FOUC.
+> Single dark + volt athletic palette via Tailwind 4 `@theme`. Dark mode class wired with `next-themes`. Persisted preference. No FOUC.
 
-This document establishes theming strategies for the Splashh Sports Platform. We support dark mode, light mode, and tenant-specific branding.
+Splashh commits to one theme: **dark surface, volt (#CCFF00) accent, charcoal neutrals**. No light/dark toggle. Every page, modal and component renders against `#0a0a0b` page, `#1d1f24` cards, with `#CCFF00` for primary actions and active states. Fonts are **Oswald** (display, uppercase headlines) + **Plus Jakarta Sans** (body).
 
----
-
-## Dark Mode (Class Strategy)
-
-We use the **class** strategy for dark mode, which gives us explicit control over theming:
-
-```typescript
-// tailwind.config.ts
-export default {
-  darkMode: 'class',
-};
-```
-
-### Theme Provider
-
-```typescript
-// lib/theme/ThemeProvider.tsx
-import { createContext, useContext, useEffect, useState } from 'react';
-
-type Theme = 'light' | 'dark' | 'system';
-
-interface ThemeContextValue {
-  theme: Theme;
-  resolvedTheme: 'light' | 'dark';
-  setTheme: (theme: Theme) => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'system';
-    return (localStorage.getItem('theme') as Theme) || 'system';
-  });
-
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    const getSystemTheme = (): 'light' | 'dark' => {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    };
-
-    const updateTheme = () => {
-      const resolved = theme === 'system' ? getSystemTheme() : theme;
-      setResolvedTheme(resolved);
-
-      if (resolved === 'dark') {
-        root.classList.add('dark');
-        root.classList.remove('light');
-      } else {
-        root.classList.remove('dark');
-        root.classList.add('light');
-      }
-    };
-
-    updateTheme();
-
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      if (theme === 'system') {
-        updateTheme();
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
-
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-  return context;
-}
-```
+This is an intentional choice for a sports-club product targeting pool / court / gym operators — the brand reads as athletic, the contrast reads as a control panel, not a SaaS marketing page.
 
 ---
 
-## Preventing Flash of Unstyled Content (FOUC)
+## Token location
 
-To prevent FOUC, we must apply the theme before React hydrates:
-
-```typescript
-// index.html - Inline script runs before React
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <script>
-      // Immediately apply theme to prevent FOUC
-      (function() {
-        const theme = localStorage.getItem('theme') || 'system';
-        const root = document.documentElement;
-
-        if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          root.classList.add('dark');
-        } else {
-          root.classList.add('light');
-        }
-      })();
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
-```
-
----
-
-## Theme Toggle Component
-
-```typescript
-// components/theme/ThemeToggle.tsx
-import { useTheme } from '@/lib/theme/ThemeProvider';
-import { Moon, Sun, Monitor } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/DropdownMenu';
-
-export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
-          {resolvedTheme === 'dark' ? (
-            <Moon className="h-4 w-4" />
-          ) : (
-            <Sun className="h-4 w-4" />
-          )}
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme('light')}>
-          <Sun className="mr-2 h-4 w-4" />
-          Light
-          {theme === 'light' && <Check className="ml-auto h-4 w-4" />}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('dark')}>
-          <Moon className="mr-2 h-4 w-4" />
-          Dark
-          {theme === 'dark' && <Check className="ml-auto h-4 w-4" />}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('system')}>
-          <Monitor className="mr-2 h-4 w-4" />
-          System
-          {theme === 'system' && <Check className="ml-auto h-4 w-4" />}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-```
-
----
-
-## Tenant Theming
-
-Tenants can customize colors via CSS variables:
-
-```typescript
-// lib/theme/tenant.ts
-interface TenantTheme {
-  id: string;
-  name: string;
-  colors: {
-    primary: string;
-    primaryForeground: string;
-    secondary: string;
-    secondaryForeground: string;
-    accent: string;
-    accentForeground: string;
-  };
-  logo?: string;
-}
-
-// Apply tenant theme
-export function applyTenantTheme(tenant: TenantTheme) {
-  const root = document.documentElement;
-
-  root.style.setProperty('--color-primary', tenant.colors.primary);
-  root.style.setProperty('--color-primary-foreground', tenant.colors.primaryForeground);
-  root.style.setProperty('--color-secondary', tenant.colors.secondary);
-  root.style.setProperty('--color-secondary-foreground', tenant.colors.secondaryForeground);
-  root.style.setProperty('--color-accent', tenant.colors.accent);
-  root.style.setProperty('--color-accent-foreground', tenant.colors.accentForeground);
-
-  // Set data attribute for CSS selectors
-  root.setAttribute('data-theme', tenant.id);
-}
-
-// CSS variables for tenant theming
-:root {
-  --color-primary: #2563eb;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #64748b;
-  --color-secondary-foreground: #ffffff;
-  --color-accent: #f1f5f9;
-  --color-accent-foreground: #0f172a;
-}
-```
-
-### Tenant Theme Hook
-
-```typescript
-// hooks/useTenantTheme.ts
-import { useEffect } from 'react';
-import { useTenant } from './useTenant';
-import { applyTenantTheme } from '@/lib/theme/tenant';
-
-export function useTenantTheme() {
-  const { tenant } = useTenant();
-
-  useEffect(() => {
-    if (tenant) {
-      applyTenantTheme(tenant);
-    }
-  }, [tenant]);
-
-  return tenant;
-}
-```
-
----
-
-## CSS Variables for All Themes
+All design tokens live in **one place**: [`packages/ui/src/styles/globals.css`](../../packages/ui/src/styles/globals.css), inside a single `@theme { … }` block. Apps import this stylesheet directly:
 
 ```css
-/* styles/themes.css */
+/* apps/web-pwa/src/styles/globals.css */
+@import "@splashh/ui/styles.css";
+```
 
-/* Light theme (default) */
-:root,
-:root[data-theme="light"] {
-  --color-background: #ffffff;
-  --color-foreground: #0f172a;
+The `@theme` directive tells Tailwind 4 to expose every `--color-*`, `--font-*`, `--animate-*`, and `--radius-*` variable as a utility class. Adding `--color-volt: #ccff00` is enough to generate `bg-volt`, `text-volt`, `border-volt`, etc.
 
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
+```css
+/* packages/ui/src/styles/globals.css */
+@theme {
+  --color-volt: #ccff00;
+  --color-volt-hover: #b3e600;
 
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
+  --color-charcoal-900: #0a0a0b;
+  --color-charcoal-800: #1d1f24;
+  --color-charcoal-700: #2a2d34;
+  --color-charcoal-600: #3a3f48;
+  --color-charcoal-300: #a4a9b3;
 
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0f172a;
+  --color-background: var(--color-charcoal-900);
+  --color-foreground: #ffffff;
+  --color-card: var(--color-charcoal-800);
+  --color-card-foreground: #ffffff;
+  --color-muted: var(--color-charcoal-700);
+  --color-muted-foreground: var(--color-charcoal-300);
+  --color-border: var(--color-charcoal-600);
 
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
+  --font-display: "Oswald", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
 
-  --color-ring: #2563eb;
-
-  --radius: 0.5rem;
+  --animate-rise-up: rise-up 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-score-pop: score-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* … */
 }
+```
 
-/* Dark theme */
-:root.dark,
-:root[data-theme="dark"] {
-  --color-background: #0f172a;
-  --color-foreground: #f8fafc;
+There is **no `tailwind.config.ts`**, **no `tailwind-preset.ts`**, and **no `postcss.config.js`** — Tailwind 4's Vite plugin reads tokens directly from CSS.
 
-  --color-muted: #1e293b;
-  --color-muted-foreground: #94a3b8;
+---
 
-  --color-card: #1e293b;
-  --color-card-foreground: #f8fafc;
+## Why this approach
 
-  --color-popover: #1e293b;
-  --color-popover-foreground: #f8fafc;
+### Tailwind 4 `@theme` instead of a JS config
 
-  --color-border: #334155;
-  --color-input: #334155;
+Tailwind 4 moves configuration into CSS, so:
 
-  --color-ring: #3b82f6;
+- Tokens are visible in the same file as the styles that consume them.
+- Adding `--color-accent-warm` generates `bg-accent-warm` / `text-accent-warm` automatically.
+- No build step needed for token additions.
 
-  --radius: 0.5rem;
+### Single dark theme
+
+- A sports-club operator lives in fluorescent-lit front-of-house with a phone. Dark UI reduces glare and reads as a control panel, not a marketing page.
+- We avoid the "light mode looks fine in the screenshot but breaks in prod" problem by not shipping it.
+- The volt accent (#CCFF00) is high-contrast on charcoal-900 — passes WCAG AA for large text and for icon / button labels.
+
+### Semantic tokens (`bg-card`, `text-foreground`, etc.)
+
+Component code uses semantic tokens, not raw colors:
+
+```tsx
+// ✅ preferred — works across themes / refactors
+<div className="bg-card text-card-foreground border border-border">
+
+// ❌ avoided — bypasses the system
+<div className="bg-[#1d1f24] text-white border-[#3a3f48]">
+```
+
+This is enforced by code review: any PR that adds raw hex / arbitrary Tailwind colors to a component is rejected.
+
+---
+
+## Dark mode provider
+
+We use [`next-themes`](https://github.com/pacocoursey/next-themes) for class-on-`<html>` management. Even though we ship one theme, the `class="dark"` attribute lets us test dark-vs-system-contrast regressions and leaves the door open for a light variant without touching components.
+
+```tsx
+// apps/web-pwa/src/main.tsx
+import { ThemeProvider } from "next-themes";
+import App from "./App";
+import "./styles/globals.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </ThemeProvider>
+  </React.StrictMode>,
+);
+```
+
+Settings:
+- `attribute="class"` — applies `class="dark"` to `<html>` (Tailwind's class strategy).
+- `defaultTheme="dark"` — never flashes light.
+- `enableSystem={false}` — system-preference auto-switch is intentionally disabled (we commit to dark).
+
+---
+
+## Preventing flash of unstyled content (FOUC)
+
+The `<html>` element ships with `class="dark"` set inline in `apps/web-pwa/index.html` so the page paints dark before React hydrates:
+
+```html
+<html lang="en" class="dark">
+```
+
+No inline script needed — `class="dark"` is rendered server-side (or statically for the SPA shell).
+
+---
+
+## Adding a new token
+
+To add a brand color or animation, edit `packages/ui/src/styles/globals.css`:
+
+```css
+@theme {
+  --color-pool-blue: #2bb1ff;   /* generates bg-pool-blue, text-pool-blue, … */
 }
+```
 
-/* Tenant theming - overrides primary colors */
-:root[data-theme="acme"] {
-  --color-primary: #e11d48;
-  --color-primary-foreground: #ffffff;
-}
+Restart Vite (`pnpm dev`) — the new utility classes are generated on the next build. No config files to edit.
 
-:root[data-theme="splashh"] {
-  --color-primary: #0066cc;
-  --color-primary-foreground: #ffffff;
+If you need a new token that should NOT become a utility (e.g. an internal spacing rhythm), put it under `@layer base` or as a plain CSS variable outside `@theme`:
+
+```css
+@layer base {
+  :root {
+    --internal-rhythm: 1.5rem;
+  }
 }
 ```
 
 ---
 
-## Using Theme Tokens in Components
+## Tenant theming (future)
 
-```typescript
-// Components automatically use theme tokens
-function Card() {
-  return (
-    <div className="bg-card text-card-foreground rounded-lg border border-border p-6 shadow-sm">
-      {/* All colors automatically respond to theme changes */}
-      <h2 className="text-lg font-semibold">Card Title</h2>
-      <p className="text-muted-foreground">Description text</p>
-    </div>
-  );
-}
-```
+Per-tenant colors are not yet supported. The intended path: pull `--color-volt` and `--color-volt-hover` from a `/v1/tenant/theme` endpoint, set them on `:root` via inline `<style>` after login. Components don't need to change because they reference `bg-primary` / `text-primary`, which resolve through the cascade.
 
 ---
 
-## Trade-offs
+## Related documents
 
-| Decision | What we gain | What we give up |
-|----------|--------------|-----------------|
-| Class strategy | Explicit control, SSR friendly | Requires JS |
-| System preference | Automatic dark mode | Less control |
-| CSS variables | Runtime theming, tenant customization | Browser support |
-| FOUC prevention | No flash | Inline script required |
-
----
-
-## Related Documents
-
-- [Design Tokens](design-tokens.md) — Token architecture
-- [Tailwind Dark Mode](https://tailwindcss.com/docs/dark-mode) — Full reference
+- [`design-tokens.md`](./design-tokens.md) — token architecture, primitive → semantic → component layers
+- [`component-design.md`](./component-design.md) — how primitives compose against the theme
+- [Tailwind 4 theme variables](https://tailwindcss.com/docs/theme) — official reference

@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     # ---- SSRF allowlist ----
     ssrf_allowed_hosts: list[str] = Field(default_factory=list)
 
+    # ---- App URL ----
+    app_url: str = Field(default="http://localhost:5173", description="Base URL of the frontend application")
+
     # ---- Payments (Razorpay) ----
     razorpay_key_id: str = Field(default="rzp_test_placeholder", description="Razorpay public key id")
     razorpay_key_secret: str = Field(default="rzp_test_placeholder_secret", description="Razorpay secret API key")

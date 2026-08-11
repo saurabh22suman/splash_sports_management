@@ -159,8 +159,11 @@ class UserRepository(BaseRepository[User]):
 class RefreshTokenRepository(BaseRepository[RefreshToken]):
     model = RefreshTokenModel
 
-    async def get_by_hash(self, token_hash: str) -> RefreshToken | None:
-        stmt = select(RefreshTokenModel).where(RefreshTokenModel.token_hash == token_hash)
+    async def get_by_hash(self, tenant_id: UUID, token_hash: str) -> RefreshToken | None:
+        stmt = select(RefreshTokenModel).where(
+            RefreshTokenModel.tenant_id == tenant_id,
+            RefreshTokenModel.token_hash == token_hash,
+        )
         result = await self.session.execute(stmt)
         m = result.scalar_one_or_none()
         return _refresh_to_domain(m) if m else None

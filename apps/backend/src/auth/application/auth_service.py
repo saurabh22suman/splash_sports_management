@@ -25,9 +25,14 @@ from auth.infrastructure.repositories import (
     TenantRepository,
     UserRepository,
 )
-from auth.infrastructure.token_service import HS256TokenService, TokenPair
+from auth.infrastructure.token_service import (
+    HS256TokenService,
+    RS256TokenService,
+    TokenPair,
+)
 from common.domain.exceptions import Conflict, Forbidden, Unauthorized, Validation
 from common.domain.types import TenantId, UserId
+from customer.infrastructure.repositories import CustomerRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -40,6 +45,7 @@ class LoginResult:
     user_id: UUID
     tenant_id: UUID
     roles: list[str]
+    customer_id: UUID | None = None
 
 
 class AuthService:
@@ -50,10 +56,11 @@ class AuthService:
         session: AsyncSession,
         *,
         password_hasher: Argon2PasswordHasher,
-        token_service: HS256TokenService,
+        token_service: HS256TokenService | RS256TokenService,
         tenants: TenantRepository,
         users: UserRepository,
         refresh_tokens: RefreshTokenRepository,
+        customers: CustomerRepository | None = None,
     ) -> None:
         self.session = session
         self.password_hasher = password_hasher
@@ -61,6 +68,7 @@ class AuthService:
         self.tenants = tenants
         self.users = users
         self.refresh_tokens = refresh_tokens
+        self.customers = customers
 
     # ----------------- tenant + first admin -----------------
 
@@ -131,6 +139,16 @@ class AuthService:
 
         pair, family_id = self._issue_pair(user)
         await self.persist_refresh(pair, user, family_id)
+
+        # Look up customer_id for users with customer role
+        customer_id = None
+        if self.customers is not None and user.roles:
+            user_roles = [r.value for r in user.roles]
+            if "customer" in user_roles:
+                customer = await self.customers.get_by_user(user.tenant_id, user.id)
+                if customer is not None:
+                    customer_id = customer.id
+
         return LoginResult(
             access_token=pair.access_token,
             refresh_token=pair.refresh_token,
@@ -139,6 +157,7 @@ class AuthService:
             user_id=user.id,
             tenant_id=user.tenant_id,
             roles=[r.value for r in user.roles],
+            customer_id=customer_id,
         )
 
     # ----------------- refresh (rotating) -----------------
@@ -149,8 +168,10 @@ class AuthService:
         except Exception as exc:
             raise Unauthorized("Invalid refresh token") from exc
 
+        # Tenant-scope the token lookup to prevent cross-tenant hash collision attacks
+        tenant_id = UUID(claims["tenant_id"])
         token_hash = self._hash(refresh_token)
-        record = await self.refresh_tokens.get_by_hash(token_hash)
+        record = await self.refresh_tokens.get_by_hash(tenant_id, token_hash)
 
         if record is None:
             # Reuse detected: revoke the entire family
@@ -180,6 +201,16 @@ class AuthService:
 
         pair, family_id = self._issue_pair(user, family_id=record.family_id)
         await self.persist_refresh(pair, user, family_id)
+
+        # Look up customer_id for users with customer role
+        customer_id = None
+        if self.customers is not None and user.roles:
+            user_roles = [r.value for r in user.roles]
+            if "customer" in user_roles:
+                customer = await self.customers.get_by_user(user.tenant_id, user.id)
+                if customer is not None:
+                    customer_id = customer.id
+
         return LoginResult(
             access_token=pair.access_token,
             refresh_token=pair.refresh_token,
@@ -188,6 +219,7 @@ class AuthService:
             user_id=user.id,
             tenant_id=user.tenant_id,
             roles=[r.value for r in user.roles],
+            customer_id=customer_id,
         )
 
     # ----------------- logout -----------------
@@ -264,27 +296,46 @@ class AuthService:
 
 def build_auth_service(session: AsyncSession, settings) -> AuthService:  # type: ignore[no-untyped-def]
     """Wire up the AuthService with all dependencies."""
-    # Read JWT signing key. For RS256 we'd read PEM files; for HS256 we use
-    # a symmetric secret derived from the private key path or env.
-    if settings.jwt_algorithm == "HS256":
-        secret_path = settings.jwt_private_key_path
-        # `is_file()` (not `exists()`) so an unset/empty path — which pydantic
-        # resolves to `Path('.')` — falls through to the dev fallback rather
-        # than crashing when we try to read the current directory as a file.
-        if secret_path and secret_path.is_file():
-            secret = secret_path.read_text(encoding="utf-8").strip()
-        else:
-            # dev fallback: derive from a well-known env var or default
-            import os
+    import datetime as dt
 
-            secret = os.environ.get("JWT_SECRET", "dev-only-jwt-secret-change-me-in-prod-please-32chars")
+    if settings.jwt_algorithm == "RS256":
+        # Try to get key paths from environment (production mode)
+        key_paths = RS256TokenService.get_secret(settings.environment)
+
+        if key_paths is not None:
+            # Production: keys must exist
+            token_service = RS256TokenService.from_key_paths(
+                private_key_path=key_paths.private_key_path,
+                public_key_path=key_paths.public_key_path,
+                access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),
+                refresh_ttl=dt.timedelta(seconds=settings.jwt_refresh_token_ttl_seconds),
+            )
+        else:
+            # Development/Test: generate ephemeral keys
+            private_pem, public_pem = RS256TokenService.generate_ephemeral_keypair()
+            token_service = RS256TokenService(
+                private_key_pem=private_pem,
+                public_key_pem=public_pem,
+                access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),
+                refresh_ttl=dt.timedelta(seconds=settings.jwt_refresh_token_ttl_seconds),
+            )
+    elif settings.jwt_algorithm == "HS256":
+        # HS256 only for dev/testing - must have explicit secret
+        import os
+        secret = os.environ.get("JWT_SECRET")
+        if not secret:
+            msg = "JWT_SECRET environment variable is required when using HS256"
+            raise RuntimeError(msg)
+        if len(secret) < 32:
+            msg = "JWT_SECRET must be at least 32 characters"
+            raise ValueError(msg)
         token_service = HS256TokenService(
             secret=secret,
-            access_ttl=__import__("datetime").timedelta(seconds=settings.jwt_access_token_ttl_seconds),
-            refresh_ttl=__import__("datetime").timedelta(seconds=settings.jwt_refresh_token_ttl_seconds),
+            access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),
+            refresh_ttl=dt.timedelta(seconds=settings.jwt_refresh_token_ttl_seconds),
         )
     else:
-        msg = f"Unsupported JWT algorithm in prototype: {settings.jwt_algorithm}"
+        msg = f"Unsupported JWT algorithm: {settings.jwt_algorithm}"
         raise NotImplementedError(msg)
 
     return AuthService(
@@ -294,4 +345,5 @@ def build_auth_service(session: AsyncSession, settings) -> AuthService:  # type:
         tenants=TenantRepository(session),
         users=UserRepository(session),
         refresh_tokens=RefreshTokenRepository(session),
+        customers=CustomerRepository(session),
     )

@@ -27,10 +27,10 @@ export function LoadingSkeleton({
       {withCard && (
         <div
           data-skeleton-card
-          className="rounded-lg border bg-card p-6 shadow-sm"
+          className="border-2 border-border bg-card p-6"
         >
-          <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
-          <div className="mt-3 h-3 w-1/2 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-1/3 animate-pulse bg-muted" />
+          <div className="mt-3 h-3 w-1/2 animate-pulse bg-muted" />
         </div>
       )}
       {arr.map((_, i) => (
@@ -38,7 +38,7 @@ export function LoadingSkeleton({
           key={i}
           data-skeleton-line
           className={cn(
-            "h-3 animate-pulse rounded bg-muted",
+            "h-3 animate-pulse bg-muted",
             i === arr.length - 1 ? "w-2/3" : "w-full",
           )}
         />
