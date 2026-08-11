@@ -20,7 +20,11 @@ export default defineConfig({
         display: "standalone",
         start_url: "/",
         icons: [
+          { src: "/icons/icon-144.png", sizes: "144x144", type: "image/png" },
+          { src: "/icons/icon-152.png", sizes: "152x152", type: "image/png" },
           { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+          { src: "/icons/icon-384.png", sizes: "384x384", type: "image/png" },
           { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
         ],
         shortcuts: [
