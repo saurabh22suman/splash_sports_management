@@ -56,5 +56,20 @@ export default defineConfig({
     strictPort: true,
     proxy: { "/v1": { target: "http://127.0.0.1:8765", changeOrigin: false } },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("react-dom") || id.includes("/react/") || id.includes("scheduler")) return "react-vendor";
+          if (id.includes("@tanstack")) return "query-vendor";
+          if (id.includes("@splashh/ui")) return "ui-kit";
+          if (id.includes("lucide-react") || id.includes("/icons/")) return "icons";
+          return "vendor";
+        },
+      },
+    },
+  },
   test: { environment: "happy-dom", globals: true, setupFiles: ["./test-setup.ts"] },
 });
