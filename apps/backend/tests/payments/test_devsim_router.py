@@ -261,3 +261,111 @@ async def test_post_webhook_failure_returns_502(client, monkeypatch):
         data={"state": token},
     )
     assert response.status_code == 502
+
+
+# ---- Logging tests (Final fix) ----
+# Note: structlog outputs to stdout via ConsoleRenderer, so we use capfd to capture
+
+
+@pytest.mark.asyncio
+async def test_post_capture_logs_devsim_action(client, monkeypatch, capfd):
+    """Verify devsim.action is logged on successful capture."""
+    from payments.interfaces.http import devsim_router as router_module
+
+    async def fake_post(url, payload, *, signature):
+        return 200
+
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture",
+        data={"state": token},
+    )
+    assert response.status_code == 200
+
+    # Check that devsim.action was logged to stdout
+    captured = capfd.readouterr()
+    assert "devsim.action" in captured.out
+    assert DEV_PAYMENT_LINK_ID in captured.out
+    assert "action=capture" in captured.out
+    assert "result=success" in captured.out
+
+
+@pytest.mark.asyncio
+async def test_post_decline_logs_devsim_action(client, monkeypatch, capfd):
+    """Verify devsim.action is logged on decline."""
+    from payments.interfaces.http import devsim_router as router_module
+
+    async def fake_post(url, payload, *, signature):
+        return 200
+
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/decline",
+        data={"state": token},
+    )
+    assert response.status_code == 200
+
+    captured = capfd.readouterr()
+    assert "devsim.action" in captured.out
+    assert "action=decline" in captured.out
+
+
+@pytest.mark.asyncio
+async def test_post_abandon_logs_devsim_action(client, capfd):
+    """Verify devsim.action is logged on abandon (no webhook fired)."""
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/abandon",
+        data={"state": token},
+    )
+    assert response.status_code == 200
+
+    captured = capfd.readouterr()
+    assert "devsim.action" in captured.out
+    assert "action=abandon" in captured.out
+    assert "result=abandoned" in captured.out
+
+
+@pytest.mark.asyncio
+async def test_invalid_state_logs_devsim_state_tamper(client, capfd):
+    """Verify devsim.state_tamper is logged on invalid JWT."""
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture",
+        data={"state": "not-a-valid-jwt"},
+    )
+    assert response.status_code == 400
+
+    captured = capfd.readouterr()
+    assert "devsim.state_tamper" in captured.out
+    assert "reason=malformed_jwt" in captured.out or "reason=invalid_jwt" in captured.out
+
+
+@pytest.mark.asyncio
+async def test_link_id_mismatch_logs_devsim_state_tamper(client, monkeypatch, capfd):
+    """Verify devsim.state_tamper is logged on link_id mismatch."""
+    from payments.interfaces.http import devsim_router as router_module
+
+    async def fake_post(url, payload, *, signature):
+        return 200
+
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    # Create token with different link_id
+    payload = _payload()
+    payload["payment_link_id"] = "plink_dev_different"
+    from payments.application.devsim_state import encode_state
+    wrong_link_token = encode_state(payload, secret=DEV_STATE_SECRET, ttl_seconds=3600)
+
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture",
+        data={"state": wrong_link_token},
+    )
+    assert response.status_code == 400
+
+    captured = capfd.readouterr()
+    assert "devsim.state_tamper" in captured.out
+    assert "reason=link_id_mismatch" in captured.out

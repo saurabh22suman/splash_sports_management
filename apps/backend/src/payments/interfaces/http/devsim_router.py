@@ -21,9 +21,12 @@ import jwt
 from fastapi import APIRouter, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 
+from common.infrastructure.logging import get_logger
 from common.infrastructure.settings import get_settings
 from payments.application.devsim_state import decode_state
 from payments.application.devsim_webhook import build_event, sign_payload, post_webhook
+
+_logger = get_logger(__name__)
 
 
 router = APIRouter(prefix="/dev/mock-checkout", tags=["dev-payment-simulator"])
@@ -95,7 +98,14 @@ def _decode_state_or_400(token: str) -> dict:
     settings = get_settings()
     try:
         return decode_state(token, secret=settings.dev_state_secret)
+    except jwt.ExpiredSignatureError as exc:
+        _logger.warning("devsim.state_tamper", reason="expired_jwt", token_prefix=token[:20] if token else "")
+        raise HTTPException(status_code=400, detail=f"invalid state: {exc}") from exc
+    except jwt.InvalidSignatureError as exc:
+        _logger.warning("devsim.state_tamper", reason="invalid_jwt", token_prefix=token[:20] if token else "")
+        raise HTTPException(status_code=400, detail=f"invalid state: {exc}") from exc
     except jwt.PyJWTError as exc:
+        _logger.warning("devsim.state_tamper", reason="malformed_jwt", token_prefix=token[:20] if token else "")
         raise HTTPException(status_code=400, detail=f"invalid state: {exc}") from exc
 
 
@@ -109,6 +119,7 @@ async def get_checkout(
         raise HTTPException(status_code=400, detail="state is required")
     payload = _decode_state_or_400(state)
     if payload["payment_link_id"] != link_id:
+        _logger.warning("devsim.state_tamper", link_id=link_id, reason="link_id_mismatch")
         raise HTTPException(status_code=400, detail="link_id mismatch")
     return HTMLResponse(content=_render_checkout_html(payload))
 
@@ -208,9 +219,18 @@ async def post_capture(
 ) -> HTMLResponse:
     payload = _decode_state_or_400(state)
     if payload["payment_link_id"] != link_id:
+        _logger.warning("devsim.state_tamper", link_id=link_id, reason="link_id_mismatch")
         raise HTTPException(status_code=400, detail="link_id mismatch")
     await _fire_or_502(
         request, event_type="payment.captured", state=payload, amount_paise=payload["amount_paise"]
+    )
+    _logger.info(
+        "devsim.action",
+        link_id=link_id,
+        tenant_id=payload["tenant_id"],
+        payment_id=payload["payment_id"],
+        action="capture",
+        result="success",
     )
     return HTMLResponse(content=_success_html(link_id))
 
@@ -223,9 +243,18 @@ async def post_decline(
 ) -> HTMLResponse:
     payload = _decode_state_or_400(state)
     if payload["payment_link_id"] != link_id:
+        _logger.warning("devsim.state_tamper", link_id=link_id, reason="link_id_mismatch")
         raise HTTPException(status_code=400, detail="link_id mismatch")
     await _fire_or_502(
         request, event_type="payment.failed", state=payload, amount_paise=payload["amount_paise"]
+    )
+    _logger.info(
+        "devsim.action",
+        link_id=link_id,
+        tenant_id=payload["tenant_id"],
+        payment_id=payload["payment_id"],
+        action="decline",
+        result="success",
     )
     return HTMLResponse(content=_failure_html(link_id, "declined by user"))
 
@@ -239,6 +268,7 @@ async def post_capture_partial(
 ) -> HTMLResponse:
     payload = _decode_state_or_400(state)
     if payload["payment_link_id"] != link_id:
+        _logger.warning("devsim.state_tamper", link_id=link_id, reason="link_id_mismatch")
         raise HTTPException(status_code=400, detail="link_id mismatch")
     if amount_paise <= 0:
         raise HTTPException(status_code=400, detail="amount must be positive")
@@ -249,6 +279,15 @@ async def post_capture_partial(
         )
     await _fire_or_502(
         request, event_type="payment.captured", state=payload, amount_paise=amount_paise
+    )
+    _logger.info(
+        "devsim.action",
+        link_id=link_id,
+        tenant_id=payload["tenant_id"],
+        payment_id=payload["payment_id"],
+        action="capture-partial",
+        result="success",
+        amount_paise=amount_paise,
     )
     return HTMLResponse(content=_success_html(link_id))
 
@@ -262,5 +301,16 @@ async def post_abandon(
     # Abandon is a no-op: no webhook fires, just return a confirmation page.
     # (Real Razorpay does not fire a webhook when the user abandons either.)
     # We still verify state so a stale/abandoned session can't be probed.
-    _decode_state_or_400(state)
+    payload = _decode_state_or_400(state)
+    if payload["payment_link_id"] != link_id:
+        _logger.warning("devsim.state_tamper", link_id=link_id, reason="link_id_mismatch")
+        raise HTTPException(status_code=400, detail="link_id mismatch")
+    _logger.info(
+        "devsim.action",
+        link_id=link_id,
+        tenant_id=payload["tenant_id"],
+        payment_id=payload["payment_id"],
+        action="abandon",
+        result="abandoned",
+    )
     return HTMLResponse(content=_abandoned_html(link_id))
