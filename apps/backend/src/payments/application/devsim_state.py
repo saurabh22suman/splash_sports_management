@@ -12,6 +12,7 @@ Why HS256 (not RS256): this is a state-encoding token, not an
 authentication token. The dev simulator is the only issuer and the
 only verifier, so a symmetric secret is appropriate.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

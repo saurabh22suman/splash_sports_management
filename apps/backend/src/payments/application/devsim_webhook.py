@@ -9,12 +9,13 @@ Webhook signing format matches the production Razorpay format:
 The production webhook handler verifies with the same algorithm — see
 `apps/backend/src/payments/application/provider.py` (RazorpayAdapter.verify_webhook).
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
 import time
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 
@@ -29,7 +30,7 @@ def build_event(
     tenant_id: str,
     invoice_id: str,
     payment_link_id: str,
-) -> dict:
+) -> dict[str, Any]:
     """Build a Razorpay-shaped event payload.
 
     The shape mirrors what the production webhook handler parses
@@ -38,7 +39,7 @@ def build_event(
     """
     if event_type == "payment.captured":
         status = "captured"
-        entity: dict = {
+        entity: dict[str, Any] = {
             "id": payment_id,
             "amount": amount_paise,
             "currency": currency,

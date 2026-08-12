@@ -14,10 +14,14 @@ Differences from RazorpayAdapter:
 - short_url is a backend path; redirect happens server-side via the
   simulator router (Task 5).
 """
+
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
-from typing import Protocol
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from payments.application.devsim_state import encode_state
@@ -49,15 +53,14 @@ class DevSimAdapter:
     async def create_payment_link(
         self,
         *,
-        invoice: dict,
+        invoice: dict[str, Any],
         payment_id: UUID,
         idempotency_key: str,
         success_url: str,
         cancel_url: str,
-        customer: dict,
+        customer: dict[str, Any],
     ) -> PaymentLinkResult:
         link_id = f"plink_dev_{uuid4().hex[:16]}"
-        from datetime import UTC, datetime, timedelta
 
         amount_paise = invoice["total"]["amount_paise"]
         currency = invoice["total"]["currency"]
@@ -85,7 +88,7 @@ class DevSimAdapter:
             expires_at=datetime.now(UTC) + timedelta(hours=24),
         )
 
-    async def fetch_payment(self, razorpay_payment_id: str) -> dict:
+    async def fetch_payment(self, razorpay_payment_id: str) -> dict[str, Any]:
         # The dev simulator never stores payment state — callers should
         # use the webhook path to learn payment status.
         return {
@@ -101,23 +104,18 @@ class DevSimAdapter:
         razorpay_payment_id: str,
         amount_paise: int,
         idempotency_key: str,
-    ) -> dict:
+    ) -> dict[str, Any]:
         return {
             "id": f"rfnd_dev_{uuid4().hex[:16]}",
             "amount": amount_paise,
             "status": "processed",
         }
 
-    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+    def verify_webhook(self, payload: bytes, signature: str) -> dict[str, Any]:
         # Same HMAC-SHA256 verification format as RazorpayAdapter —
         # exercise the real signature path so the simulator is a faithful
         # substitute for the real provider.
-        import hashlib
-        import hmac
-
-        expected = hmac.new(
-            self.webhook_secret.encode(), payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(self.webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, signature):
             raise ValueError("invalid webhook signature")
-        return json.loads(payload.decode())
+        return cast("dict[str, Any]", json.loads(payload.decode()))

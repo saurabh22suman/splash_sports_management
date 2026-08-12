@@ -13,10 +13,13 @@ router still imports cleanly):
 - POST /dev/mock-checkout/{link_id}/capture-partial   — partial payment
 - POST /dev/mock-checkout/{link_id}/abandon           — abandoned (no-op)
 """
+
 from __future__ import annotations
 
-from typing import Annotated
+import json
+from typing import Annotated, Any, Literal, cast
 
+import httpx
 import jwt
 from fastapi import APIRouter, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
@@ -24,7 +27,7 @@ from fastapi.responses import HTMLResponse
 from common.infrastructure.logging import get_logger
 from common.infrastructure.settings import get_settings
 from payments.application.devsim_state import decode_state
-from payments.application.devsim_webhook import build_event, sign_payload, post_webhook
+from payments.application.devsim_webhook import build_event, post_webhook, sign_payload
 
 _logger = get_logger(__name__)
 
@@ -32,7 +35,7 @@ _logger = get_logger(__name__)
 router = APIRouter(prefix="/dev/mock-checkout", tags=["dev-payment-simulator"])
 
 
-def _render_checkout_html(state: dict) -> str:
+def _render_checkout_html(state: dict[str, Any]) -> str:
     """Return the fake Razorpay-style checkout page as an HTML string.
 
     The 4 action buttons post to sibling endpoints (capture, decline,
@@ -43,9 +46,7 @@ def _render_checkout_html(state: dict) -> str:
     amount_paise = state["amount_paise"]
     amount_inr = amount_paise / 100
     currency = state["currency"]
-    description = "; ".join(
-        li.get("description", "") for li in state.get("line_items", [])
-    )
+    description = "; ".join(li.get("description", "") for li in state.get("line_items", []))
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,19 +94,25 @@ def _render_checkout_html(state: dict) -> str:
 </html>"""
 
 
-def _decode_state_or_400(token: str) -> dict:
+def _decode_state_or_400(token: str) -> dict[str, Any]:
     """Decode the state JWT or raise 400."""
     settings = get_settings()
     try:
-        return decode_state(token, secret=settings.dev_state_secret)
+        return cast("dict[str, Any]", decode_state(token, secret=settings.dev_state_secret))
     except jwt.ExpiredSignatureError as exc:
-        _logger.warning("devsim.state_tamper", reason="expired_jwt", token_prefix=token[:20] if token else "")
+        _logger.warning(
+            "devsim.state_tamper", reason="expired_jwt", token_prefix=token[:20] if token else ""
+        )
         raise HTTPException(status_code=400, detail=f"invalid state: {exc}") from exc
     except jwt.InvalidSignatureError as exc:
-        _logger.warning("devsim.state_tamper", reason="invalid_jwt", token_prefix=token[:20] if token else "")
+        _logger.warning(
+            "devsim.state_tamper", reason="invalid_jwt", token_prefix=token[:20] if token else ""
+        )
         raise HTTPException(status_code=400, detail=f"invalid state: {exc}") from exc
     except jwt.PyJWTError as exc:
-        _logger.warning("devsim.state_tamper", reason="malformed_jwt", token_prefix=token[:20] if token else "")
+        _logger.warning(
+            "devsim.state_tamper", reason="malformed_jwt", token_prefix=token[:20] if token else ""
+        )
         raise HTTPException(status_code=400, detail=f"invalid state: {exc}") from exc
 
 
@@ -141,13 +148,11 @@ def _build_backend_webhook_url(request: Request) -> str:
 def _fire_webhook(
     request: Request,
     *,
-    event_type: str,
-    state: dict,
+    event_type: Literal["payment.captured", "payment.failed"],
+    state: dict[str, Any],
     amount_paise: int,
 ) -> tuple[bytes, str, str]:
     """Build event, sign with webhook secret, POST to real webhook endpoint."""
-    import json
-
     settings = get_settings()
     event = build_event(
         event_type,
@@ -165,10 +170,14 @@ def _fire_webhook(
     return payload_bytes, signature, url
 
 
-async def _fire_or_502(request: Request, *, event_type: str, state: dict, amount_paise: int):
+async def _fire_or_502(
+    request: Request,
+    *,
+    event_type: Literal["payment.captured", "payment.failed"],
+    state: dict[str, Any],
+    amount_paise: int,
+) -> int:
     """Helper: fire the webhook; raise 502 on transport failure or 5xx response."""
-    import httpx
-
     payload_bytes, signature, url = _fire_webhook(
         request, event_type=event_type, state=state, amount_paise=amount_paise
     )
@@ -178,7 +187,7 @@ async def _fire_or_502(request: Request, *, event_type: str, state: dict, amount
         raise HTTPException(status_code=502, detail=f"webhook transport error: {exc}") from exc
     if status >= 500:
         raise HTTPException(status_code=502, detail=f"webhook returned {status}")
-    return status
+    return cast("int", status)
 
 
 def _success_html(link_id: str) -> str:
@@ -295,7 +304,6 @@ async def post_capture_partial(
 @router.post("/{link_id}/abandon", response_class=HTMLResponse)
 async def post_abandon(
     link_id: str,
-    request: Request,
     state: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     # Abandon is a no-op: no webhook fires, just return a confirmation page.
