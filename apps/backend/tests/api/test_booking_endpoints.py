@@ -9,6 +9,7 @@ Tests the booking endpoints for:
 Note: Full endpoint tests with happy path require integration testing with
 a real database. These tests focus on the critical security and validation behaviors.
 """
+
 from __future__ import annotations
 
 import os
@@ -23,7 +24,9 @@ from httpx import ASGITransport, AsyncClient
 
 # Ensure proper env before imports - must match conftest.py
 os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://splashh:splashh_dev@localhost:5432/splashh_test")
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql+asyncpg://splashh:splashh_dev@localhost:5432/splashh_test"
+)
 os.environ.setdefault("JWT_ALGORITHM", "HS256")
 os.environ["JWT_SECRET"] = "test-secret-key-only-for-unit-tests-do-not-use-in-prod"
 
@@ -158,8 +161,9 @@ class TestBookingCreateSchema:
         from booking.interfaces.http.schemas import BookingCreate
 
         # After the fix, price_cents should not be in the schema
-        assert "price_cents" not in BookingCreate.model_fields, \
+        assert "price_cents" not in BookingCreate.model_fields, (
             "price_cents must be removed from BookingCreate for F-05 fix"
+        )
 
     def test_booking_out_includes_price_for_display(self) -> None:
         """BookingOut should include price_cents for UI display."""

@@ -4,6 +4,7 @@ F-23: Context leak when commit fails - if commit() throws, context
 should be reset so the next request on the same connection has
 a clean context (no tenant_id leak).
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -44,12 +45,8 @@ class TestContextResetOnSessionClose:
         mock_session.rollback = AsyncMock()
 
         with patch.object(db, "get_session_factory") as mock_factory:
-            mock_factory.return_value.return_value.__aenter__ = AsyncMock(
-                return_value=mock_session
-            )
-            mock_factory.return_value.return_value.__aexit__ = AsyncMock(
-                return_value=None
-            )
+            mock_factory.return_value.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.return_value.__aexit__ = AsyncMock(return_value=None)
 
             session_gen = db.get_session()
             await session_gen.__anext__()  # Yield the session
@@ -74,12 +71,8 @@ class TestContextResetOnSessionClose:
         mock_session.rollback = AsyncMock()
 
         with patch.object(db, "get_session_factory") as mock_factory:
-            mock_factory.return_value.return_value.__aenter__ = AsyncMock(
-                return_value=mock_session
-            )
-            mock_factory.return_value.return_value.__aexit__ = AsyncMock(
-                return_value=None
-            )
+            mock_factory.return_value.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.return_value.__aexit__ = AsyncMock(return_value=None)
 
             session_gen = db.get_session()
             await session_gen.__anext__()  # Yield the session
@@ -106,12 +99,8 @@ class TestContextResetOnSessionClose:
         mock_session.rollback = AsyncMock()
 
         with patch.object(db, "get_session_factory") as mock_factory:
-            mock_factory.return_value.return_value.__aenter__ = AsyncMock(
-                return_value=mock_session
-            )
-            mock_factory.return_value.return_value.__aexit__ = AsyncMock(
-                return_value=None
-            )
+            mock_factory.return_value.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.return_value.__aexit__ = AsyncMock(return_value=None)
 
             session_gen = db.get_session()
             await session_gen.__anext__()

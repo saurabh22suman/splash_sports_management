@@ -1,4 +1,5 @@
 """Unit tests for Customer entity."""
+
 from __future__ import annotations
 
 from datetime import date, timezone

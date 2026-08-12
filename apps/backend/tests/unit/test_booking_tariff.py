@@ -1,4 +1,5 @@
 """Unit tests for BookingTariff entity and compute_price logic."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -18,8 +19,8 @@ class TestBookingTariffEntity:
             tenant_id=uuid4(),
             resource_id=uuid4(),
             day_of_week=0,  # Monday
-            time_start=6,   # 6:00 AM
-            time_end=22,    # 10:00 PM
+            time_start=6,  # 6:00 AM
+            time_end=22,  # 10:00 PM
             price_cents=2500,
             currency="INR",
         )
@@ -81,8 +82,8 @@ class TestComputePrice:
             tenant_id=uuid4(),
             resource_id=uuid4(),
             day_of_week=0,  # Monday
-            time_start=6,   # 6:00 AM
-            time_end=22,    # 10:00 PM
+            time_start=6,  # 6:00 AM
+            time_end=22,  # 10:00 PM
             price_cents=2500,
             currency="INR",
         )

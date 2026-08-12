@@ -5,6 +5,7 @@ from other modules' infrastructure layers (ADR-0001).
 
 Note: Imports from 'common' are allowed as it is a shared kernel.
 """
+
 from __future__ import annotations
 
 import ast
@@ -38,12 +39,14 @@ def _find_violations(source_dir: Path, source_module: str, target_module: str) -
                 # Check specifically for .infrastructure.models imports
                 if node.module and node.module == f"{target_module}.infrastructure.models":
                     for alias in node.names:
-                        violations.append({
-                            "file": str(py_file.relative_to(source_dir)),
-                            "line": node.lineno,
-                            "module": node.module,
-                            "name": alias.name,
-                        })
+                        violations.append(
+                            {
+                                "file": str(py_file.relative_to(source_dir)),
+                                "line": node.lineno,
+                                "module": node.module,
+                                "name": alias.name,
+                            }
+                        )
 
     return violations
 
@@ -66,9 +69,11 @@ class TestBoundedContextBoundaries:
 
         assert not violations, (
             f"Booking module violates bounded context boundary by importing from "
-            f"facility.infrastructure:\n" +
-            "\n".join(f"  - {v['file']}:{v['line']}: from {v['module']} import {v['name']}"
-                      for v in violations)
+            f"facility.infrastructure:\n"
+            + "\n".join(
+                f"  - {v['file']}:{v['line']}: from {v['module']} import {v['name']}"
+                for v in violations
+            )
         )
 
     def test_no_bounded_context_imports_infrastructure_cross_boundary(self):
@@ -89,17 +94,19 @@ class TestBoundedContextBoundaries:
 
             violations = _find_violations(src_dir, source_ctx, target_ctx)
             if violations:
-                all_violations.append({
-                    "source": source_ctx,
-                    "target": target_ctx,
-                    "violations": violations,
-                })
+                all_violations.append(
+                    {
+                        "source": source_ctx,
+                        "target": target_ctx,
+                        "violations": violations,
+                    }
+                )
 
         if all_violations:
             msg = "Bounded context violations (infrastructure.models imports) found:\n"
             for v in all_violations:
                 msg += f"\n  {v['source']} -> {v['target']}:\n"
-                for viol in v['violations']:
+                for viol in v["violations"]:
                     msg += f"    - {viol['file']}:{viol['line']}: from {viol['module']} import {viol['name']}\n"
 
             assert False, msg

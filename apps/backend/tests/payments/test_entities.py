@@ -17,6 +17,7 @@ def make_line_item(total_paise: int = 150000) -> LineItem:
         total=Money(total_paise, "INR"),
     )
 
+
 def make_invoice(status: InvoiceStatus = InvoiceStatus.PENDING) -> Invoice:
     return Invoice(
         id=uuid4(),
@@ -34,6 +35,7 @@ def make_invoice(status: InvoiceStatus = InvoiceStatus.PENDING) -> Invoice:
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
+
 
 class TestInvoiceInvariants:
     def test_can_pay_when_pending(self):
@@ -74,6 +76,7 @@ class TestInvoiceInvariants:
         inv = make_invoice(InvoiceStatus.PENDING)
         with pytest.raises(Conflict):
             inv.mark_refunded(datetime.now(UTC))
+
 
 class TestPaymentInvariants:
     def test_mark_captured_from_pending(self):

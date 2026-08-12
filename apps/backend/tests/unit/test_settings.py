@@ -11,7 +11,7 @@ def test_settings_exposes_razorpay_keys():
     assert s.razorpay_key_id == "rzp_test_abc"
     assert s.razorpay_key_secret == "rzp_test_secret_xyz"
     assert s.razorpay_webhook_secret == "whsec_test_123"
-    assert s.payments_provider == "razorpay"     # default
+    assert s.payments_provider == "razorpay"  # default
 
 
 def test_settings_app_url_default():

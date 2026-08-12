@@ -11,6 +11,7 @@ NOTE: These tests verify that RLS policies exist and are properly configured.
 Full end-to-end cross-tenant isolation testing requires the application to properly
 set app.tenant_id on each connection, which is tested in other integration tests.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -98,11 +99,13 @@ async def db_engine(postgres_container):
     async with engine.begin() as conn:
         for table in TENANT_SCOPED_TABLES:
             await conn.execute(text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"))
-            await conn.execute(text(f"""
+            await conn.execute(
+                text(f"""
                 CREATE POLICY tenant_isolation ON {table}
                 USING (tenant_id::text = current_setting('app.tenant_id', true))
                 WITH CHECK (tenant_id::text = current_setting('app.tenant_id', true))
-            """))
+            """)
+            )
         await conn.commit()
 
     yield engine
@@ -135,11 +138,13 @@ class TestRLSPoliciesExist:
         """Verify RLS is enabled on all tenant-scoped tables."""
         async with db_engine.begin() as conn:
             for table in TENANT_SCOPED_TABLES:
-                result = await conn.execute(text(f"""
+                result = await conn.execute(
+                    text(f"""
                     SELECT relname, relrowsecurity
                     FROM pg_class
                     WHERE relname = '{table}'
-                """))
+                """)
+                )
                 row = result.fetchone()
                 assert row is not None, f"Table {table} not found"
                 assert row[1] is True, f"RLS not enabled on {table}"
@@ -148,114 +153,137 @@ class TestRLSPoliciesExist:
         """Verify tenant_isolation policy exists on all tables."""
         async with db_engine.begin() as conn:
             for table in TENANT_SCOPED_TABLES:
-                result = await conn.execute(text(f"""
+                result = await conn.execute(
+                    text(f"""
                     SELECT policyname, cmd, permissive
                     FROM pg_policies
                     WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
-                """))
+                """)
+                )
                 row = result.fetchone()
                 assert row is not None, f"Policy tenant_isolation not found on {table}"
 
     async def test_policy_uses_current_setting(self, db_engine) -> None:
         """Verify the policy uses current_setting('app.tenant_id', true)."""
         async with db_engine.begin() as conn:
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT policyname, qual::text, with_check::text
                 FROM pg_policies
                 WHERE tablename = 'users' AND policyname = 'tenant_isolation'
-            """))
+            """)
+            )
             row = result.fetchone()
             assert row is not None, "Policy not found"
-            assert 'current_setting' in row[1], f"USING clause should contain current_setting: {row[1]}"
-            assert 'tenant_id' in row[1], f"USING clause should contain tenant_id: {row[1]}"
-            assert 'current_setting' in row[2], f"WITH CHECK should contain current_setting: {row[2]}"
-            assert 'tenant_id' in row[2], f"WITH CHECK should contain tenant_id: {row[2]}"
+            assert "current_setting" in row[1], (
+                f"USING clause should contain current_setting: {row[1]}"
+            )
+            assert "tenant_id" in row[1], f"USING clause should contain tenant_id: {row[1]}"
+            assert "current_setting" in row[2], (
+                f"WITH CHECK should contain current_setting: {row[2]}"
+            )
+            assert "tenant_id" in row[2], f"WITH CHECK should contain tenant_id: {row[2]}"
 
     async def test_policy_is_permissive(self, db_engine) -> None:
         """Verify the policy is permissive (OR'd with other policies)."""
         async with db_engine.begin() as conn:
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT policyname, permissive
                 FROM pg_policies
                 WHERE policyname = 'tenant_isolation'
-            """))
+            """)
+            )
             rows = result.fetchall()
             assert len(rows) > 0, "No tenant_isolation policies found"
             for row in rows:
-                assert row[1] is True or row[1] == 'PERMISSIVE', f"Policy {row[0]} is not permissive: {row[1]}"
+                assert row[1] is True or row[1] == "PERMISSIVE", (
+                    f"Policy {row[0]} is not permissive: {row[1]}"
+                )
 
 
 @pytest.mark.asyncio
 class TestRLSDataIsolation:
     """Test that data isolation works when tenant_id is properly set."""
 
-    async def test_insert_within_tenant_succeeds(
-        self, session_factory, tenant_a_id
-    ) -> None:
+    async def test_insert_within_tenant_succeeds(self, session_factory, tenant_a_id) -> None:
         """INSERT within the same tenant should work when tenant_id is not set."""
         # First create the tenant
         async with session_factory() as session:
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 INSERT INTO tenants (id, name, slug, status, primary_contact_email, created_at, updated_at)
                 VALUES (:id, :name, :slug, :status, :email, NOW(), NOW())
-            """), {
-                "id": str(tenant_a_id),
-                "name": "Tenant A",
-                "slug": "tenant-a",
-                "status": "active",
-                "email": "a@tenant.com",
-            })
+            """),
+                {
+                    "id": str(tenant_a_id),
+                    "name": "Tenant A",
+                    "slug": "tenant-a",
+                    "status": "active",
+                    "email": "a@tenant.com",
+                },
+            )
             await session.commit()
 
         # Now insert a user
         async with session_factory() as session:
             user_id = uuid.uuid4()
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 INSERT INTO users (id, tenant_id, email, password_hash, full_name, roles, is_active, failed_login_count, created_at, updated_at)
                 VALUES (:id, :tenant_id, :email, :hash, :name, '{}', true, 0, NOW(), NOW())
-            """), {
-                "id": str(user_id),
-                "tenant_id": str(tenant_a_id),
-                "email": "test@tenant.com",
-                "hash": "hash",
-                "name": "Test User",
-            })
+            """),
+                {
+                    "id": str(user_id),
+                    "tenant_id": str(tenant_a_id),
+                    "email": "test@tenant.com",
+                    "hash": "hash",
+                    "name": "Test User",
+                },
+            )
             await session.commit()
 
         # Verify the user was created
         async with session_factory() as session:
-            result = await session.execute(text("""
+            result = await session.execute(
+                text("""
                 SELECT COUNT(*) FROM users WHERE tenant_id = :tid
-            """), {"tid": str(tenant_a_id)})
+            """),
+                {"tid": str(tenant_a_id)},
+            )
             count = result.scalar()
             assert count == 1, f"Expected 1 user, got {count}"
 
-    async def test_data_persists_correctly(
-        self, session_factory, tenant_a_id, tenant_b_id
-    ) -> None:
+    async def test_data_persists_correctly(self, session_factory, tenant_a_id, tenant_b_id) -> None:
         """Verify data is correctly stored for different tenants."""
         # First create the tenants
         async with session_factory() as session:
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 INSERT INTO tenants (id, name, slug, status, primary_contact_email, created_at, updated_at)
                 VALUES (:id, :name, :slug, :status, :email, NOW(), NOW())
-            """), {
-                "id": str(tenant_a_id),
-                "name": "Tenant A",
-                "slug": "tenant-a",
-                "status": "active",
-                "email": "a@tenant.com",
-            })
-            await session.execute(text("""
+            """),
+                {
+                    "id": str(tenant_a_id),
+                    "name": "Tenant A",
+                    "slug": "tenant-a",
+                    "status": "active",
+                    "email": "a@tenant.com",
+                },
+            )
+            await session.execute(
+                text("""
                 INSERT INTO tenants (id, name, slug, status, primary_contact_email, created_at, updated_at)
                 VALUES (:id, :name, :slug, :status, :email, NOW(), NOW())
-            """), {
-                "id": str(tenant_b_id),
-                "name": "Tenant B",
-                "slug": "tenant-b",
-                "status": "active",
-                "email": "b@tenant.com",
-            })
+            """),
+                {
+                    "id": str(tenant_b_id),
+                    "name": "Tenant B",
+                    "slug": "tenant-b",
+                    "status": "active",
+                    "email": "b@tenant.com",
+                },
+            )
             await session.commit()
 
         # Create users for both tenants
@@ -263,27 +291,33 @@ class TestRLSDataIsolation:
         user_b_id = uuid.uuid4()
 
         async with session_factory() as session:
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 INSERT INTO users (id, tenant_id, email, password_hash, full_name, roles, is_active, failed_login_count, created_at, updated_at)
                 VALUES (:id, :tenant_id, :email, :hash, :name, '{}', true, 0, NOW(), NOW())
-            """), {
-                "id": str(user_a_id),
-                "tenant_id": str(tenant_a_id),
-                "email": "user-a@test.com",
-                "hash": "hash",
-                "name": "User A",
-            })
+            """),
+                {
+                    "id": str(user_a_id),
+                    "tenant_id": str(tenant_a_id),
+                    "email": "user-a@test.com",
+                    "hash": "hash",
+                    "name": "User A",
+                },
+            )
 
-            await session.execute(text("""
+            await session.execute(
+                text("""
                 INSERT INTO users (id, tenant_id, email, password_hash, full_name, roles, is_active, failed_login_count, created_at, updated_at)
                 VALUES (:id, :tenant_id, :email, :hash, :name, '{}', true, 0, NOW(), NOW())
-            """), {
-                "id": str(user_b_id),
-                "tenant_id": str(tenant_b_id),
-                "email": "user-b@test.com",
-                "hash": "hash",
-                "name": "User B",
-            })
+            """),
+                {
+                    "id": str(user_b_id),
+                    "tenant_id": str(tenant_b_id),
+                    "email": "user-b@test.com",
+                    "hash": "hash",
+                    "name": "User B",
+                },
+            )
             await session.commit()
 
         # Verify both users exist (bypassing RLS by not setting tenant_id)
@@ -294,18 +328,24 @@ class TestRLSDataIsolation:
 
         # Verify tenant A's user
         async with session_factory() as session:
-            result = await session.execute(text("""
+            result = await session.execute(
+                text("""
                 SELECT email FROM users WHERE tenant_id = :tid
-            """), {"tid": str(tenant_a_id)})
+            """),
+                {"tid": str(tenant_a_id)},
+            )
             row = result.fetchone()
             assert row is not None
             assert row[0] == "user-a@test.com"
 
         # Verify tenant B's user
         async with session_factory() as session:
-            result = await session.execute(text("""
+            result = await session.execute(
+                text("""
                 SELECT email FROM users WHERE tenant_id = :tid
-            """), {"tid": str(tenant_b_id)})
+            """),
+                {"tid": str(tenant_b_id)},
+            )
             row = result.fetchone()
             assert row is not None
             assert row[0] == "user-b@test.com"
@@ -319,19 +359,23 @@ class TestRLSAllTables:
         """All 8 tables should have RLS enabled."""
         async with db_engine.begin() as conn:
             for table in TENANT_SCOPED_TABLES:
-                result = await conn.execute(text(f"""
+                result = await conn.execute(
+                    text(f"""
                     SELECT COUNT(*) FROM pg_policies
                     WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
-                """))
+                """)
+                )
                 count = result.scalar()
                 assert count == 1, f"Expected 1 policy on {table}, got {count}"
 
     async def test_customers_table_has_rls(self, db_engine) -> None:
         """Customers table should have RLS."""
         async with db_engine.begin() as conn:
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'customers'
-            """))
+            """)
+            )
             row = result.fetchone()
             assert row is not None
             assert row[1] is True
@@ -339,9 +383,11 @@ class TestRLSAllTables:
     async def test_facilities_table_has_rls(self, db_engine) -> None:
         """Facilities table should have RLS."""
         async with db_engine.begin() as conn:
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'facilities'
-            """))
+            """)
+            )
             row = result.fetchone()
             assert row is not None
             assert row[1] is True
@@ -349,9 +395,11 @@ class TestRLSAllTables:
     async def test_bookings_table_has_rls(self, db_engine) -> None:
         """Bookings table should have RLS."""
         async with db_engine.begin() as conn:
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT relname, relrowsecurity FROM pg_class WHERE relname = 'bookings'
-            """))
+            """)
+            )
             row = result.fetchone()
             assert row is not None
             assert row[1] is True
@@ -365,29 +413,35 @@ class TestRLSPolicyDetails:
         """The USING clause should filter by tenant_id."""
         async with db_engine.begin() as conn:
             # Use pg_policies which has the text representation
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT policyname, qual::text
                 FROM pg_policies
                 WHERE policyname = 'tenant_isolation' AND tablename = 'users'
-            """))
+            """)
+            )
             row = result.fetchone()
             assert row is not None, "Policy not found"
             qual = row[1]
             # The qual contains the AST but we can check for key elements
-            assert 'tenant_id' in qual.lower() or 'current_setting' in qual.lower(), \
+            assert "tenant_id" in qual.lower() or "current_setting" in qual.lower(), (
                 f"USING clause should check tenant_id or current_setting: {qual}"
+            )
 
     async def test_with_check_clause_correct(self, db_engine) -> None:
         """The WITH CHECK clause should prevent cross-tenant inserts."""
         async with db_engine.begin() as conn:
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT policyname, with_check::text
                 FROM pg_policies
                 WHERE policyname = 'tenant_isolation' AND tablename = 'users'
-            """))
+            """)
+            )
             row = result.fetchone()
             assert row is not None, "Policy not found"
             with_check = row[1]
             # The with_check contains the AST but we can check for key elements
-            assert 'tenant_id' in with_check.lower() or 'current_setting' in with_check.lower(), \
+            assert "tenant_id" in with_check.lower() or "current_setting" in with_check.lower(), (
                 f"WITH CHECK should check tenant_id or current_setting: {with_check}"
+            )

@@ -52,12 +52,15 @@ def make_service(session) -> tuple[PaymentService, MagicMock]:
     events.publish = AsyncMock()
     provider = MagicMock()
     svc = PaymentService(
-        session=session, invoice_repo=InvoiceRepository(session),
-        payment_repo=PaymentRepository(session), refund_repo=RefundRepository(session),
+        session=session,
+        invoice_repo=InvoiceRepository(session),
+        payment_repo=PaymentRepository(session),
+        refund_repo=RefundRepository(session),
         processed_event_repo=ProcessedRazorpayEventRepository(session),
         idempotency=IdempotencyKeyRepository(session),
         tenant_config_repo=TenantPaymentConfigRepository(session),
-        events=events, provider=provider,
+        events=events,
+        provider=provider,
         settings=MagicMock(app_url="https://app.example"),
     )
     return svc, events
@@ -68,22 +71,47 @@ async def test_refund_invoice_creates_razorpay_refund(session):
     cust = uuid4()
     inv_id = uuid4()
     pay_id = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
-    inv = InvoiceModel(id=inv_id, tenant_id=tid, customer_id=cust, invoice_number="INV-1",
-                       status="paid", subtotal_paise=150000, tax_paise=0, total_paise=150000,
-                       currency="INR", due_date=date(2026, 9, 1), paid_at=datetime.now(UTC),
-                       description="", metadata_={},
-                       created_at=datetime.now(UTC), updated_at=datetime.now(UTC))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
+    inv = InvoiceModel(
+        id=inv_id,
+        tenant_id=tid,
+        customer_id=cust,
+        invoice_number="INV-1",
+        status="paid",
+        subtotal_paise=150000,
+        tax_paise=0,
+        total_paise=150000,
+        currency="INR",
+        due_date=date(2026, 9, 1),
+        paid_at=datetime.now(UTC),
+        description="",
+        metadata_={},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
     session.add(inv)
-    payment = PaymentModel(id=pay_id, tenant_id=tid, invoice_id=inv_id, amount_paise=150000,
-                           currency="INR", status="captured",
-                           razorpay_payment_id="pay_test_1",
-                           razorpay_payment_link_id="plink_test_1",
-                           idempotency_key=None, captured_at=datetime.now(UTC),
-                           created_at=datetime.now(UTC), updated_at=datetime.now(UTC))
+    payment = PaymentModel(
+        id=pay_id,
+        tenant_id=tid,
+        invoice_id=inv_id,
+        amount_paise=150000,
+        currency="INR",
+        status="captured",
+        razorpay_payment_id="pay_test_1",
+        razorpay_payment_link_id="plink_test_1",
+        idempotency_key=None,
+        captured_at=datetime.now(UTC),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
     session.add(payment)
     await session.commit()
 
@@ -93,7 +121,10 @@ async def test_refund_invoice_creates_razorpay_refund(session):
     )
 
     refund = await svc.refund_invoice(
-        tenant_id=tid, invoice_id=inv_id, reason="customer_request", idempotency_key="k1",
+        tenant_id=tid,
+        invoice_id=inv_id,
+        reason="customer_request",
+        idempotency_key="k1",
     )
     assert refund.razorpay_refund_id == "rfnd_test_99"
     assert refund.status == "pending"  # webhook will flip to completed
@@ -104,15 +135,32 @@ async def test_refund_invoice_409_on_pending(session):
     tid = uuid4()
     cust = uuid4()
     inv_id = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
-    inv = InvoiceModel(id=inv_id, tenant_id=tid, customer_id=cust, invoice_number="INV-2",
-                       status="pending", subtotal_paise=150000, tax_paise=0, total_paise=150000,
-                       currency="INR", due_date=date(2026, 9, 1), paid_at=None,
-                       description="", metadata_={},
-                       created_at=datetime.now(UTC), updated_at=datetime.now(UTC))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
+    inv = InvoiceModel(
+        id=inv_id,
+        tenant_id=tid,
+        customer_id=cust,
+        invoice_number="INV-2",
+        status="pending",
+        subtotal_paise=150000,
+        tax_paise=0,
+        total_paise=150000,
+        currency="INR",
+        due_date=date(2026, 9, 1),
+        paid_at=None,
+        description="",
+        metadata_={},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
     session.add(inv)
     await session.commit()
 
@@ -125,18 +173,32 @@ async def test_list_invoices_filters_by_customer(session):
     tid = uuid4()
     cust_a = uuid4()
     cust_b = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
     for cust in (cust_a, cust_b):
         inv = InvoiceModel(
-            id=uuid4(), tenant_id=tid, customer_id=cust,
+            id=uuid4(),
+            tenant_id=tid,
+            customer_id=cust,
             invoice_number=f"INV-{cust.hex[:4]}",
-            status="pending", subtotal_paise=150000, tax_paise=0, total_paise=150000,
-            currency="INR", due_date=date(2026, 9, 1), paid_at=None,
-            description="", metadata_={},
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC)
+            status="pending",
+            subtotal_paise=150000,
+            tax_paise=0,
+            total_paise=150000,
+            currency="INR",
+            due_date=date(2026, 9, 1),
+            paid_at=None,
+            description="",
+            metadata_={},
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(inv)
     await session.commit()

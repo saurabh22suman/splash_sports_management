@@ -65,10 +65,15 @@ def make_service(session) -> tuple[PaymentService, MagicMock]:
 
 async def test_create_invoice_persists_and_publishes(session):
     tid = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
     await session.commit()
 
     svc, events = make_service(session)
@@ -97,16 +102,24 @@ async def test_create_invoice_persists_and_publishes(session):
 
 async def test_create_invoice_rejects_invalid_line_items(session):
     tid = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
     await session.commit()
 
     svc, _ = make_service(session)
     with pytest.raises(Validation):
         await svc.create_invoice(
-            tenant_id=tid, customer_id=uuid4(),
+            tenant_id=tid,
+            customer_id=uuid4(),
             line_items=[{"description": "Bad", "quantity": 0, "unit_price_paise": 10000}],
-            description="x", due_date=date(2026, 9, 1), idempotency_key=None,
+            description="x",
+            due_date=date(2026, 9, 1),
+            idempotency_key=None,
         )

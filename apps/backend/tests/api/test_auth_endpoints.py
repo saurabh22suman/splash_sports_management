@@ -4,6 +4,7 @@ Hits the FastAPI app via httpx.AsyncClient. Uses an isolated in-memory SQLite
 session for HTTP-layer tests so we don't require a live Postgres. (Real
 backend integration tests live in `tests/integration/`.)
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -402,7 +403,11 @@ class TestAuthEndpoints:
         client._transport.app.dependency_overrides[auth_required] = lambda: principal
 
         admin_svc = MagicMock()
-        admin_svc.create_user = AsyncMock(side_effect=Conflict("User with that email already exists", details={"email": "dup@example.com"}))
+        admin_svc.create_user = AsyncMock(
+            side_effect=Conflict(
+                "User with that email already exists", details={"email": "dup@example.com"}
+            )
+        )
         client._transport.app.dependency_overrides[_user_admin_service] = lambda: admin_svc
 
         resp = await client.post(
@@ -430,9 +435,18 @@ class TestAuthEndpoints:
         client._transport.app.dependency_overrides[auth_required] = lambda: principal
 
         admin_svc = MagicMock()
-        admin_svc.list_users = AsyncMock(return_value=[
-            MagicMock(id=uuid4(), email="a@x.com", full_name="A", roles=[MagicMock(value="customer")], is_active=True, created_at=dt.datetime.now(dt.timezone.utc)),
-        ])
+        admin_svc.list_users = AsyncMock(
+            return_value=[
+                MagicMock(
+                    id=uuid4(),
+                    email="a@x.com",
+                    full_name="A",
+                    roles=[MagicMock(value="customer")],
+                    is_active=True,
+                    created_at=dt.datetime.now(dt.timezone.utc),
+                ),
+            ]
+        )
         client._transport.app.dependency_overrides[_user_admin_service] = lambda: admin_svc
 
         resp = await client.get("/v1/auth/users")

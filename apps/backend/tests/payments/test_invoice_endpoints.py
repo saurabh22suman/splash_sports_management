@@ -1,4 +1,5 @@
 """API tests for invoice endpoints (create, list, get)."""
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -81,14 +82,16 @@ async def client(seed_invoices_data: dict) -> AsyncIterator[AsyncClient]:
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
-        invoice1.line_items.append(InvoiceLineItemModel(
-            id=uuid4(),
-            invoice_id=invoice1.id,
-            description="Item 1",
-            quantity=1,
-            unit_price_paise=10000,
-            total_paise=10000,
-        ))
+        invoice1.line_items.append(
+            InvoiceLineItemModel(
+                id=uuid4(),
+                invoice_id=invoice1.id,
+                description="Item 1",
+                quantity=1,
+                unit_price_paise=10000,
+                total_paise=10000,
+            )
+        )
         session.add(invoice1)
 
         # Invoice for another customer
@@ -109,14 +112,16 @@ async def client(seed_invoices_data: dict) -> AsyncIterator[AsyncClient]:
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
-        invoice2.line_items.append(InvoiceLineItemModel(
-            id=uuid4(),
-            invoice_id=invoice2.id,
-            description="Item 2",
-            quantity=1,
-            unit_price_paise=20000,
-            total_paise=20000,
-        ))
+        invoice2.line_items.append(
+            InvoiceLineItemModel(
+                id=uuid4(),
+                invoice_id=invoice2.id,
+                description="Item 2",
+                quantity=1,
+                unit_price_paise=20000,
+                total_paise=20000,
+            )
+        )
         session.add(invoice2)
 
         await session.commit()

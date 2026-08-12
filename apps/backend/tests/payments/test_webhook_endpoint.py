@@ -1,4 +1,5 @@
 """Tests for the /webhooks/razorpay endpoint."""
+
 import hashlib
 import hmac
 import json
@@ -107,7 +108,8 @@ async def client() -> AsyncIterator[AsyncClient]:
     mock_provider = MagicMock()
     mock_provider.verify_webhook = MagicMock(
         side_effect=lambda payload, sig: (
-            json.loads(payload) if sig != "badsig"
+            json.loads(payload)
+            if sig != "badsig"
             else (_ for _ in ()).throw(Validation("Invalid signature"))
         ),
     )
@@ -125,17 +127,13 @@ async def client() -> AsyncIterator[AsyncClient]:
             try:
                 mock_provider.verify_webhook(raw_payload, signature)
             except Exception as e:
-                raise Validation(
-                    "Invalid webhook signature", details={"error": str(e)}
-                ) from e
+                raise Validation("Invalid webhook signature", details={"error": str(e)}) from e
 
         svc.handle_webhook = AsyncMock(side_effect=mock_handle_webhook)
         return svc
 
     app.dependency_overrides[get_payment_service] = _service
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
 
@@ -187,9 +185,7 @@ async def test_webhook_end_to_end_with_real_signature() -> None:
 
     # Test that the real RazorpayAdapter correctly verifies HMAC-SHA256 signatures
     adapter = RazorpayAdapter(
-        key_id="rzp_test_xxx",
-        key_secret="test_secret",
-        webhook_secret=WEBHOOK_SECRET
+        key_id="rzp_test_xxx", key_secret="test_secret", webhook_secret=WEBHOOK_SECRET
     )
 
     # Build a valid payload
@@ -207,5 +203,6 @@ async def test_webhook_end_to_end_with_real_signature() -> None:
 
     # Verify invalid signature raises
     from razorpay.errors import SignatureVerificationError
+
     with pytest.raises(SignatureVerificationError):
         adapter.verify_webhook(payload, "invalid_signature")

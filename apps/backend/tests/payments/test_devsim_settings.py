@@ -1,4 +1,5 @@
 """Tests for the dev payment simulator settings fields."""
+
 from common.infrastructure.settings import Settings
 
 

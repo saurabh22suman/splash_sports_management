@@ -4,6 +4,7 @@ Tests for payment trust boundaries (F-07, F-08).
 F-07: Webhook handler must resolve tenant from DB, not from user-controlled notes.
 F-08: Refund lookup must be tenant-scoped, not cross-tenant.
 """
+
 from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -55,12 +56,14 @@ def make_service(session) -> tuple[PaymentService, MagicMock]:
     events = MagicMock()
     events.publish = AsyncMock()
     provider = MagicMock()
-    provider.create_payment_link = AsyncMock(return_value=PaymentLinkResult(
-        short_url="https://stub.test/rzp/abc",
-        razorpay_payment_link_id="plink_abc",
-        razorpay_order_id=None,
-        expires_at=datetime.now(UTC),
-    ))
+    provider.create_payment_link = AsyncMock(
+        return_value=PaymentLinkResult(
+            short_url="https://stub.test/rzp/abc",
+            razorpay_payment_link_id="plink_abc",
+            razorpay_order_id=None,
+            expires_at=datetime.now(UTC),
+        )
+    )
     svc = PaymentService(
         session=session,
         invoice_repo=InvoiceRepository(session),
@@ -80,27 +83,48 @@ async def make_invoice_with_payment_link(session, tenant_id: uuid4, customer_id:
     """Helper to create a paid invoice with payment link."""
     # Create invoice
     inv = InvoiceModel(
-        id=uuid4(), tenant_id=tenant_id, customer_id=customer_id,
-        invoice_number="INV-000001", status="pending",
-        subtotal_paise=150000, tax_paise=0, total_paise=150000,
-        currency="INR", due_date=date(2026, 9, 1), paid_at=None,
-        description="Test", metadata_={},
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+        id=uuid4(),
+        tenant_id=tenant_id,
+        customer_id=customer_id,
+        invoice_number="INV-000001",
+        status="pending",
+        subtotal_paise=150000,
+        tax_paise=0,
+        total_paise=150000,
+        currency="INR",
+        due_date=date(2026, 9, 1),
+        paid_at=None,
+        description="Test",
+        metadata_={},
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
-    inv.line_items.append(InvoiceLineItemModel(
-        id=uuid4(), invoice_id=inv.id, description="Test",
-        quantity=1, unit_price_paise=150000, total_paise=150000,
-    ))
+    inv.line_items.append(
+        InvoiceLineItemModel(
+            id=uuid4(),
+            invoice_id=inv.id,
+            description="Test",
+            quantity=1,
+            unit_price_paise=150000,
+            total_paise=150000,
+        )
+    )
     session.add(inv)
 
     # Create payment
     payment = PaymentModel(
-        id=uuid4(), tenant_id=tenant_id, invoice_id=inv.id,
-        amount_paise=150000, currency="INR",
-        status="captured", razorpay_payment_id="pay_test_123",
-        razorpay_payment_link_id="plink_abc", idempotency_key="key-1",
+        id=uuid4(),
+        tenant_id=tenant_id,
+        invoice_id=inv.id,
+        amount_paise=150000,
+        currency="INR",
+        status="captured",
+        razorpay_payment_id="pay_test_123",
+        razorpay_payment_link_id="plink_abc",
+        idempotency_key="key-1",
         captured_at=datetime.now(UTC),
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     session.add(payment)
 
@@ -142,16 +166,19 @@ class TestF07_WebhookTenantResolution:
                     "entity": {
                         "id": "pay_test_123",  # This razorpay_payment_id belongs to tenant Y
                         "notes": {
-                            "payment_id": str(malicious_payment_id),  # Attacker tries different payment
+                            "payment_id": str(
+                                malicious_payment_id
+                            ),  # Attacker tries different payment
                             "tenant_id": str(tenant_y),  # Attacker uses correct tenant
                             "invoice_id": str(inv.id),
-                        }
+                        },
                     }
                 }
-            }
+            },
         }
 
         import json
+
         raw_payload = json.dumps(malicious_payload).encode()
 
         provider = MagicMock()
@@ -175,9 +202,7 @@ class TestF07_WebhookTenantResolution:
 
         # The invoice should still be "paid" (was already paid before)
         # But the key point is: the code should use DB tenant, not notes tenant
-        result = await session.execute(
-            select(InvoiceModel).where(InvoiceModel.id == inv.id)
-        )
+        result = await session.execute(select(InvoiceModel).where(InvoiceModel.id == inv.id))
         updated_invoice = result.scalar_one()
         assert updated_invoice.status == "paid"
 
@@ -207,13 +232,14 @@ class TestF07_WebhookTenantResolution:
                             "payment_id": str(payment.id),
                             "tenant_id": str(tenant_y),  # This should be ignored
                             "invoice_id": str(inv.id),
-                        }
+                        },
                     }
                 }
-            }
+            },
         }
 
         import json
+
         raw_payload = json.dumps(valid_payload).encode()
 
         provider = MagicMock()
@@ -236,9 +262,7 @@ class TestF07_WebhookTenantResolution:
         await svc.handle_webhook(raw_payload=raw_payload, signature="ignored")
 
         # Invoice should still be paid (no change since it was already paid)
-        result = await session.execute(
-            select(InvoiceModel).where(InvoiceModel.id == inv.id)
-        )
+        result = await session.execute(select(InvoiceModel).where(InvoiceModel.id == inv.id))
         updated_invoice = result.scalar_one()
         assert updated_invoice.status == "paid"
 
@@ -255,20 +279,32 @@ class TestF08_RefundLookupIsTenantScoped:
 
         # Create a refund for tenant B
         payment_b = PaymentModel(
-            id=uuid4(), tenant_id=tenant_b, invoice_id=uuid4(),
-            amount_paise=150000, currency="INR",
-            status="captured", razorpay_payment_id="pay_b_123",
-            razorpay_payment_link_id="plink_b", idempotency_key="key-b",
+            id=uuid4(),
+            tenant_id=tenant_b,
+            invoice_id=uuid4(),
+            amount_paise=150000,
+            currency="INR",
+            status="captured",
+            razorpay_payment_id="pay_b_123",
+            razorpay_payment_link_id="plink_b",
+            idempotency_key="key-b",
             captured_at=datetime.now(UTC),
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(payment_b)
 
         refund_b = RefundModel(
-            id=uuid4(), tenant_id=tenant_b, payment_id=payment_b.id,
-            amount_paise=150000, currency="INR",
-            status="pending", razorpay_refund_id="rfnd_test_b", reason="test",
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+            id=uuid4(),
+            tenant_id=tenant_b,
+            payment_id=payment_b.id,
+            amount_paise=150000,
+            currency="INR",
+            status="pending",
+            razorpay_refund_id="rfnd_test_b",
+            reason="test",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(refund_b)
         await session.flush()
@@ -279,9 +315,7 @@ class TestF08_RefundLookupIsTenantScoped:
         # Tenant A trying to find Tenant B's refund should return None
         result = await refund_repo.get_by_razorpay_id(tenant_a, "rfnd_test_b")
 
-        assert result is None, (
-            "Cross-tenant refund lookup should return None"
-        )
+        assert result is None, "Cross-tenant refund lookup should return None"
 
     async def test_any_tenant_lookup_removed(self, session):
         """
@@ -292,20 +326,32 @@ class TestF08_RefundLookupIsTenantScoped:
 
         # Create a refund for tenant B
         payment_b = PaymentModel(
-            id=uuid4(), tenant_id=tenant_b, invoice_id=uuid4(),
-            amount_paise=150000, currency="INR",
-            status="captured", razorpay_payment_id="pay_b_456",
-            razorpay_payment_link_id="plink_b_456", idempotency_key="key-b",
+            id=uuid4(),
+            tenant_id=tenant_b,
+            invoice_id=uuid4(),
+            amount_paise=150000,
+            currency="INR",
+            status="captured",
+            razorpay_payment_id="pay_b_456",
+            razorpay_payment_link_id="plink_b_456",
+            idempotency_key="key-b",
             captured_at=datetime.now(UTC),
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(payment_b)
 
         refund_b = RefundModel(
-            id=uuid4(), tenant_id=tenant_b, payment_id=payment_b.id,
-            amount_paise=150000, currency="INR",
-            status="pending", razorpay_refund_id="rfnd_any_tenant", reason="test",
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+            id=uuid4(),
+            tenant_id=tenant_b,
+            payment_id=payment_b.id,
+            amount_paise=150000,
+            currency="INR",
+            status="pending",
+            razorpay_refund_id="rfnd_any_tenant",
+            reason="test",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(refund_b)
         await session.flush()
@@ -313,7 +359,7 @@ class TestF08_RefundLookupIsTenantScoped:
         refund_repo = RefundRepository(session)
 
         # The method should NOT exist - this tests the fix
-        assert not hasattr(refund_repo, 'get_by_razorpay_refund_id_any_tenant'), (
+        assert not hasattr(refund_repo, "get_by_razorpay_refund_id_any_tenant"), (
             "get_by_razorpay_refund_id_any_tenant should be removed"
         )
 
@@ -338,10 +384,16 @@ class TestF08_RefundLookupIsTenantScoped:
 
         # Create a pending refund
         refund = RefundModel(
-            id=uuid4(), tenant_id=tenant_y, payment_id=payment.id,
-            amount_paise=150000, currency="INR",
-            status="pending", razorpay_refund_id="rfnd_test_123", reason="test",
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+            id=uuid4(),
+            tenant_id=tenant_y,
+            payment_id=payment.id,
+            amount_paise=150000,
+            currency="INR",
+            status="pending",
+            razorpay_refund_id="rfnd_test_123",
+            reason="test",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         session.add(refund)
         await session.flush()
@@ -357,10 +409,11 @@ class TestF08_RefundLookupIsTenantScoped:
                         "payment_id": "pay_rzp_123",  # Razorpay payment ID for tenant resolution
                     }
                 }
-            }
+            },
         }
 
         import json
+
         raw_payload = json.dumps(webhook_payload).encode()
 
         provider = MagicMock()
@@ -383,9 +436,7 @@ class TestF08_RefundLookupIsTenantScoped:
         await svc.handle_webhook(raw_payload=raw_payload, signature="ignored")
 
         # Verify the refund was updated under tenant Y
-        result = await session.execute(
-            select(RefundModel).where(RefundModel.id == refund.id)
-        )
+        result = await session.execute(select(RefundModel).where(RefundModel.id == refund.id))
         updated_refund = result.scalar_one()
 
         assert updated_refund.status == "completed", (

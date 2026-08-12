@@ -49,12 +49,14 @@ def make_service(session) -> tuple[PaymentService, MagicMock]:
     events = MagicMock()
     events.publish = AsyncMock()
     provider = MagicMock()
-    provider.create_payment_link = AsyncMock(return_value=PaymentLinkResult(
-        short_url="https://stub.test/rzp/abc",
-        razorpay_payment_link_id="plink_abc",
-        razorpay_order_id=None,
-        expires_at=datetime.now(UTC) + timedelta(hours=24),
-    ))
+    provider.create_payment_link = AsyncMock(
+        return_value=PaymentLinkResult(
+            short_url="https://stub.test/rzp/abc",
+            razorpay_payment_link_id="plink_abc",
+            razorpay_order_id=None,
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
+        )
+    )
     svc = PaymentService(
         session=session,
         invoice_repo=InvoiceRepository(session),
@@ -72,31 +74,42 @@ def make_service(session) -> tuple[PaymentService, MagicMock]:
 
 async def test_create_payment_link_returns_short_url(session):
     tid = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
     await session.commit()
 
     svc, events = make_service(session)
     inv = await svc.create_invoice(
-        tenant_id=tid, customer_id=uuid4(),
+        tenant_id=tid,
+        customer_id=uuid4(),
         line_items=[{"description": "Lane 4", "quantity": 1, "unit_price_paise": 150000}],
-        description="Booking", due_date=date(2026, 9, 1), idempotency_key=None,
+        description="Booking",
+        due_date=date(2026, 9, 1),
+        idempotency_key=None,
     )
     events.publish.reset_mock()
 
     result = await svc.create_payment_link(
-        tenant_id=tid, customer_id=inv.customer_id, invoice_id=inv.id, idempotency_key="key-1",
+        tenant_id=tid,
+        customer_id=inv.customer_id,
+        invoice_id=inv.id,
+        idempotency_key="key-1",
     )
     assert result.short_url.startswith("https://")
     assert result.razorpay_payment_link_id.startswith("plink_")
     # Persisted a Payment row in PENDING
     payments = (
-        await session.execute(
-            select(PaymentModel).where(PaymentModel.invoice_id == inv.id)
-        )
-    ).scalars().all()
+        (await session.execute(select(PaymentModel).where(PaymentModel.invoice_id == inv.id)))
+        .scalars()
+        .all()
+    )
     assert len(payments) == 1
     assert payments[0].razorpay_payment_link_id == result.razorpay_payment_link_id
 
@@ -105,29 +118,38 @@ async def test_create_payment_link_404_on_unknown_invoice(session):
     svc, _ = make_service(session)
     with pytest.raises(NotFound):
         await svc.create_payment_link(
-            tenant_id=uuid4(), customer_id=uuid4(), invoice_id=uuid4(), idempotency_key="k",
+            tenant_id=uuid4(),
+            customer_id=uuid4(),
+            invoice_id=uuid4(),
+            idempotency_key="k",
         )
 
 
 async def test_create_payment_link_409_on_paid_invoice(session):
     tid = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
     await session.commit()
 
     svc, _ = make_service(session)
     inv_entity = await svc.create_invoice(
-        tenant_id=tid, customer_id=uuid4(),
+        tenant_id=tid,
+        customer_id=uuid4(),
         line_items=[{"description": "x", "quantity": 1, "unit_price_paise": 10000}],
-        description="x", due_date=date(2026, 9, 1), idempotency_key=None,
+        description="x",
+        due_date=date(2026, 9, 1),
+        idempotency_key=None,
     )
     # Get the model from DB to mark it as paid (directly set status on the model)
     inv = (
-        await session.execute(
-            select(InvoiceModel).where(InvoiceModel.id == inv_entity.id)
-        )
+        await session.execute(select(InvoiceModel).where(InvoiceModel.id == inv_entity.id))
     ).scalar_one()
     inv.status = "paid"
     inv.paid_at = datetime.now(UTC)
@@ -144,20 +166,30 @@ async def test_create_payment_link_409_on_paid_invoice(session):
 async def test_create_payment_link_404_on_customer_id_mismatch(session):
     """404 to avoid leaking: different customer_id for an existing invoice returns NotFound."""
     tid = uuid4()
-    session.add(TenantPaymentConfigModel(
-        tenant_id=tid, razorpay_account_id=None, default_currency="INR",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
-    ))
+    session.add(
+        TenantPaymentConfigModel(
+            tenant_id=tid,
+            razorpay_account_id=None,
+            default_currency="INR",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    )
     await session.commit()
 
     svc, _ = make_service(session)
     inv = await svc.create_invoice(
-        tenant_id=tid, customer_id=uuid4(),
+        tenant_id=tid,
+        customer_id=uuid4(),
         line_items=[{"description": "x", "quantity": 1, "unit_price_paise": 10000}],
-        description="x", due_date=date(2026, 9, 1), idempotency_key=None,
+        description="x",
+        due_date=date(2026, 9, 1),
+        idempotency_key=None,
     )
     with pytest.raises(NotFound):
         await svc.create_payment_link(
-            tenant_id=tid, customer_id=uuid4(),  # different customer_id
-            invoice_id=inv.id, idempotency_key="k",
+            tenant_id=tid,
+            customer_id=uuid4(),  # different customer_id
+            invoice_id=inv.id,
+            idempotency_key="k",
         )

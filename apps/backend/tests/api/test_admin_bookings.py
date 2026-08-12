@@ -3,6 +3,7 @@
 Tests the GET /v1/admin/bookings endpoint that returns bookings
 with customer and facility details for the admin dashboard.
 """
+
 import pytest
 
 
@@ -16,8 +17,9 @@ class TestAdminBookingsEndpoint:
 
         # Find the route in the router
         routes = [r.path for r in router.routes]
-        assert "/admin/bookings" in routes or any("admin/bookings" in r for r in routes), \
+        assert "/admin/bookings" in routes or any("admin/bookings" in r for r in routes), (
             "Admin bookings endpoint should be registered"
+        )
 
     def test_admin_bookings_returns_booking_out_with_customer_fields(self) -> None:
         """BookingOut should include customer_name and customer_email for admin view."""

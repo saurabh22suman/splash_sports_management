@@ -23,7 +23,9 @@ async def test_null_adapter_create_payment_link_returns_short_url():
         "total": {"amount_paise": 150000, "currency": "INR"},
     }
     result = await adapter.create_payment_link(
-        invoice=inv, payment_id=uuid4(), idempotency_key="key-1",
+        invoice=inv,
+        payment_id=uuid4(),
+        idempotency_key="key-1",
         success_url="https://app.example/book/pay/abc/return",
         cancel_url="https://app.example/book/pay/abc",
         customer={"name": "Alex", "email": "alex@example.com", "contact": "+919999999999"},
@@ -36,7 +38,9 @@ async def test_null_adapter_create_payment_link_returns_short_url():
 async def test_null_adapter_create_refund():
     adapter = NullAdapter()
     refund = await adapter.create_refund(
-        razorpay_payment_id="pay_test_1", amount_paise=150000, idempotency_key="k",
+        razorpay_payment_id="pay_test_1",
+        amount_paise=150000,
+        idempotency_key="k",
     )
     assert refund["id"].startswith("rfnd_test_")
     assert refund["amount"] == 150000

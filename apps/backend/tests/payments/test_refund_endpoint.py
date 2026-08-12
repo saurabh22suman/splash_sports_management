@@ -1,4 +1,5 @@
 """API tests for refund endpoint."""
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -80,14 +81,16 @@ async def client(seed_paid_invoice_data: dict) -> AsyncIterator[AsyncClient]:
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
-        invoice.line_items.append(InvoiceLineItemModel(
-            id=uuid4(),
-            invoice_id=invoice.id,
-            description="Test item",
-            quantity=1,
-            unit_price_paise=15000,
-            total_paise=15000,
-        ))
+        invoice.line_items.append(
+            InvoiceLineItemModel(
+                id=uuid4(),
+                invoice_id=invoice.id,
+                description="Test item",
+                quantity=1,
+                unit_price_paise=15000,
+                total_paise=15000,
+            )
+        )
         session.add(invoice)
 
         # Create captured payment

@@ -35,12 +35,21 @@ async def session():
 async def test_invoice_repo_save_and_get(session):
     repo = InvoiceRepository(session)
     inv = InvoiceModel(
-        id=uuid4(), tenant_id=uuid4(), customer_id=uuid4(),
-        invoice_number="INV-000001", status="pending",
-        subtotal_paise=150000, tax_paise=0, total_paise=150000, currency="INR",
-        due_date=date(2026, 9, 1), paid_at=None, description="",
+        id=uuid4(),
+        tenant_id=uuid4(),
+        customer_id=uuid4(),
+        invoice_number="INV-000001",
+        status="pending",
+        subtotal_paise=150000,
+        tax_paise=0,
+        total_paise=150000,
+        currency="INR",
+        due_date=date(2026, 9, 1),
+        paid_at=None,
+        description="",
         metadata_={},
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     await repo.save(inv)
     found = await repo.get(inv.tenant_id, inv.id)
@@ -54,12 +63,21 @@ async def test_invoice_repo_list_by_customer(session):
     cust_a, cust_b = uuid4(), uuid4()
     for cust in (cust_a, cust_b):
         inv = InvoiceModel(
-            id=uuid4(), tenant_id=tid, customer_id=cust,
-            invoice_number=f"INV-{cust.hex[:6]}", status="pending",
-            subtotal_paise=150000, tax_paise=0, total_paise=150000, currency="INR",
-            due_date=date(2026, 9, 1), paid_at=None, description="",
+            id=uuid4(),
+            tenant_id=tid,
+            customer_id=cust,
+            invoice_number=f"INV-{cust.hex[:6]}",
+            status="pending",
+            subtotal_paise=150000,
+            tax_paise=0,
+            total_paise=150000,
+            currency="INR",
+            due_date=date(2026, 9, 1),
+            paid_at=None,
+            description="",
             metadata_={},
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         await repo.save(inv)
     only_a = await repo.list_by_customer(tid, cust_a)

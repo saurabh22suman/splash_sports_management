@@ -4,6 +4,7 @@ The critical test here is `test_double_booking_is_prevented`. This is the
 single most important guarantee in the entire prototype: a confirmed booking
 cannot overlap with another confirmed booking for the same resource.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -356,9 +357,7 @@ class TestBookingCancellation:
             start_at=start,
             end_at=end,
         )
-        await booking_service.cancel_booking(
-            tenant_id=seeded["tenant_id"], booking_id=b1.id
-        )
+        await booking_service.cancel_booking(tenant_id=seeded["tenant_id"], booking_id=b1.id)
         # The slot is now free; another booking should succeed
         b2 = await booking_service.create_booking(
             tenant_id=seeded["tenant_id"],
@@ -369,9 +368,7 @@ class TestBookingCancellation:
         )
         assert b2.id != b1.id
 
-    async def test_cannot_cancel_twice(
-        self, booking_service: BookingService, seeded: dict
-    ) -> None:
+    async def test_cannot_cancel_twice(self, booking_service: BookingService, seeded: dict) -> None:
         from common.domain.exceptions import InvariantViolation
 
         booking = await booking_service.create_booking(
@@ -381,9 +378,7 @@ class TestBookingCancellation:
             start_at=datetime(2026, 9, 1, 10, 0, tzinfo=timezone.utc),
             end_at=datetime(2026, 9, 1, 11, 0, tzinfo=timezone.utc),
         )
-        await booking_service.cancel_booking(
-            tenant_id=seeded["tenant_id"], booking_id=booking.id
-        )
+        await booking_service.cancel_booking(tenant_id=seeded["tenant_id"], booking_id=booking.id)
         with pytest.raises(InvariantViolation):
             await booking_service.cancel_booking(
                 tenant_id=seeded["tenant_id"], booking_id=booking.id

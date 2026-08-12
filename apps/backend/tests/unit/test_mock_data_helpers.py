@@ -1,4 +1,5 @@
 """Unit tests for pure helpers in mock_data.py."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

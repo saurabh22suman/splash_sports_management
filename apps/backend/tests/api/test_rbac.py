@@ -5,6 +5,7 @@ requires_role dependency. Verifies that:
 - tenant_admin can access admin-only endpoints
 - customer cannot access admin-only endpoints (gets 403)
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
@@ -58,6 +59,7 @@ def jwt_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv("JWT_ALGORITHM", "HS256")
     monkeypatch.setenv("JWT_SECRET", JWT_TEST_SECRET)
     from common.infrastructure.settings import reset_settings_cache
+
     reset_settings_cache()
     yield
     reset_settings_cache()

@@ -1,4 +1,5 @@
 """Tests for DevSimAdapter — drop-in PaymentProvider that returns dev URLs."""
+
 from __future__ import annotations
 
 import hashlib
@@ -114,9 +115,7 @@ async def test_refund_returns_deterministic_id(adapter):
 
 def test_verify_webhook_uses_real_hmac_signature(adapter):
     payload = b'{"event":"payment.captured"}'
-    expected_sig = hmac.new(
-        adapter.webhook_secret.encode(), payload, hashlib.sha256
-    ).hexdigest()
+    expected_sig = hmac.new(adapter.webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
     # Should NOT raise — same code path as RazorpayAdapter
     event = adapter.verify_webhook(payload, expected_sig)
     assert event["event"] == "payment.captured"

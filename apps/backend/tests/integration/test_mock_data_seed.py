@@ -1,4 +1,5 @@
 """Integration tests for the seed_mock_data script."""
+
 from __future__ import annotations
 
 import io
@@ -15,7 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from auth.infrastructure.models import TenantModel, UserModel
 from common.infrastructure.db import Base
 from customer.infrastructure.models import CustomerModel
-from scripts.mock_data import seed_tenant, seed_users, seed_customers, seed_facilities_and_resources, seed_bookings
+from scripts.mock_data import (
+    seed_tenant,
+    seed_users,
+    seed_customers,
+    seed_facilities_and_resources,
+    seed_bookings,
+)
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -67,9 +74,7 @@ async def test_seed_tenant_is_idempotent(session):
     id2 = await seed_tenant(session)
     assert id1 == id2
 
-    result = await session.execute(
-        select(TenantModel).where(TenantModel.slug == "demo")
-    )
+    result = await session.execute(select(TenantModel).where(TenantModel.slug == "demo"))
     tenants = result.scalars().all()
     assert len(tenants) == 1
 
@@ -93,9 +98,7 @@ async def test_seed_users_is_idempotent(session):
     second = await seed_users(session, tenant_id)
     assert first == second
 
-    result = await session.execute(
-        select(UserModel).where(UserModel.tenant_id == tenant_id)
-    )
+    result = await session.execute(select(UserModel).where(UserModel.tenant_id == tenant_id))
     assert len(result.scalars().all()) == 4
 
 
@@ -112,7 +115,11 @@ async def test_seed_customers_creates_fifteen(session):
     customers = result.scalars().all()
     assert len(customers) == 15
     # 3 customers share an email with the 3 customer users
-    for shared_email in ("alex@demo.splashh.dev", "priya@demo.splashh.dev", "jordan@demo.splashh.dev"):
+    for shared_email in (
+        "alex@demo.splashh.dev",
+        "priya@demo.splashh.dev",
+        "jordan@demo.splashh.dev",
+    ):
         matching = [c for c in customers if c.email == shared_email]
         assert len(matching) == 1
 
@@ -143,12 +150,16 @@ async def test_seed_facilities_creates_seven_availability_rules_per_resource(ses
 
     for slug, ids in fr.items():
         rules = (
-            await session.execute(
-                select(AvailabilityRuleModel).where(
-                    AvailabilityRuleModel.resource_id == ids["resource_id"]
+            (
+                await session.execute(
+                    select(AvailabilityRuleModel).where(
+                        AvailabilityRuleModel.resource_id == ids["resource_id"]
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(rules) == 7, f"{slug} should have 7 rules"
         assert {r.day_of_week for r in rules} == set(range(7))
 
@@ -162,10 +173,10 @@ async def test_seed_facilities_is_idempotent(session):
     assert first.keys() == second.keys()
 
     rows = (
-        await session.execute(
-            select(FacilityModel).where(FacilityModel.tenant_id == tenant_id)
-        )
-    ).scalars().all()
+        (await session.execute(select(FacilityModel).where(FacilityModel.tenant_id == tenant_id)))
+        .scalars()
+        .all()
+    )
     assert len(rows) == 5
 
 
@@ -181,10 +192,10 @@ async def test_seed_bookings_creates_at_least_thirty(session):
     counts = await seed_bookings(session, tenant_id, customer_ids, resource_ids)
 
     rows = (
-        await session.execute(
-            select(BookingModel).where(BookingModel.tenant_id == tenant_id)
-        )
-    ).scalars().all()
+        (await session.execute(select(BookingModel).where(BookingModel.tenant_id == tenant_id)))
+        .scalars()
+        .all()
+    )
     assert len(rows) >= 30
     assert counts["created"] == len(rows)
 
@@ -226,10 +237,10 @@ async def test_seed_bookings_is_idempotent(session):
     second = await seed_bookings(session, tenant_id, customer_ids, resource_ids)
 
     rows = (
-        await session.execute(
-            select(BookingModel).where(BookingModel.tenant_id == tenant_id)
-        )
-    ).scalars().all()
+        (await session.execute(select(BookingModel).where(BookingModel.tenant_id == tenant_id)))
+        .scalars()
+        .all()
+    )
     assert len(rows) == first["created"]
     assert second["created"] == 0
 
@@ -253,36 +264,50 @@ async def test_seed_mock_data_full_run_creates_documented_shape(session):
 
     # Users: 1 admin + 3 customer users from seed_users + 12 auto-created in seed_customers = 16
     users = (
-        await session.execute(
-            select(UserModel).where(UserModel.tenant_id == result["tenant_id"])
-        )
-    ).scalars().all()
+        (await session.execute(select(UserModel).where(UserModel.tenant_id == result["tenant_id"])))
+        .scalars()
+        .all()
+    )
     assert len(users) == 16
 
     # Customers: 15
     customers = (
-        await session.execute(
-            select(CustomerModel).where(CustomerModel.tenant_id == result["tenant_id"])
+        (
+            await session.execute(
+                select(CustomerModel).where(CustomerModel.tenant_id == result["tenant_id"])
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(customers) == 15
 
     # Facilities: 5
     from facility.infrastructure.models import FacilityModel
+
     facilities = (
-        await session.execute(
-            select(FacilityModel).where(FacilityModel.tenant_id == result["tenant_id"])
+        (
+            await session.execute(
+                select(FacilityModel).where(FacilityModel.tenant_id == result["tenant_id"])
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(facilities) == 5
 
     # Bookings: at least 30
     from booking.infrastructure.models import BookingModel
+
     bookings = (
-        await session.execute(
-            select(BookingModel).where(BookingModel.tenant_id == result["tenant_id"])
+        (
+            await session.execute(
+                select(BookingModel).where(BookingModel.tenant_id == result["tenant_id"])
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(bookings) >= 30
 
 

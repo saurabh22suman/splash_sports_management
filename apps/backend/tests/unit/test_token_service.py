@@ -1,4 +1,5 @@
 """Tests for TokenService (JWT access + opaque refresh)."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

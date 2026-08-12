@@ -9,6 +9,7 @@ These tests verify:
 Note: Full integration tests with live DB would test actual data isolation. These tests
 verify the API layer correctly rejects cross-tenant requests.
 """
+
 from __future__ import annotations
 
 import os
@@ -23,7 +24,9 @@ from httpx import ASGITransport, AsyncClient
 
 # Ensure proper env before imports
 os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://splashh:splashh_dev@localhost:5432/splashh_test")
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql+asyncpg://splashh:splashh_dev@localhost:5432/splashh_test"
+)
 os.environ.setdefault("JWT_ALGORITHM", "HS256")
 os.environ["JWT_SECRET"] = "test-secret-key-only-for-unit-tests-do-not-use-in-prod"
 
@@ -58,6 +61,7 @@ def _create_token(
 def mock_session() -> Any:
     """Create a mock database session."""
     from unittest.mock import AsyncMock, MagicMock
+
     s = MagicMock()
     s.add = MagicMock()
     s.flush = AsyncMock()

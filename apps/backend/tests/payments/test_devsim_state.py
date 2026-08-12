@@ -1,4 +1,5 @@
 """Tests for devsim_state: HS256-signed JWT roundtrip with tamper/expiry rejection."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

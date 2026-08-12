@@ -1,4 +1,5 @@
 """Integration tests for the seed_demo script."""
+
 from __future__ import annotations
 
 import io
@@ -94,9 +95,7 @@ async def test_seed_demo_creates_facility_pool_and_seven_rules(session, tenant):
     assert facility.timezone == "Australia/Sydney"
 
     pool = (
-        await session.execute(
-            select(ResourceModel).where(ResourceModel.facility_id == facility.id)
-        )
+        await session.execute(select(ResourceModel).where(ResourceModel.facility_id == facility.id))
     ).scalar_one()
     assert pool.resource_type == ResourceType.POOL.value
     assert pool.capacity == 20
@@ -105,9 +104,7 @@ async def test_seed_demo_creates_facility_pool_and_seven_rules(session, tenant):
     rules = (
         (
             await session.execute(
-                select(AvailabilityRuleModel).where(
-                    AvailabilityRuleModel.resource_id == pool.id
-                )
+                select(AvailabilityRuleModel).where(AvailabilityRuleModel.resource_id == pool.id)
             )
         )
         .scalars()
@@ -139,16 +136,12 @@ async def test_seed_demo_is_noop_when_facility_already_seeded(session, tenant):
     assert first == 0
 
     facility_count = (
-        await session.execute(
-            select(FacilityModel).where(FacilityModel.tenant_id == tenant.id)
-        )
-    ).scalars().all()
-    resource_count = (
-        await session.execute(select(ResourceModel))
-    ).scalars().all()
-    rule_count = (
-        await session.execute(select(AvailabilityRuleModel))
-    ).scalars().all()
+        (await session.execute(select(FacilityModel).where(FacilityModel.tenant_id == tenant.id)))
+        .scalars()
+        .all()
+    )
+    resource_count = (await session.execute(select(ResourceModel))).scalars().all()
+    rule_count = (await session.execute(select(AvailabilityRuleModel))).scalars().all()
 
     assert len(facility_count) == 1
     assert len(resource_count) == 1
@@ -162,16 +155,12 @@ async def test_seed_demo_is_noop_when_facility_already_seeded(session, tenant):
 
     # Counts unchanged.
     facility_count_2 = (
-        await session.execute(
-            select(FacilityModel).where(FacilityModel.tenant_id == tenant.id)
-        )
-    ).scalars().all()
-    resource_count_2 = (
-        await session.execute(select(ResourceModel))
-    ).scalars().all()
-    rule_count_2 = (
-        await session.execute(select(AvailabilityRuleModel))
-    ).scalars().all()
+        (await session.execute(select(FacilityModel).where(FacilityModel.tenant_id == tenant.id)))
+        .scalars()
+        .all()
+    )
+    resource_count_2 = (await session.execute(select(ResourceModel))).scalars().all()
+    rule_count_2 = (await session.execute(select(AvailabilityRuleModel))).scalars().all()
 
     assert len(facility_count_2) == 1
     assert len(resource_count_2) == 1

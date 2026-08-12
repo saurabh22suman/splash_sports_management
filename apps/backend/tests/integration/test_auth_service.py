@@ -4,6 +4,7 @@ These tests use a real Postgres database (via the conftest fixtures). They
 exercise the full authentication flow: tenant registration, login, refresh
 (with reuse detection), logout.
 """
+
 from __future__ import annotations
 
 import os

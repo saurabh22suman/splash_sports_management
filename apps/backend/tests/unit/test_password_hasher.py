@@ -4,6 +4,7 @@ This test defines the contract for [`PasswordHasher`]:
 - hash() returns a non-empty string different from the input
 - verify() accepts the correct password and rejects others
 """
+
 from __future__ import annotations
 
 import pytest

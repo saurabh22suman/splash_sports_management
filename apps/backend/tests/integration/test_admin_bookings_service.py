@@ -3,6 +3,7 @@
 Tests the GET /v1/admin/bookings endpoint with real database queries,
 including filtering by facility, resource, status, and date range.
 """
+
 from __future__ import annotations
 
 import os
@@ -326,9 +327,7 @@ class TestAdminBookingsService:
         # Should return 4 bookings (booking4 is cancelled, booking5 is tomorrow)
         assert len(bookings) == 4
 
-    async def test_filter_by_facility(
-        self, seeded: dict, session: AsyncSession
-    ) -> None:
+    async def test_filter_by_facility(self, seeded: dict, session: AsyncSession) -> None:
         """Test filtering bookings by facility."""
         from booking.application.booking_service import BookingService
         from booking.infrastructure.repositories import BookingRepository
@@ -359,9 +358,7 @@ class TestAdminBookingsService:
         # Should return bookings from facility1 only (resource1, resource2)
         assert len(bookings) == 3
 
-    async def test_filter_by_status(
-        self, seeded: dict, session: AsyncSession
-    ) -> None:
+    async def test_filter_by_status(self, seeded: dict, session: AsyncSession) -> None:
         """Test filtering bookings by status."""
         from booking.application.booking_service import BookingService
         from booking.infrastructure.repositories import BookingRepository
@@ -392,9 +389,7 @@ class TestAdminBookingsService:
         # Should return only confirmed bookings (booking4 is cancelled)
         assert len(bookings) == 3
 
-    async def test_includes_customer_details(
-        self, seeded: dict, session: AsyncSession
-    ) -> None:
+    async def test_includes_customer_details(self, seeded: dict, session: AsyncSession) -> None:
         """Test that bookings can be enriched with customer name and email."""
         from booking.application.booking_service import BookingService
         from booking.infrastructure.repositories import BookingRepository

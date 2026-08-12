@@ -1,6 +1,7 @@
 from payments.domain.value_objects import Money, InvoiceStatus, PaymentStatus, RefundStatus
 import pytest
 
+
 class TestMoney:
     def test_construction(self):
         m = Money(amount_paise=150000, currency="INR")  # ₹1500.00
@@ -22,9 +23,17 @@ class TestMoney:
         assert a == b
         assert a != c
 
+
 class TestEnums:
     def test_invoice_status_members(self):
-        assert {s.value for s in InvoiceStatus} == {"draft", "pending", "paid", "failed", "cancelled", "refunded"}
+        assert {s.value for s in InvoiceStatus} == {
+            "draft",
+            "pending",
+            "paid",
+            "failed",
+            "cancelled",
+            "refunded",
+        }
 
     def test_payment_status_members(self):
         # Razorpay flow: pending → captured or failed (no separate "authorized" — Razorpay auto-captures)

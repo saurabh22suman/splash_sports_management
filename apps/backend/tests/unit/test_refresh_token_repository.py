@@ -3,6 +3,7 @@
 These tests verify the fix for F-06: RefreshTokenRepository.get_by_hash lacks tenant_id filter.
 The security fix ensures cross-tenant hash collisions cannot authenticate.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -31,7 +32,9 @@ class TestRefreshTokenRepositoryGetByHash:
         After fix: repo.get_by_hash(tenant_id, token_hash) - tenant-scoped
         """
         session = MagicMock()
-        session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None)))
+        session.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        )
 
         repo = RefreshTokenRepository(session)
 

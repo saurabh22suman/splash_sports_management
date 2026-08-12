@@ -6,6 +6,7 @@ These tests verify:
 3. On restart, unpublished events are drained
 4. Subscriber receives events from Redis Streams
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -24,6 +25,8 @@ from common.application.events import DomainEvent, InProcessEventPublisher, Outb
 class SampleEvent(DomainEvent):
     payload: str = ""
     amount: int = 0
+
+
 from common.infrastructure.event_bus.outbox import SQLAlchemyOutboxRepository, OutboxEvent
 from common.infrastructure.event_bus.redis_streams import RedisStreamsPublisher
 from common.infrastructure.event_bus.outbox_worker import OutboxWorker

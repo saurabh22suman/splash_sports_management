@@ -1,4 +1,5 @@
 """Unit tests for Booking entity (no DB)."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
