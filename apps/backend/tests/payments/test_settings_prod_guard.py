@@ -14,6 +14,8 @@ def test_prod_env_with_simulator_enabled_raises_on_app_creation(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("DEV_PAYMENT_SIMULATOR_ENABLED", "true")
     monkeypatch.setenv("DEV_STATE_SECRET", "any-real-secret-32chars-or-more-xxx")
+    # init_engine requires asyncpg driver — use the asyncpg URL form in tests
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
     from common.infrastructure.settings import reset_settings_cache, get_settings
 
@@ -35,6 +37,7 @@ def test_non_dev_env_with_simulator_enabled_and_default_secret_raises(monkeypatc
     monkeypatch.setenv("ENVIRONMENT", "staging")
     monkeypatch.setenv("DEV_PAYMENT_SIMULATOR_ENABLED", "true")
     monkeypatch.setenv("DEV_STATE_SECRET", "dev-state-secret-change-me")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
     from common.infrastructure.settings import reset_settings_cache
 
@@ -54,6 +57,7 @@ def test_dev_env_with_simulator_and_default_secret_does_not_raise(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.setenv("DEV_PAYMENT_SIMULATOR_ENABLED", "true")
     monkeypatch.setenv("DEV_STATE_SECRET", "dev-state-secret-change-me")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
     from common.infrastructure.settings import reset_settings_cache
 
@@ -85,6 +89,7 @@ def test_dev_env_with_simulator_and_default_secret_does_not_raise(monkeypatch):
 def test_devsim_routes_not_mounted_when_flag_false(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.setenv("DEV_PAYMENT_SIMULATOR_ENABLED", "false")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
     from common.infrastructure.settings import reset_settings_cache
 

@@ -177,6 +177,7 @@ disable_error_code = [
     "str-unpack",  # redis client returns Any from xrange
     "union-attr",  # redis client returns Any from xrange
     "assignment",  # SQLAlchemy dialect variance noise
+    "return-value",  # redis client returns Any from xrange/xreadgroup
 ]
 
 [[tool.mypy.overrides]]

@@ -11,6 +11,7 @@ or directly:
 For mock data seeding (full dataset):
     PYTHONPATH=src uv run python apps/backend/scripts/seed_demo.py --mock
 """
+
 from __future__ import annotations
 
 import sys
@@ -61,9 +62,7 @@ async def seed_demo(session: AsyncSession, *, stdout: TextIO = sys.stdout) -> in
     """Seed the demo facility. Returns the process exit code."""
     # 1. Pick the first/only tenant.
     tenant: TenantModel | None = (
-        await session.execute(
-            select(TenantModel).order_by(TenantModel.created_at.asc()).limit(1)
-        )
+        await session.execute(select(TenantModel).order_by(TenantModel.created_at.asc()).limit(1))
     ).scalar_one_or_none()
     if tenant is None:
         print("No tenant found. Run register-tenant first.", file=stdout)

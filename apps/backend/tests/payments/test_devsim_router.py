@@ -43,11 +43,17 @@ def _valid_state_token() -> str:
 async def client(monkeypatch) -> AsyncIterator[AsyncClient]:
     """Build a minimal FastAPI app with the devsim router mounted."""
     monkeypatch.setenv("DEV_STATE_SECRET", DEV_STATE_SECRET)
+    from common.infrastructure.logging import configure_logging
     from common.infrastructure.settings import reset_settings_cache, get_settings
 
     reset_settings_cache()
     settings = get_settings()
     assert settings.dev_state_secret == DEV_STATE_SECRET
+
+    # Configure structlog to route through stdlib logging so pytest's caplog can capture.
+    # json_logs=True keeps messages parseable (no ANSI color codes breaking assertions).
+    configure_logging(level="INFO", json_logs=True)
+    _ = settings  # silence unused warning
 
     app = FastAPI()
     app.include_router(devsim_router)

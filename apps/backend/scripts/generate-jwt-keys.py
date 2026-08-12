@@ -16,6 +16,7 @@ Set these environment variables to use the keys:
     export JWT_PUBLIC_KEY_PATH=./secrets/jwt_public.pem
     export JWT_ALGORITHM=RS256
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,9 +77,7 @@ def generate_keypair(output_dir: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate RSA key pair for JWT RS256 signing"
-    )
+    parser = argparse.ArgumentParser(description="Generate RSA key pair for JWT RS256 signing")
     parser.add_argument(
         "--output-dir",
         type=Path,
