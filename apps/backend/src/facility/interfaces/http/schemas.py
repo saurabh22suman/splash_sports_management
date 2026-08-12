@@ -1,4 +1,5 @@
 """Pydantic schemas for facility endpoints."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, time
@@ -11,9 +12,12 @@ from facility.domain.entities import ResourceType
 
 # ---------- Facility ----------
 
+
 class FacilityCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
-    slug: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9](?:[a-z0-9\-]{0,38}[a-z0-9])?$")
+    slug: str = Field(
+        min_length=1, max_length=40, pattern=r"^[a-z0-9](?:[a-z0-9\-]{0,38}[a-z0-9])?$"
+    )
     address_line1: str = Field(min_length=1, max_length=255)
     address_line2: str | None = Field(default=None, max_length=255)
     city: str = Field(min_length=1, max_length=100)
@@ -75,9 +79,12 @@ class FacilityListResponse(BaseModel):
 
 # ---------- Resource ----------
 
+
 class ResourceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    slug: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9](?:[a-z0-9\-]{0,38}[a-z0-9])?$")
+    slug: str = Field(
+        min_length=1, max_length=40, pattern=r"^[a-z0-9](?:[a-z0-9\-]{0,38}[a-z0-9])?$"
+    )
     resource_type: ResourceType
     capacity: int = Field(default=1, ge=1, le=1000)
     attributes: dict[str, object] = Field(default_factory=dict)
@@ -110,6 +117,7 @@ class ResourceListResponse(BaseModel):
 
 
 # ---------- AvailabilityRule ----------
+
 
 class AvailabilityRuleCreate(BaseModel):
     day_of_week: int = Field(ge=0, le=6, description="0=Monday, 6=Sunday")

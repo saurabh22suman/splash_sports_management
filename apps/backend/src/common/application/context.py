@@ -8,6 +8,7 @@ threading them through every function signature.
 > Module-level context variables let domain code ask "who is calling me?" without
 > polluting signatures. Tests can override context via [`set_test_context`].
 """
+
 from __future__ import annotations
 
 import secrets

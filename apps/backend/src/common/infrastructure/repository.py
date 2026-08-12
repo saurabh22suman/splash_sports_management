@@ -8,6 +8,7 @@ Per the handbook ([Repositories](../../../docs/04-backend/repositories.md)):
 - repository methods are explicit (no generic `find_by`)
 - no repository calls another repository
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -42,7 +43,9 @@ class BaseRepository(Generic[T]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_all(self, tenant_id: TenantId, *, limit: int = 50, offset: int = 0) -> Sequence[T]:
+    async def list_all(
+        self, tenant_id: TenantId, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[T]:
         stmt = (
             select(self.model)
             .where(self.model.tenant_id == tenant_id)  # type: ignore[attr-defined]

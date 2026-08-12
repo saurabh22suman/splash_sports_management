@@ -1,4 +1,5 @@
 """HTTP router for facility endpoints."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -44,6 +45,7 @@ def _facility_service(session: AsyncSession = Depends(get_session)) -> FacilityS
 
 
 # ---------- Facility ----------
+
 
 @router.post(
     "",
@@ -128,6 +130,7 @@ async def deactivate_facility(
 
 # ---------- Resource ----------
 
+
 @router.post(
     "/{facility_id}/resources",
     response_model=ResourceOut,
@@ -201,6 +204,7 @@ async def deactivate_resource(
 
 
 # ---------- Availability ----------
+
 
 @router.post(
     "/resources/{resource_id}/availability-rules",

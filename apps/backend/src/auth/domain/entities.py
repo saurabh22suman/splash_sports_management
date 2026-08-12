@@ -4,6 +4,7 @@ Per the handbook, the domain layer has zero framework dependencies. Entities
 here are pure Python dataclasses. The ORM models in `infrastructure/models.py`
 are a separate concern.
 """
+
 from __future__ import annotations
 
 import re

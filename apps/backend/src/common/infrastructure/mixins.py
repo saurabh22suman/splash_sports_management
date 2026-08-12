@@ -7,6 +7,7 @@ Every business table has:
 - `created_by` / `updated_by` audit fields (nullable for system actions)
 - `version` integer for optimistic concurrency
 """
+
 from __future__ import annotations
 
 import uuid

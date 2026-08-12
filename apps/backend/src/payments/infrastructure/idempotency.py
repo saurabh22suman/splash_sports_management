@@ -34,9 +34,7 @@ class RedisLike(Protocol):
 class IdempotencyStore:
     TTL_SECONDS = 60 * 60 * 24  # 24h
 
-    def __init__(
-        self, *, redis: RedisLike | None, repo: IdempotencyKeyRepository
-    ) -> None:
+    def __init__(self, *, redis: RedisLike | None, repo: IdempotencyKeyRepository) -> None:
         self._redis = redis
         self._repo = repo
 
@@ -81,11 +79,13 @@ class IdempotencyStore:
         response_status: int,
         response_body: dict,
     ) -> None:
-        payload = json.dumps({
-            "request_hash": request_hash,
-            "response_status": response_status,
-            "response_body": response_body,
-        })
+        payload = json.dumps(
+            {
+                "request_hash": request_hash,
+                "response_status": response_status,
+                "response_body": response_body,
+            }
+        )
         if self._redis is not None:
             with suppress(Exception):
                 self._redis.setex(

@@ -4,6 +4,7 @@
   reads `X-Request-ID` (or generates one), and adds it to the response.
 * `CORSMiddleware` — handled by Starlette (configured via settings).
 """
+
 from __future__ import annotations
 
 import time

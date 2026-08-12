@@ -3,6 +3,7 @@
 Provides atomic persistence of domain events alongside domain changes.
 The background worker reads from this table to publish to Redis Streams.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -46,7 +47,9 @@ _outbox_table = sa.table(
 class OutboxRepository(Protocol):
     """Protocol for outbox persistence."""
 
-    async def insert(self, event_type: str, payload: dict[str, Any], tenant_id: UUID | None) -> UUID: ...
+    async def insert(
+        self, event_type: str, payload: dict[str, Any], tenant_id: UUID | None
+    ) -> UUID: ...
     async def mark_published(self, event_id: UUID) -> None: ...
     async def increment_attempts(self, event_id: UUID) -> None: ...
     async def fetch_unpublished(self, limit: int = 100) -> list[OutboxEvent]: ...
@@ -58,7 +61,9 @@ class SQLAlchemyOutboxRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def insert(self, event_type: str, payload: dict[str, Any], tenant_id: UUID | None) -> UUID:
+    async def insert(
+        self, event_type: str, payload: dict[str, Any], tenant_id: UUID | None
+    ) -> UUID:
         """Insert a new event into the outbox.
 
         This should be called within the same transaction as the domain change

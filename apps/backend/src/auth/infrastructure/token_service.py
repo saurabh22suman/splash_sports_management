@@ -13,6 +13,7 @@ Development/Test uses:
 - RS256 with ephemeral keys (generated per-process in tests)
 - HS256 with hardcoded secret (dev convenience only, NOT for production)
 """
+
 from __future__ import annotations
 
 import os
@@ -30,6 +31,7 @@ from common.domain.types import TenantId, UserId
 @dataclass(frozen=True, slots=True)
 class RS256KeyPaths:
     """Paths to RSA key files for RS256 JWT signing."""
+
     private_key_path: Path
     public_key_path: Path
 

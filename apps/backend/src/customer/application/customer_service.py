@@ -1,4 +1,5 @@
 """CustomerService — application orchestration for customer use cases."""
+
 from __future__ import annotations
 
 from datetime import date

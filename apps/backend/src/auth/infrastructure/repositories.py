@@ -8,6 +8,7 @@ One repository per aggregate:
 Each exposes domain-meaningful methods. They never leak SQLAlchemy models
 upward; the application layer works with domain entities only.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -151,7 +152,11 @@ class UserRepository(BaseRepository[User]):
         return _user_to_domain(m)
 
     async def list_by_tenant(self, tenant_id: UUID) -> list[User]:
-        stmt = select(UserModel).where(UserModel.tenant_id == tenant_id).order_by(UserModel.created_at.desc())
+        stmt = (
+            select(UserModel)
+            .where(UserModel.tenant_id == tenant_id)
+            .order_by(UserModel.created_at.desc())
+        )
         result = await self.session.execute(stmt)
         return [_user_to_domain(m) for m in result.scalars().all()]
 

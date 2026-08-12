@@ -4,6 +4,7 @@ Maps domain exceptions to HTTP responses. The HTTP layer is the only place
 that knows about HTTP; modules raise domain exceptions and this layer
 translates.
 """
+
 from __future__ import annotations
 
 from typing import Any

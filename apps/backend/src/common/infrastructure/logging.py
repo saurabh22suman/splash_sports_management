@@ -6,6 +6,7 @@ can be correlated without manual threading.
 
 PII fields are redacted via the `redact_pii` processor.
 """
+
 from __future__ import annotations
 
 import logging

@@ -13,6 +13,7 @@ Invariants:
 - Phone numbers are E.164 when provided
 - `status` transitions: ACTIVE -> INACTIVE -> ACTIVE, ACTIVE -> BANNED
 """
+
 from __future__ import annotations
 
 import re
