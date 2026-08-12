@@ -679,20 +679,20 @@ The **single highest drift risk** is L1 (no contract-first). Without generated t
 | **F-03** | Security | **P0** | `alembic/versions/*` (8 of 9 tables) | Missing PostgreSQL RLS | ✅ Resolved (migration `0005_enable_rls_all_tables` in `main`) |
 | **F-04** | Security | **P0** | `auth/interfaces/http/dependencies.py:46-48` | Hardcoded default JWT secret | ✅ Resolved (`ba12454`) |
 | **F-05** | Booking | **P0** | `booking/interfaces/http/schemas.py:17` | Client-controlled `price_cents` | ✅ Resolved (`7af5802`) — BookingTariffModel + migration 0006; BookingCreate no longer accepts price_cents; server computes via compute_price() |
-| **F-06** | Backend | **P0** | `auth/infrastructure/repositories.py:162-166` | RefreshToken lookup missing `tenant_id` | ❌ Open |
+| **F-06** | Backend | **P0** | `auth/infrastructure/repositories.py:162-166` | RefreshToken lookup missing `tenant_id` | ✅ Resolved (`7af5802`) — `get_by_hash(tenant_id, token_hash)` filters by both; always present in initial commit |
 | **F-07** | Payment | **P0** | `payments/application/payment_service.py:192` | `tenant_id` read from webhook `notes` | ✅ Resolved (`7af5802`) — webhook resolves tenant_id from payment.tenant_id (DB), never from notes |
 | **F-08** | Payment | **P0** | `payments/application/payment_service.py:252` | Explicit cross-tenant refund lookup | ✅ Resolved (`7af5802`) — refund lookup uses get_by_razorpay_id_with_payment (tenant-scoped) |
-| **F-09** | Payment | **P0** | `common/infrastructure/settings.py:68-72` | Missing `app_url` setting | ❌ Open |
+| **F-09** | Payment | **P0** | `common/infrastructure/settings.py:68-72` | Missing `app_url` setting | ✅ Resolved (`7af5802`) — `app_url` defined in settings.py; used in payment_service for success/cancel URLs |
 | **F-10** | Architecture | **P0** | `booking/infrastructure/repositories.py:81,152` | Cross-module DB model import | ✅ Resolved (`c943664`) — replaced in-method SQL JOIN against facility.infrastructure.models with FacilityService.list_resources() call; architecture test now passes |
 | **F-11** | Architecture | **P0** | `common/application/events.py:26-43` | Event bus not Redis Streams | ❌ Open |
-| **F-12** | AI-readiness | **P0** | `packages/api-client/src/types/domain.ts` | No OpenAPI codegen | ❌ Open |
-| **F-13** | DevOps | **P0** | `.github/workflows/` | CI/CD missing | ❌ Open |
+| **F-12** | AI-readiness | **P0** | `packages/api-client/src/types/domain.ts` | No OpenAPI codegen | ✅ Resolved (`7af5802`) — codegen script + `gen:types` / `gen:types:check` npm scripts present; CI integration is a follow-up |
+| **F-13** | DevOps | **P0** | `.github/workflows/` | CI/CD missing | ✅ Resolved (`7af5802`) — ci.yml covers lint/test/build for backend+frontend; release.yml builds+pushes Docker images to GHCR |
 | **F-14** | DevOps | **P0** | `apps/backend/scripts/` | Backup infrastructure missing | ❌ Open |
 | **F-15** | Testing | **P0** | `tests/integration/` | Tests broken (FK naming) | ✅ Resolved (`requires_role` tests + tenant-isolation tests now pass; test isolation bug fixed in this plan) |
-| **F-16** | Testing | **P0** | `tests/` (none) | Zero tenant-isolation tests | ❌ Open |
-| **F-17** | Testing | **P0** | `tests/api/` (none) | Zero booking API endpoint tests | ❌ Open |
-| **F-18** | UX | **P0** | `pages/admin/BookingsPage.tsx:7` | Admin bookings page is a placeholder | ❌ Open |
-| **F-19** | PWA | **P0** | `features/bookings/useCreateBooking.ts` | No offline booking queue | ❌ Open |
+| **F-16** | Testing | **P0** | `tests/` (none) | Zero tenant-isolation tests | ✅ Resolved (`7af5802`) — `test_rls_tenant_isolation.py` + `test_tenant_isolation_matrix.py` exercise cross-tenant access blocking |
+| **F-17** | Testing | **P0** | `tests/api/` (none) | Zero booking API endpoint tests | ✅ Resolved (`7af5802`) — `test_booking_endpoints.py` + `test_admin_bookings.py` cover schema, auth, RBAC, validation |
+| **F-18** | UX | **P0** | `pages/admin/BookingsPage.tsx:7` | Admin bookings page is a placeholder | ✅ Resolved (`7af5802`) — BookingsPage.tsx implements filter, paginate, status map, full table; uses `useAdminBookings` |
+| **F-19** | PWA | **P0** | `features/bookings/useCreateBooking.ts` | No offline booking queue | ✅ Resolved (`7af5802`) — `offlineQueue.ts` uses IndexedDB; `useCreateBooking` enqueues on retryable error; `tryDrainOfflineQueue` on app load |
 | **F-20** | Database | P1 | `customer/infrastructure/models.py:20-22` | `tenant_id` lacks FK | ✅ Resolved (`59c4e2b`) |
 | **F-21** | Database | P1 | `common/infrastructure/mixins.py:44-46` | `AuditMixin` defined but unused | ❌ Open |
 | **F-22** | Database | P1 | `payments/infrastructure/repositories.py:111-123` | Invoice number race | ❌ Open |

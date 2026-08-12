@@ -114,10 +114,13 @@ This scopes the shadcn CLI to `packages/ui` per the root `ui:add` script.
 
 ## Phase 0 progress
 
-Phase 0 — Block-Release Security is in progress. 9 of 19 P0 findings closed
+Phase 0 — Block-Release Security is in progress. 17 of 19 P0 findings closed
 (RBAC, RLS, JWT, price-cents, webhook tenant-id, refund lookup, cross-module
-import, tenant-isolation tests). See [CODEBASE_REVIEW.md](./docs/CODEBASE_REVIEW.md)
-for the up-to-date status of every finding.
+import, refresh-token tenant filter, app_url, OpenAPI codegen, CI/CD,
+tenant-isolation tests, booking API tests, admin bookings page, offline
+booking queue). See [CODEBASE_REVIEW.md](./docs/CODEBASE_REVIEW.md) for the
+up-to-date status of every finding. The remaining 2 P0s (F-11 Redis Streams,
+F-14 backup infrastructure) require real work.
 
 ## Next phase
 

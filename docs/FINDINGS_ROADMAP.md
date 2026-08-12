@@ -42,7 +42,7 @@ Phases are ordered; items within a phase can be parallelized across engineers.
 
 ### Phase 0 status snapshot
 
-9 of 19 P0 findings closed (see [CODEBASE_REVIEW.md](../CODEBASE_REVIEW.md) for the
+17 of 19 P0 findings closed (see [CODEBASE_REVIEW.md](../CODEBASE_REVIEW.md) for the
 authoritative status column):
 
 | Finding | Status | Closing commit |
@@ -52,13 +52,21 @@ authoritative status column):
 | F-03 | ✅ Closed | migration `0005_enable_rls_all_tables` |
 | F-04 | ✅ Closed | `ba12454` |
 | F-05 | ✅ Closed | `7af5802` |
+| F-06 | ✅ Closed | `7af5802` |
 | F-07 | ✅ Closed | `7af5802` |
 | F-08 | ✅ Closed | `7af5802` |
+| F-09 | ✅ Closed | `7af5802` |
 | F-10 | ✅ Closed | `c943664` |
+| F-12 | ✅ Closed | `7af5802` |
+| F-13 | ✅ Closed | `7af5802` |
 | F-15 | ✅ Closed | `ba12454` |
+| F-16 | ✅ Closed | `7af5802` |
+| F-17 | ✅ Closed | `7af5802` |
+| F-18 | ✅ Closed | `7af5802` |
+| F-19 | ✅ Closed | `7af5802` |
 
-The remaining 10 P0 findings are unchanged in this roadmap; their work plans
-below remain the source of truth for scope.
+The remaining 2 P0 findings (F-11 Redis Streams wiring, F-14 backup scripts)
+require real work; their work plans below remain the source of truth for scope.
 
 ### F-01 — Switch JWT to RS256 (P0)
 
