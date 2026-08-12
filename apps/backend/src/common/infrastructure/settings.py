@@ -77,6 +77,18 @@ class Settings(BaseSettings):
     razorpay_webhook_secret: str = Field(default="whsec_placeholder", description="Razorpay webhook signing secret (HMAC SHA256)")
     payments_provider: Literal["razorpay", "null"] = Field(default="razorpay", description="Which PaymentProvider adapter to use")
 
+    # ---- Dev Payment Simulator (NEVER enable in production) ----
+    dev_payment_simulator_enabled: bool = Field(
+        default=False,
+        description="DEV ONLY: replaces the real payment provider with a fake checkout "
+                    "page. Must be False in production.",
+    )
+    dev_state_secret: str = Field(
+        default="dev-state-secret-change-me",
+        description="HMAC secret used to sign the state JWT carried in the dev mock-checkout URL. "
+                    "MUST be overridden in any non-development environment.",
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
