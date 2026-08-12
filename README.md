@@ -112,6 +112,13 @@ This scopes the shadcn CLI to `packages/ui` per the root `ui:add` script.
 | `payments` | Working | Razorpay payment links + webhooks (INR); admin invoice list, customer pay page; HMAC-verified webhooks |
 | `web-pwa` | Working | Single PWA with role-based routing: /login (customer), /admin/login (admin), role-specific home pages, /admin/users for user management |
 
+## Phase 0 progress
+
+Phase 0 — Block-Release Security is in progress. 9 of 19 P0 findings closed
+(RBAC, RLS, JWT, price-cents, webhook tenant-id, refund lookup, cross-module
+import, tenant-isolation tests). See [CODEBASE_REVIEW.md](./docs/CODEBASE_REVIEW.md)
+for the up-to-date status of every finding.
+
 ## Next phase
 
 - Push notifications (VAPID + backend endpoint + SW handler)
