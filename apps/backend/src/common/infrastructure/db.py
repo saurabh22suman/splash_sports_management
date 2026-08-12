@@ -6,7 +6,6 @@ We use the **async session per request** pattern:
 3. Service code uses the session via [`get_session`] (FastAPI dependency).
 4. On exit, session commits on success, rolls back on exception.
 """
-
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

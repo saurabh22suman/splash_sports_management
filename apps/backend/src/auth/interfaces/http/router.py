@@ -1,5 +1,4 @@
 """HTTP router for auth endpoints."""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -37,9 +36,7 @@ def _to_token_response(result) -> TokenResponse:  # type: ignore[no-untyped-def]
     import datetime as _dt
 
     access_in = int((result.access_expires_at - _dt.datetime.now(_dt.timezone.utc)).total_seconds())
-    refresh_in = int(
-        (result.refresh_expires_at - _dt.datetime.now(_dt.timezone.utc)).total_seconds()
-    )
+    refresh_in = int((result.refresh_expires_at - _dt.datetime.now(_dt.timezone.utc)).total_seconds())
     return TokenResponse(
         access_token=result.access_token,
         refresh_token=result.refresh_token,
@@ -203,3 +200,5 @@ async def list_users(
             for u in users
         ]
     )
+
+

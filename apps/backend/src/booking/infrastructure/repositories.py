@@ -7,7 +7,6 @@ bookings, before inserting.
 > See [Booking Flow](../../../docs/02-architecture/flow-booking.md) for the
 > full design rationale.
 """
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -38,9 +37,7 @@ def _to_domain(m: BookingModel) -> Booking:
         price_cents=m.price_cents,
         currency=m.currency,
         notes=m.notes,
-        cancellation_reason=CancellationReason(m.cancellation_reason)
-        if m.cancellation_reason
-        else None,
+        cancellation_reason=CancellationReason(m.cancellation_reason) if m.cancellation_reason else None,
         cancelled_at=m.cancelled_at,
         checked_in_at=m.checked_in_at,
         completed_at=m.completed_at,
@@ -142,9 +139,7 @@ class BookingRepository(BaseRepository[Booking]):
         m.status = booking.status.value
         m.price_cents = booking.price_cents
         m.notes = booking.notes
-        m.cancellation_reason = (
-            booking.cancellation_reason.value if booking.cancellation_reason else None
-        )
+        m.cancellation_reason = booking.cancellation_reason.value if booking.cancellation_reason else None
         m.cancelled_at = booking.cancelled_at
         m.checked_in_at = booking.checked_in_at
         m.completed_at = booking.completed_at
@@ -165,16 +160,10 @@ class BookingRepository(BaseRepository[Booking]):
     ) -> list[tuple[Booking, str | None, str | None]]:
         """Returns (booking, facility_name, resource_name) tuples for richer UI."""
         # Fetch bookings first
-        stmt = (
-            select(BookingModel)
-            .where(
-                BookingModel.tenant_id == tenant_id,
-                BookingModel.customer_id == customer_id,
-            )
-            .order_by(BookingModel.start_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
+        stmt = select(BookingModel).where(
+            BookingModel.tenant_id == tenant_id,
+            BookingModel.customer_id == customer_id,
+        ).order_by(BookingModel.start_at.desc()).limit(limit).offset(offset)
 
         if statuses:
             stmt = stmt.where(BookingModel.status.in_([s.value for s in statuses]))
@@ -194,11 +183,7 @@ class BookingRepository(BaseRepository[Booking]):
                 resource_ids=resource_ids,
             )
             return [
-                (
-                    b,
-                    names_map.get(b.resource_id, (None, None))[1],
-                    names_map.get(b.resource_id, (None, None))[0],
-                )
+                (b, names_map.get(b.resource_id, (None, None))[1], names_map.get(b.resource_id, (None, None))[0])
                 for b in bookings
             ]
 

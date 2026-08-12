@@ -10,7 +10,6 @@ Use cases:
 - refresh: rotate refresh tokens with reuse detection
 - logout: revoke refresh family
 """
-
 from __future__ import annotations
 
 import hashlib
@@ -127,12 +126,7 @@ class AuthService:
             raise Forbidden("Account is disabled")
 
         if user.is_locked():
-            raise Forbidden(
-                "Account temporarily locked",
-                details={
-                    "locked_until": user.locked_until.isoformat() if user.locked_until else None
-                },
-            )
+            raise Forbidden("Account temporarily locked", details={"locked_until": user.locked_until.isoformat() if user.locked_until else None})
 
         if not self.password_hasher.verify(user.password_hash, password):
             user.record_failed_login()
@@ -247,7 +241,9 @@ class AuthService:
 
     # ----------------- helpers -----------------
 
-    def _issue_pair(self, user: User, *, family_id: str | None = None) -> tuple[TokenPair, str]:
+    def _issue_pair(
+        self, user: User, *, family_id: str | None = None
+    ) -> tuple[TokenPair, str]:
         """Issue access + refresh tokens. Returns (pair, family_id).
 
         Caller is responsible for persisting the refresh token record.
@@ -334,13 +330,11 @@ def build_auth_service(session: AsyncSession, settings) -> AuthService:  # type:
             msg = "HS256 is forbidden in production. Use RS256."
             raise RuntimeError(msg)
         import os
-
         secret = os.environ.get("JWT_SECRET")
         if not secret or len(secret) < 32:
             msg = "JWT_SECRET must be set and ≥32 chars in HS256 dev/test mode"
             raise RuntimeError(msg)
         from auth.infrastructure.token_service import HS256TokenService
-
         token_service = HS256TokenService(
             secret=secret,
             access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),

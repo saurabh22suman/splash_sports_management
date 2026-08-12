@@ -4,7 +4,6 @@ ORM models are infrastructure concerns. They mirror the domain entities but
 are NOT the domain entities themselves. Domain code never imports from this
 module; the repository converts between the two.
 """
-
 from __future__ import annotations
 
 import uuid
@@ -31,14 +30,13 @@ class TenantModel(Base, TimestampMixin):
 
 class UserModel(Base, TimestampMixin):
     __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="CASCADE", name="fk_users_tenant_id"),
-        index=True,
-        nullable=False,
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE", name="fk_users_tenant_id"), index=True, nullable=False
     )
     email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -64,20 +62,16 @@ class RefreshTokenModel(Base):
     """
 
     __tablename__ = "refresh_tokens"
-    __table_args__ = (UniqueConstraint("token_hash", name="uq_refresh_tokens_hash"),)
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_refresh_tokens_hash"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="CASCADE", name="fk_refresh_tokens_tenant_id"),
-        index=True,
-        nullable=False,
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE", name="fk_refresh_tokens_tenant_id"), index=True, nullable=False
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE", name="fk_refresh_tokens_user_id"),
-        index=True,
-        nullable=False,
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE", name="fk_refresh_tokens_user_id"), index=True, nullable=False
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     family_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

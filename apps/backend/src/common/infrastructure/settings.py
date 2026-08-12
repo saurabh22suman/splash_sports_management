@@ -4,7 +4,6 @@ Settings are loaded once at startup from environment variables and `.env` files.
 They are immutable at runtime — tests create their own Settings instance with
 overrides.
 """
-
 from __future__ import annotations
 
 from functools import lru_cache
@@ -53,9 +52,7 @@ class Settings(BaseSettings):
     jwt_refresh_token_ttl_seconds: int = 30 * 24 * 3600
 
     # ---- CORS ----
-    cors_allowed_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:5173", "http://localhost:5174"]
-    )
+    cors_allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://localhost:5174"])
 
     # ---- Refresh-token cookie ----
     auth_refresh_cookie_name: str = "refresh_token"
@@ -72,34 +69,24 @@ class Settings(BaseSettings):
     ssrf_allowed_hosts: list[str] = Field(default_factory=list)
 
     # ---- App URL ----
-    app_url: str = Field(
-        default="http://localhost:5173", description="Base URL of the frontend application"
-    )
+    app_url: str = Field(default="http://localhost:5173", description="Base URL of the frontend application")
 
     # ---- Payments (Razorpay) ----
-    razorpay_key_id: str = Field(
-        default="rzp_test_placeholder", description="Razorpay public key id"
-    )
-    razorpay_key_secret: str = Field(
-        default="rzp_test_placeholder_secret", description="Razorpay secret API key"
-    )
-    razorpay_webhook_secret: str = Field(
-        default="whsec_placeholder", description="Razorpay webhook signing secret (HMAC SHA256)"
-    )
-    payments_provider: Literal["razorpay", "null"] = Field(
-        default="razorpay", description="Which PaymentProvider adapter to use"
-    )
+    razorpay_key_id: str = Field(default="rzp_test_placeholder", description="Razorpay public key id")
+    razorpay_key_secret: str = Field(default="rzp_test_placeholder_secret", description="Razorpay secret API key")
+    razorpay_webhook_secret: str = Field(default="whsec_placeholder", description="Razorpay webhook signing secret (HMAC SHA256)")
+    payments_provider: Literal["razorpay", "null"] = Field(default="razorpay", description="Which PaymentProvider adapter to use")
 
     # ---- Dev Payment Simulator (NEVER enable in production) ----
     dev_payment_simulator_enabled: bool = Field(
         default=False,
         description="DEV ONLY: replaces the real payment provider with a fake checkout "
-        "page. Must be False in production.",
+                    "page. Must be False in production.",
     )
     dev_state_secret: str = Field(
         default="dev-state-secret-change-me",
         description="HMAC secret used to sign the state JWT carried in the dev mock-checkout URL. "
-        "MUST be overridden in any non-development environment.",
+                    "MUST be overridden in any non-development environment.",
     )
 
 

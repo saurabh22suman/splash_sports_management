@@ -3,7 +3,6 @@
 Publishes events from the outbox to Redis Streams for consumption
 by downstream services and event handlers.
 """
-
 from __future__ import annotations
 
 import json
@@ -77,9 +76,7 @@ class RedisStreamsPublisher:
 
         try:
             await self._redis.xgroup_create(stream_name, group_name, id="0", mkstream=True)
-            logger.info(
-                "Created consumer group", extra={"stream": stream_name, "group": group_name}
-            )
+            logger.info("Created consumer group", extra={"stream": stream_name, "group": group_name})
         except redis.ResponseError as e:
             if "BUSYGROUP" not in str(e):
                 raise
@@ -152,6 +149,4 @@ class RedisStreamSubscriber:
                         await handler(event_type, payload)
                         await publisher.ack_message(stream_name, group_name, msg_id)
                     except Exception as e:
-                        logger.error(
-                            "Error processing message", extra={"error": str(e), "msg_id": msg_id}
-                        )
+                        logger.error("Error processing message", extra={"error": str(e), "msg_id": msg_id})

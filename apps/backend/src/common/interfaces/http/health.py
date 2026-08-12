@@ -6,7 +6,6 @@
 These are unauthenticated by design so load balancers and orchestrators can
 probe them.
 """
-
 from __future__ import annotations
 
 from fastapi import APIRouter, status

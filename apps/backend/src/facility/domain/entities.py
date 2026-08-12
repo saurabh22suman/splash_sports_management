@@ -10,7 +10,6 @@ Invariants:
 - Availability rules don't overlap for the same resource
 - A Resource's facility_id must reference an existing Facility in the same tenant
 """
-
 from __future__ import annotations
 
 import re

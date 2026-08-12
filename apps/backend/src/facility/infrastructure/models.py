@@ -1,5 +1,4 @@
 """SQLAlchemy ORM models for facility module."""
-
 from __future__ import annotations
 
 import uuid
@@ -34,7 +33,9 @@ class FacilityModel(Base, TimestampMixin):
 
 class ResourceModel(Base, TimestampMixin):
     __tablename__ = "resources"
-    __table_args__ = (UniqueConstraint("facility_id", "slug", name="uq_resources_facility_slug"),)
+    __table_args__ = (
+        UniqueConstraint("facility_id", "slug", name="uq_resources_facility_slug"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)

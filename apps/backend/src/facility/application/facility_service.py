@@ -1,5 +1,4 @@
 """FacilityService."""
-
 from __future__ import annotations
 
 from datetime import date, time
@@ -85,7 +84,9 @@ class FacilityService:
         f.update_details(**fields)
         return await self.facilities.update(f)
 
-    async def deactivate_facility(self, *, tenant_id: UUID, facility_id: UUID) -> Facility:
+    async def deactivate_facility(
+        self, *, tenant_id: UUID, facility_id: UUID
+    ) -> Facility:
         f = await self.get_facility(tenant_id=tenant_id, facility_id=facility_id)
         f.close()
         return await self.facilities.update(f)
@@ -132,7 +133,9 @@ class FacilityService:
         r.update_details(**fields)
         return await self.resources.update(r)
 
-    async def deactivate_resource(self, *, tenant_id: UUID, resource_id: UUID) -> Resource:
+    async def deactivate_resource(
+        self, *, tenant_id: UUID, resource_id: UUID
+    ) -> Resource:
         r = await self.get_resource(tenant_id=tenant_id, resource_id=resource_id)
         r.deactivate()
         return await self.resources.update(r)
@@ -166,7 +169,9 @@ class FacilityService:
     ) -> list[AvailabilityRule]:
         return list(await self.rules.list_for_resource(tenant_id, resource_id))
 
-    async def lock_resource_for_update(self, *, tenant_id: UUID, resource_id: UUID) -> Resource:
+    async def lock_resource_for_update(
+        self, *, tenant_id: UUID, resource_id: UUID
+    ) -> Resource:
         """Lock a resource row for update (SELECT FOR UPDATE).
 
         Used by BookingRepository.add_safe to serialize concurrent bookings
@@ -254,9 +259,12 @@ class FacilityService:
 
         from facility.infrastructure.models import FacilityModel, ResourceModel
 
-        stmt = select(ResourceModel.id, ResourceModel.name, ResourceModel.facility_id).where(
-            ResourceModel.id.in_(resource_ids),
-            ResourceModel.tenant_id == tenant_id,
+        stmt = (
+            select(ResourceModel.id, ResourceModel.name, ResourceModel.facility_id)
+            .where(
+                ResourceModel.id.in_(resource_ids),
+                ResourceModel.tenant_id == tenant_id,
+            )
         )
         result = await self.session.execute(stmt)
         rows = list(result.all())
@@ -266,9 +274,10 @@ class FacilityService:
 
         # Get facility IDs and fetch facility names
         facility_ids = list(set(row[2] for row in rows if row[2] is not None))
-        facility_names = await self.get_facility_names(
-            tenant_id=tenant_id, facility_ids=facility_ids
-        )
+        facility_names = await self.get_facility_names(tenant_id=tenant_id, facility_ids=facility_ids)
 
         # Build result
-        return {row[0]: (row[1], facility_names.get(row[2])) for row in rows}
+        return {
+            row[0]: (row[1], facility_names.get(row[2]))
+            for row in rows
+        }

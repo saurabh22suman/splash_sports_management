@@ -6,7 +6,6 @@ Usage:
 The factory pattern lets tests create isolated app instances with overridden
 dependencies.
 """
-
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -96,9 +95,7 @@ def create_app() -> FastAPI:
                 key_secret=settings.razorpay_key_secret,
                 webhook_secret=settings.razorpay_webhook_secret,
             )
-        _logger.info(
-            "payment_provider_initialised", provider=type(app.state.payment_provider).__name__
-        )
+        _logger.info("payment_provider_initialised", provider=type(app.state.payment_provider).__name__)
 
         try:
             yield

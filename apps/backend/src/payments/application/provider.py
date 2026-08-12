@@ -69,7 +69,9 @@ class NullAdapter:
             expires_at=datetime.now(UTC) + timedelta(hours=24),
         )
 
-    async def fetch_payment(self, razorpay_payment_id: str) -> dict:
+    async def fetch_payment(
+        self, razorpay_payment_id: str
+    ) -> dict:
         return {"id": razorpay_payment_id, "status": "captured", "amount": 150000}
 
     async def create_refund(
@@ -85,7 +87,9 @@ class NullAdapter:
             "status": "processed",
         }
 
-    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+    def verify_webhook(
+        self, payload: bytes, signature: str
+    ) -> dict:
         return json.loads(payload)
 
 

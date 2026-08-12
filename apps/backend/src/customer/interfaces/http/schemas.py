@@ -1,5 +1,4 @@
 """Pydantic schemas for customer endpoints."""
-
 from __future__ import annotations
 
 from datetime import date, datetime

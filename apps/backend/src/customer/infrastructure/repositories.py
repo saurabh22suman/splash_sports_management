@@ -1,5 +1,4 @@
 """Customer repository."""
-
 from __future__ import annotations
 
 from uuid import UUID
@@ -74,9 +73,7 @@ class CustomerRepository(BaseRepository[Customer]):
         )
         user_result = await self.session.execute(user_stmt)
         if user_result.scalar_one_or_none() is None:
-            raise Conflict(
-                "User does not exist in this tenant", details={"user_id": str(customer.user_id)}
-            )
+            raise Conflict("User does not exist in this tenant", details={"user_id": str(customer.user_id)})
 
         existing = await self.get_by_user(customer.tenant_id, customer.user_id)
         if existing is not None:

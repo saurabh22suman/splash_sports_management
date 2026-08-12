@@ -8,7 +8,6 @@ This worker:
 
 Run as: python -m common.infrastructure.event_bus.outbox_worker
 """
-
 from __future__ import annotations
 
 import asyncio

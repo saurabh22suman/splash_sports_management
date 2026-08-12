@@ -1,5 +1,4 @@
 """Facility repositories."""
-
 from __future__ import annotations
 
 from datetime import date, time
@@ -197,7 +196,9 @@ class ResourceRepository(BaseRepository[Resource]):
 class AvailabilityRuleRepository(BaseRepository[AvailabilityRule]):
     model = AvailabilityRuleModel
 
-    async def list_for_resource(self, tenant_id: UUID, resource_id: UUID) -> list[AvailabilityRule]:
+    async def list_for_resource(
+        self, tenant_id: UUID, resource_id: UUID
+    ) -> list[AvailabilityRule]:
         stmt = (
             select(AvailabilityRuleModel)
             .where(

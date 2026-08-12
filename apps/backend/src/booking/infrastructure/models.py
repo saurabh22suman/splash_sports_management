@@ -1,21 +1,10 @@
 """SQLAlchemy ORM models for booking module."""
-
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (
-    CheckConstraint,
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    SmallInteger,
-    String,
-    Text,
-    UniqueConstraint,
-)
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, SmallInteger, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,9 +19,7 @@ class BookingModel(Base, TimestampMixin):
         CheckConstraint("price_cents >= 0", name="ck_bookings_price_non_negative"),
         Index(
             "ix_bookings_resource_window",
-            "tenant_id",
-            "resource_id",
-            "start_at",
+            "tenant_id", "resource_id", "start_at",
         ),
     )
 
@@ -67,13 +54,7 @@ class BookingTariffModel(Base, TimestampMixin):
 
     __tablename__ = "booking_tariffs"
     __table_args__ = (
-        UniqueConstraint(
-            "tenant_id",
-            "resource_id",
-            "day_of_week",
-            "time_start",
-            name="uq_booking_tariff_resource_slot",
-        ),
+        UniqueConstraint("tenant_id", "resource_id", "day_of_week", "time_start", name="uq_booking_tariff_resource_slot"),
         CheckConstraint("day_of_week >= 0 AND day_of_week <= 6", name="ck_tariff_day_of_week"),
         CheckConstraint("time_start >= 0 AND time_start <= 23", name="ck_tariff_time_start"),
         CheckConstraint("time_end >= 0 AND time_end <= 23", name="ck_tariff_time_end"),

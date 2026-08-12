@@ -40,15 +40,15 @@ class InvoiceRepository:
             )
         ).scalar_one_or_none()
 
-    async def get_for_update(self, tenant_id: UUID, invoice_id: UUID) -> InvoiceModel | None:
+    async def get_for_update(
+        self, tenant_id: UUID, invoice_id: UUID
+    ) -> InvoiceModel | None:
         return (
             await self._s.execute(
-                select(InvoiceModel)
-                .where(
+                select(InvoiceModel).where(
                     InvoiceModel.id == invoice_id,
                     InvoiceModel.tenant_id == tenant_id,
-                )
-                .with_for_update()
+                ).with_for_update()
             )
         ).scalar_one_or_none()
 
@@ -114,7 +114,11 @@ class InvoiceRepository:
             stmt = stmt.where(InvoiceModel.status == status)
         if customer_id:
             stmt = stmt.where(InvoiceModel.customer_id == customer_id)
-        stmt = stmt.order_by(InvoiceModel.created_at.desc()).limit(limit).offset(offset)
+        stmt = (
+            stmt.order_by(InvoiceModel.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         return list((await self._s.execute(stmt)).scalars().all())
 
     async def next_invoice_number(self, tenant_id: UUID) -> str:
@@ -140,7 +144,9 @@ class PaymentRepository:
         self._s.add(p)
         await self._s.flush()
 
-    async def get_by_id(self, tenant_id: UUID, payment_id: UUID) -> PaymentModel | None:
+    async def get_by_id(
+        self, tenant_id: UUID, payment_id: UUID
+    ) -> PaymentModel | None:
         return (
             await self._s.execute(
                 select(PaymentModel).where(
@@ -196,7 +202,9 @@ class PaymentRepository:
         """Look up payment by Razorpay payment ID across all tenants (for webhook processing)."""
         return (
             await self._s.execute(
-                select(PaymentModel).where(PaymentModel.razorpay_payment_id == razorpay_payment_id)
+                select(PaymentModel).where(
+                    PaymentModel.razorpay_payment_id == razorpay_payment_id
+                )
             )
         ).scalar_one_or_none()
 
@@ -242,6 +250,7 @@ class RefundRepository:
         ).scalar_one_or_none()
 
 
+
 class ProcessedRazorpayEventRepository:
     """Global dedup log keyed by globally-unique Razorpay event id."""
 
@@ -263,28 +272,20 @@ class ProcessedRazorpayEventRepository:
         # Use dialect-aware insert for cross-database compatibility
         dialect_name = self._s.bind.dialect.name
         if dialect_name == "sqlite":
-            stmt = (
-                sqlite_insert(ProcessedRazorpayEventModel)
-                .values(
-                    razorpay_event_id=razorpay_event_id,
-                    tenant_id=tenant_id,
-                    event_type=event_type,
-                    processed_at=datetime.now(UTC),
-                )
-                .on_conflict_do_nothing(index_elements=["razorpay_event_id"])
-            )
+            stmt = sqlite_insert(ProcessedRazorpayEventModel).values(
+                razorpay_event_id=razorpay_event_id,
+                tenant_id=tenant_id,
+                event_type=event_type,
+                processed_at=datetime.now(UTC),
+            ).on_conflict_do_nothing(index_elements=["razorpay_event_id"])
         else:
             # PostgreSQL and other dialects
-            stmt = (
-                pg_insert(ProcessedRazorpayEventModel)
-                .values(
-                    razorpay_event_id=razorpay_event_id,
-                    tenant_id=tenant_id,
-                    event_type=event_type,
-                    processed_at=datetime.now(UTC),
-                )
-                .on_conflict_do_nothing(index_elements=["razorpay_event_id"])
-            )
+            stmt = pg_insert(ProcessedRazorpayEventModel).values(
+                razorpay_event_id=razorpay_event_id,
+                tenant_id=tenant_id,
+                event_type=event_type,
+                processed_at=datetime.now(UTC),
+            ).on_conflict_do_nothing(index_elements=["razorpay_event_id"])
         await self._s.execute(stmt)
         await self._s.flush()
 
@@ -301,7 +302,9 @@ class IdempotencyKeyRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._s = session
 
-    async def get(self, tenant_id: UUID, endpoint: str, key: str) -> IdempotencyKeyModel | None:
+    async def get(
+        self, tenant_id: UUID, endpoint: str, key: str
+    ) -> IdempotencyKeyModel | None:
         return (
             await self._s.execute(
                 select(IdempotencyKeyModel).where(

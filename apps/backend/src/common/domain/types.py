@@ -3,7 +3,6 @@
 Per [Engineering Principles](../../../docs/01-vision/principles.md) the domain layer
 has zero framework dependencies. These types are pure Python.
 """
-
 from __future__ import annotations
 
 import re

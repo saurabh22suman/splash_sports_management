@@ -1,5 +1,4 @@
 """Pydantic schemas for booking endpoints."""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -16,7 +15,6 @@ class BookingCreate(BaseModel):
     Note: price_cents is NOT accepted from client (F-05 security fix).
     Price is computed server-side from BookingTariff table.
     """
-
     customer_id: UUID
     resource_id: UUID
     start_at: datetime

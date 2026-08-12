@@ -12,7 +12,6 @@ The booking flow:
 This service is the only entry point for booking creation. Repositories are
 private collaborators.
 """
-
 from __future__ import annotations
 
 from datetime import datetime

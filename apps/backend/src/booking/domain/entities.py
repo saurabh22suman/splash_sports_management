@@ -16,7 +16,6 @@ BookingTariff defines the price for a resource based on:
 - day_of_week (0=Monday, 6=Sunday)
 - time of day (hour, e.g., 6 = 6:00 AM to 7:00 AM)
 """
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -152,8 +151,8 @@ class BookingTariff:
     tenant_id: UUID
     resource_id: UUID
     day_of_week: int  # 0=Monday, 6=Sunday
-    time_start: int  # Hour of day (0-23) - start of the time slot
-    time_end: int  # Hour of day (0-23) - end of the time slot (exclusive)
+    time_start: int    # Hour of day (0-23) - start of the time slot
+    time_end: int     # Hour of day (0-23) - end of the time slot (exclusive)
     price_cents: int
     currency: str
     # Computed duration_hours: time_end - time_start (typically 1 hour slots)
