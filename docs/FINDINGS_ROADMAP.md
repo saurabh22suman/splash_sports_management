@@ -40,6 +40,26 @@ Phases are ordered; items within a phase can be parallelized across engineers.
 
 **Duration:** 1-2 weeks · **Engineers:** 1 backend · **Merge gate:** none of these can ship without security review by 2 reviewers.
 
+### Phase 0 status snapshot
+
+9 of 19 P0 findings closed (see [CODEBASE_REVIEW.md](../CODEBASE_REVIEW.md) for the
+authoritative status column):
+
+| Finding | Status | Closing commit |
+|---|---|---|
+| F-01 | ✅ Closed | `ba12454` |
+| F-02 | ✅ Closed | `ba12454` |
+| F-03 | ✅ Closed | migration `0005_enable_rls_all_tables` |
+| F-04 | ✅ Closed | `ba12454` |
+| F-05 | ✅ Closed | `7af5802` |
+| F-07 | ✅ Closed | `7af5802` |
+| F-08 | ✅ Closed | `7af5802` |
+| F-10 | ✅ Closed | `c943664` |
+| F-15 | ✅ Closed | `ba12454` |
+
+The remaining 10 P0 findings are unchanged in this roadmap; their work plans
+below remain the source of truth for scope.
+
 ### F-01 — Switch JWT to RS256 (P0)
 
 **Audit ref:** §13, §14 (SEC-1)
