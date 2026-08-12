@@ -33,6 +33,7 @@ dependencies = [
     "python-slugify>=8.0.4",
     "ulid-py>=1.1.0",
     "orjson>=3.10.0",
+    "python-multipart>=0.0.32",
     # Payments
     "razorpay>=2.0,<3.0",
 ]

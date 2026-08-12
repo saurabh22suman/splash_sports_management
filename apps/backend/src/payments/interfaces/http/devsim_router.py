@@ -23,6 +23,7 @@ from fastapi.responses import HTMLResponse
 
 from common.infrastructure.settings import get_settings
 from payments.application.devsim_state import decode_state
+from payments.application.devsim_webhook import build_event, sign_payload, post_webhook
 
 
 router = APIRouter(prefix="/dev/mock-checkout", tags=["dev-payment-simulator"])
@@ -112,28 +113,154 @@ async def get_checkout(
     return HTMLResponse(content=_render_checkout_html(payload))
 
 
-# ---- POST endpoints (stubs — Task 6 will replace these) ----
+# ---- POST endpoints (Task 6 implementations) ----
 
 
-@router.post("/{link_id}/capture")
-async def post_capture(link_id: str, request: Request) -> dict:  # pragma: no cover
-    raise NotImplementedError("filled in by Task 6")
+def _build_backend_webhook_url(request: Request) -> str:
+    """Compute the URL of /v1/payments/webhook on this same server.
+
+    We POST to the request's own origin (scheme + netloc), NOT to
+    settings.app_url — `app_url` points at the frontend, not the backend.
+    This is the only place in the devsim that needs to know the backend's
+    own host:port.
+    """
+    return f"{request.url.scheme}://{request.url.netloc}/v1/payments/webhook"
 
 
-@router.post("/{link_id}/decline")
-async def post_decline(link_id: str, request: Request) -> dict:  # pragma: no cover
-    raise NotImplementedError("filled in by Task 6")
+def _fire_webhook(
+    request: Request,
+    *,
+    event_type: str,
+    state: dict,
+    amount_paise: int,
+) -> tuple[bytes, str, str]:
+    """Build event, sign with webhook secret, POST to real webhook endpoint."""
+    import json
+
+    settings = get_settings()
+    event = build_event(
+        event_type,
+        payment_id=f"pay_dev_{state['payment_link_id'].removeprefix('plink_dev_')}",
+        amount_paise=amount_paise,
+        currency=state["currency"],
+        description="; ".join(li.get("description", "") for li in state.get("line_items", [])),
+        tenant_id=state["tenant_id"],
+        invoice_id=state["invoice_id"],
+        payment_link_id=state["payment_link_id"],
+    )
+    payload_bytes = json.dumps(event).encode()
+    signature = sign_payload(payload_bytes, secret=settings.razorpay_webhook_secret)
+    url = _build_backend_webhook_url(request)
+    return payload_bytes, signature, url
 
 
-@router.post("/{link_id}/capture-partial")
+async def _fire_or_502(request: Request, *, event_type: str, state: dict, amount_paise: int):
+    """Helper: fire the webhook; raise 502 on transport failure or 5xx response."""
+    import httpx
+
+    payload_bytes, signature, url = _fire_webhook(
+        request, event_type=event_type, state=state, amount_paise=amount_paise
+    )
+    try:
+        status = await post_webhook(url, payload_bytes, signature=signature)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"webhook transport error: {exc}") from exc
+    if status >= 500:
+        raise HTTPException(status_code=502, detail=f"webhook returned {status}")
+    return status
+
+
+def _success_html(link_id: str) -> str:
+    return f"""<!DOCTYPE html>
+<html><head><title>Payment successful</title></head>
+<body style="font-family: system-ui; max-width: 480px; margin: 40px auto;">
+  <h1>Payment successful</h1>
+  <p>Your booking is confirmed. (Dev link <code>{link_id}</code>.)</p>
+  <p><a href="/">Return to app</a></p>
+</body></html>"""
+
+
+def _failure_html(link_id: str, reason: str) -> str:
+    return f"""<!DOCTYPE html>
+<html><head><title>Payment failed</title></head>
+<body style="font-family: system-ui; max-width: 480px; margin: 40px auto;">
+  <h1>Payment failed</h1>
+  <p>Reason: {reason}. (Dev link <code>{link_id}</code>.)</p>
+  <p><a href="/">Return to app</a></p>
+</body></html>"""
+
+
+def _abandoned_html(link_id: str) -> str:
+    return f"""<!DOCTYPE html>
+<html><head><title>Payment abandoned</title></head>
+<body style="font-family: system-ui; max-width: 480px; margin: 40px auto;">
+  <h1>Payment abandoned</h1>
+  <p>No payment was made. (Dev link <code>{link_id}</code>.)</p>
+  <p><a href="/">Return to app</a></p>
+</body></html>"""
+
+
+@router.post("/{link_id}/capture", response_class=HTMLResponse)
+async def post_capture(
+    link_id: str,
+    request: Request,
+    state: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    payload = _decode_state_or_400(state)
+    if payload["payment_link_id"] != link_id:
+        raise HTTPException(status_code=400, detail="link_id mismatch")
+    await _fire_or_502(
+        request, event_type="payment.captured", state=payload, amount_paise=payload["amount_paise"]
+    )
+    return HTMLResponse(content=_success_html(link_id))
+
+
+@router.post("/{link_id}/decline", response_class=HTMLResponse)
+async def post_decline(
+    link_id: str,
+    request: Request,
+    state: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    payload = _decode_state_or_400(state)
+    if payload["payment_link_id"] != link_id:
+        raise HTTPException(status_code=400, detail="link_id mismatch")
+    await _fire_or_502(
+        request, event_type="payment.failed", state=payload, amount_paise=payload["amount_paise"]
+    )
+    return HTMLResponse(content=_failure_html(link_id, "declined by user"))
+
+
+@router.post("/{link_id}/capture-partial", response_class=HTMLResponse)
 async def post_capture_partial(
     link_id: str,
     request: Request,
+    state: Annotated[str, Form()] = "",
     amount_paise: Annotated[int, Form()] = 0,
-) -> dict:  # pragma: no cover
-    raise NotImplementedError("filled in by Task 6")
+) -> HTMLResponse:
+    payload = _decode_state_or_400(state)
+    if payload["payment_link_id"] != link_id:
+        raise HTTPException(status_code=400, detail="link_id mismatch")
+    if amount_paise <= 0:
+        raise HTTPException(status_code=400, detail="amount must be positive")
+    if amount_paise > payload["amount_paise"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"amount {amount_paise} exceeds invoice total {payload['amount_paise']}",
+        )
+    await _fire_or_502(
+        request, event_type="payment.captured", state=payload, amount_paise=amount_paise
+    )
+    return HTMLResponse(content=_success_html(link_id))
 
 
-@router.post("/{link_id}/abandon")
-async def post_abandon(link_id: str, request: Request) -> dict:  # pragma: no cover
-    raise NotImplementedError("filled in by Task 6")
+@router.post("/{link_id}/abandon", response_class=HTMLResponse)
+async def post_abandon(
+    link_id: str,
+    request: Request,
+    state: Annotated[str, Form()] = "",
+) -> HTMLResponse:
+    # Abandon is a no-op: no webhook fires, just return a confirmation page.
+    # (Real Razorpay does not fire a webhook when the user abandons either.)
+    # We still verify state so a stale/abandoned session can't be probed.
+    _decode_state_or_400(state)
+    return HTMLResponse(content=_abandoned_html(link_id))

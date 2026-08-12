@@ -98,3 +98,166 @@ async def test_get_checkout_with_expired_state_returns_400(client):
         f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}?state={expired}"
     )
     assert response.status_code == 400
+
+
+# ---- POST endpoint tests (Task 6) ----
+
+
+@pytest.mark.asyncio
+async def test_post_capture_fires_webhook_and_returns_success(client, monkeypatch):
+    """POST /capture fires payment.captured webhook and returns success HTML."""
+    from payments.interfaces.http import devsim_router as router_module
+
+    posted_to = []
+    async def fake_post(url, payload, *, signature):
+        posted_to.append((url, payload, signature))
+        return 200
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()
+    response = await client.post(f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture")
+    # POST without state in body → 400 first
+    assert response.status_code == 400
+
+    # Now POST with state in the form body
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture",
+        data={"state": token},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Payment successful" in response.text
+
+    # Webhook was fired with the right shape
+    assert len(posted_to) == 1
+    url, payload_bytes, signature = posted_to[0]
+    assert url.endswith("/v1/payments/webhook")
+    import json
+    event = json.loads(payload_bytes)
+    assert event["event"] == "payment.captured"
+    assert event["payload"]["payment"]["entity"]["amount"] == 150000
+
+
+@pytest.mark.asyncio
+async def test_post_decline_fires_payment_failed_webhook(client, monkeypatch):
+    from payments.interfaces.http import devsim_router as router_module
+
+    posted_to = []
+    async def fake_post(url, payload, *, signature):
+        posted_to.append(payload)
+        return 200
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/decline",
+        data={"state": token},
+    )
+    assert response.status_code == 200
+    assert "declined" in response.text.lower() or "failed" in response.text.lower()
+
+    import json
+    event = json.loads(posted_to[0])
+    assert event["event"] == "payment.failed"
+    assert event["payload"]["payment"]["entity"]["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_post_capture_partial_uses_requested_amount(client, monkeypatch):
+    from payments.interfaces.http import devsim_router as router_module
+
+    posted_to = []
+    async def fake_post(url, payload, *, signature):
+        posted_to.append(payload)
+        return 200
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture-partial",
+        data={"state": token, "amount_paise": "50000"},
+    )
+    assert response.status_code == 200
+
+    import json
+    event = json.loads(posted_to[0])
+    assert event["event"] == "payment.captured"
+    assert event["payload"]["payment"]["entity"]["amount"] == 50000
+
+
+@pytest.mark.asyncio
+async def test_post_capture_partial_rejects_amount_exceeding_invoice(client, monkeypatch):
+    from payments.interfaces.http import devsim_router as router_module
+
+    posted_to = []
+    async def fake_post(url, payload, *, signature):
+        posted_to.append(payload)
+        return 200
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()  # invoice is 150000 paise
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture-partial",
+        data={"state": token, "amount_paise": "200000"},
+    )
+    assert response.status_code == 400
+    assert "exceeds" in response.text.lower() or "400" in response.text
+    # Webhook was NOT fired
+    assert posted_to == []
+
+
+@pytest.mark.asyncio
+async def test_post_capture_partial_rejects_non_positive_amount(client):
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture-partial",
+        data={"state": token, "amount_paise": "0"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_post_with_invalid_state_returns_400(client):
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture",
+        data={"state": "not-a-jwt"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_post_abandon_is_a_no_op(client, monkeypatch):
+    """Abandon fires no webhook — same behavior as closing the page."""
+    from payments.interfaces.http import devsim_router as router_module
+
+    posted_to = []
+    async def fake_post(url, payload, *, signature):
+        posted_to.append(payload)
+        return 200
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/abandon",
+        data={"state": token},
+    )
+    assert response.status_code == 200
+    assert "abandoned" in response.text.lower() or "no payment" in response.text.lower()
+    assert posted_to == []
+
+
+@pytest.mark.asyncio
+async def test_post_webhook_failure_returns_502(client, monkeypatch):
+    """If the webhook POST fails (5xx), the action endpoint returns 502."""
+    from payments.interfaces.http import devsim_router as router_module
+
+    async def fake_post(url, payload, *, signature):
+        return 500
+    monkeypatch.setattr(router_module, "post_webhook", fake_post)
+
+    token = _valid_state_token()
+    response = await client.post(
+        f"/dev/mock-checkout/{DEV_PAYMENT_LINK_ID}/capture",
+        data={"state": token},
+    )
+    assert response.status_code == 502
