@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
 
 test("/book/facilities/:id passes axe-core (light)", async ({ page }) => {
   // seed has splash-sports-club facility; assumes migration ran

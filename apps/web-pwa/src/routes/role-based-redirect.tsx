@@ -1,6 +1,6 @@
+import { useAuthStore } from "@splashh/api-client";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@splashh/api-client";
 import { homeForRoles } from "../lib/role-routing";
 
 export function RoleBasedRedirect() {

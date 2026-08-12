@@ -1,5 +1,5 @@
+import { Building2, CalendarDays, Receipt, Users, Waves } from "@splashh/ui";
 import type { NavItem } from "./Sidebar";
-import { Waves, CalendarDays, Building2, Users, Receipt } from "@splashh/ui";
 
 export const NAV_BY_ROLE: Record<string, NavItem[]> = {
   customer: [

@@ -1,6 +1,6 @@
+import { api, useAuthStore } from "@splashh/api-client";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { api, useAuthStore } from "@splashh/api-client";
 
 export function useLogout() {
   const navigate = useNavigate();

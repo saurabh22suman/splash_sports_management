@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { cn } from "../../lib/cn.js";
 
 export interface FormFieldProps {
@@ -10,7 +10,14 @@ export interface FormFieldProps {
   className?: string;
 }
 
-export function FormField({ label, error, description, htmlFor, children, className }: FormFieldProps) {
+export function FormField({
+  label,
+  error,
+  description,
+  htmlFor,
+  children,
+  className,
+}: FormFieldProps) {
   return (
     <div className={cn("space-y-2", className)}>
       <label htmlFor={htmlFor} className="text-sm font-medium leading-none">

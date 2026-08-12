@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { OfflineBanner } from "./OfflineBanner";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as offlineQueue from "../lib/offlineQueue";
+import { OfflineBanner } from "./OfflineBanner";
 
 // Mock the offline queue module
 vi.mock("../lib/offlineQueue", () => ({

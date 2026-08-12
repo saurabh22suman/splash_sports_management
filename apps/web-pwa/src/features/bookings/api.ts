@@ -49,11 +49,19 @@ export const bookingsApi = {
     resourceId?: string,
     status?: string[],
     limit?: number,
-    offset?: number
+    offset?: number,
   ) =>
     api
       .get<{ data: Booking[] }>("/booking/admin/bookings", {
-        params: { from_at: fromAt, to_at: toAt, facility_id: facilityId, resource_id: resourceId, status, limit, offset },
+        params: {
+          from_at: fromAt,
+          to_at: toAt,
+          facility_id: facilityId,
+          resource_id: resourceId,
+          status,
+          limit,
+          offset,
+        },
       })
       .then((r) => r.data.data),
   get: (id: string) => api.get<Booking>(`/booking/${id}`).then((r) => r.data),

@@ -1,6 +1,6 @@
+import { homeForRoles } from "@/lib/role-routing";
 import { silentRefresh, useAuthStore } from "@splashh/api-client";
 import { useEffect } from "react";
-import { homeForRoles } from "@/lib/role-routing";
 
 export function AuthBootstrap({ children }: { children: React.ReactNode }) {
   useEffect(() => {

@@ -25,10 +25,7 @@ interface StatusPillProps {
  * Maps status strings to Badge variants and human-readable labels.
  * Semantic mapping follows common payment/booking conventions.
  */
-const statusConfig: Record<
-  Status,
-  { variant: BadgeProps["variant"]; label: string }
-> = {
+const statusConfig: Record<Status, { variant: BadgeProps["variant"]; label: string }> = {
   // Payment statuses
   open: { variant: "warning", label: "Open" },
   paid: { variant: "success", label: "Paid" },

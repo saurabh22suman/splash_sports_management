@@ -50,9 +50,7 @@ export const adminFacilitiesApi = {
   listResources: (facilityId: string) =>
     api.get<{ data: Resource[] }>(`/facility/${facilityId}/resources`).then((r) => r.data.data),
   createResource: (facilityId: string, input: ResourceInput) =>
-    api
-      .post<Resource>(`/facility/${facilityId}/resources`, input)
-      .then((r) => r.data),
+    api.post<Resource>(`/facility/${facilityId}/resources`, input).then((r) => r.data),
   updateResource: (resourceId: string, input: ResourceUpdateInput) =>
     api.patch<Resource>(`/facility/resources/${resourceId}`, input).then((r) => r.data),
   deactivateResource: (resourceId: string) =>

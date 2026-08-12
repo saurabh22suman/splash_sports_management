@@ -1,8 +1,8 @@
-import { useParams, Link } from "react-router-dom";
+import { useCreatePaymentLink, useInvoice } from "@/features/payments/hooks";
+import type { InvoiceStatus } from "@splashh/api-client";
 import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill } from "@splashh/ui";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { useInvoice, useCreatePaymentLink } from "@/features/payments/hooks";
-import type { InvoiceStatus } from "@splashh/api-client";
+import { Link, useParams } from "react-router-dom";
 
 function formatCurrency(amountPaise: number, currency: string): string {
   return new Intl.NumberFormat("en-US", {
@@ -13,7 +13,9 @@ function formatCurrency(amountPaise: number, currency: string): string {
 }
 
 // Map API invoice status to StatusPill status
-function mapStatusToPill(status: InvoiceStatus): "open" | "paid" | "refunded" | "failed" | "cancelled" | "pending" {
+function mapStatusToPill(
+  status: InvoiceStatus,
+): "open" | "paid" | "refunded" | "failed" | "cancelled" | "pending" {
   switch (status) {
     case "draft":
       return "open";
@@ -42,12 +44,17 @@ export function PayInvoicePage() {
   const paymentLink = useCreatePaymentLink();
 
   if (isLoading) return <div className="container py-6">Loading...</div>;
-  if (error || !inv) return <div className="container py-6 text-destructive">Invoice not found.</div>;
+  if (error || !inv)
+    return <div className="container py-6 text-destructive">Invoice not found.</div>;
 
   const onPay = () => {
     paymentLink.mutate(
       { invoiceId: inv.id, idempotencyKey: crypto.randomUUID() },
-      { onSuccess: (res) => { window.location.href = res.short_url; } },
+      {
+        onSuccess: (res) => {
+          window.location.href = res.short_url;
+        },
+      },
     );
   };
 
@@ -65,14 +72,20 @@ export function PayInvoicePage() {
         <div className="mb-4 p-3 rounded-none bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 flex items-start gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Payment overdue</p>
-            <p className="text-sm text-amber-700 dark:text-amber-300">This invoice was due on {inv.due_date}.</p>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              Payment overdue
+            </p>
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              This invoice was due on {inv.due_date}.
+            </p>
           </div>
         </div>
       )}
 
       <Card className="mt-4">
-        <CardHeader><CardTitle className="text-base">{inv.description || "Amount due"}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">{inv.description || "Amount due"}</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           {/* Line items table */}
           {inv.line_items && inv.line_items.length > 0 && (
@@ -92,8 +105,12 @@ export function PayInvoicePage() {
                     <tr key={item.id} className="border-b last:border-0">
                       <td className="py-2">{item.description}</td>
                       <td className="py-2 text-right">{item.quantity}</td>
-                      <td className="py-2 text-right">{formatCurrency(item.unit_price_paise, inv.currency)}</td>
-                      <td className="py-2 text-right">{formatCurrency(item.total_paise, inv.currency)}</td>
+                      <td className="py-2 text-right">
+                        {formatCurrency(item.unit_price_paise, inv.currency)}
+                      </td>
+                      <td className="py-2 text-right">
+                        {formatCurrency(item.total_paise, inv.currency)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -120,7 +137,9 @@ export function PayInvoicePage() {
           )}
 
           {(!inv.line_items || inv.line_items.length === 0) && (
-            <p className="text-3xl font-semibold">{formatCurrency(inv.total_paise, inv.currency)}</p>
+            <p className="text-3xl font-semibold">
+              {formatCurrency(inv.total_paise, inv.currency)}
+            </p>
           )}
 
           <p className="text-sm text-muted-foreground">Due {inv.due_date}</p>
@@ -142,7 +161,9 @@ export function PayInvoicePage() {
           <Button onClick={onPay} disabled={paymentLink.isPending} className="mt-4 w-full">
             {paymentLink.isPending ? "Loading payment..." : "Pay with card"}
           </Button>
-          {paymentLink.error && <p className="mt-2 text-sm text-destructive">{(paymentLink.error as Error).message}</p>}
+          {paymentLink.error && (
+            <p className="mt-2 text-sm text-destructive">{(paymentLink.error as Error).message}</p>
+          )}
         </>
       )}
     </div>

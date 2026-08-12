@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
 
 test("admin: register tenant via API then log in via /admin/login", async ({ page, request }) => {
   const slug = `e2e-admin-${Date.now()}`;
@@ -61,7 +61,12 @@ test("customer: log in via /login and reach /book", async ({ page, request }) =>
   expect(loginAsAdmin.status()).toBe(200);
   const adminAccess = (await loginAsAdmin.json()).access_token;
   const create = await request.post("http://127.0.0.1:8765/v1/auth/users", {
-    data: { email: `customer-${slug}@example.com`, full_name: "E2E Customer", password, roles: ["customer"] },
+    data: {
+      email: `customer-${slug}@example.com`,
+      full_name: "E2E Customer",
+      password,
+      roles: ["customer"],
+    },
     headers: { Authorization: `Bearer ${adminAccess}` },
   });
   expect(create.status()).toBe(201);

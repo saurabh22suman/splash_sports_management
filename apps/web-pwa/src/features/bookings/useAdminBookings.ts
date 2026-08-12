@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { bookingsApi, type Booking } from "./api";
+import { type Booking, bookingsApi } from "./api";
 
 export interface AdminBookingsParams {
   fromAt?: string;
@@ -26,6 +26,7 @@ export function useAdminBookings(params: AdminBookingsParams = {}) {
 
   return useQuery({
     queryKey: buildAdminBookingsKey(params),
-    queryFn: () => bookingsApi.listAdmin(fromAt, toAt, facilityId, resourceId, status, limit, offset),
+    queryFn: () =>
+      bookingsApi.listAdmin(fromAt, toAt, facilityId, resourceId, status, limit, offset),
   });
 }

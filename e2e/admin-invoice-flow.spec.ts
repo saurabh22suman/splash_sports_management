@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("admin invoice routes exist in the app", async ({ page, request }) => {
   const slug = `e2e-invoice-${Date.now()}`;

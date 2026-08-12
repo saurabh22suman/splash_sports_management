@@ -1,12 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  createPaymentLink,
+  type InvoiceStatus,
   createInvoice,
+  createPaymentLink,
   getInvoice,
   listInvoices,
   refundInvoice,
-  type InvoiceStatus,
 } from "@splashh/api-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const paymentKeys = {
   all: ["payments"] as const,
@@ -39,7 +39,11 @@ export function useCreatePaymentLink() {
 export function useRefundInvoice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ invoiceId, reason, idempotencyKey }: { invoiceId: string; reason: string; idempotencyKey: string }) =>
+    mutationFn: ({
+      invoiceId,
+      reason,
+      idempotencyKey,
+    }: { invoiceId: string; reason: string; idempotencyKey: string }) =>
       refundInvoice(invoiceId, reason, idempotencyKey),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: paymentKeys.detail(vars.invoiceId) });

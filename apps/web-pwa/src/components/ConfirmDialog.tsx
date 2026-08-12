@@ -1,5 +1,5 @@
-import { useRef } from "react";
 import { Button } from "@splashh/ui";
+import { useRef } from "react";
 
 /**
  * Native <dialog>-based confirmation. Open via the `open` prop; the parent

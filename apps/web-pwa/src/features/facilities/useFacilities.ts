@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@splashh/api-client";
+import { useQuery } from "@tanstack/react-query";
 import { facilitiesApi } from "./api";
 
 export function useFacilities() {

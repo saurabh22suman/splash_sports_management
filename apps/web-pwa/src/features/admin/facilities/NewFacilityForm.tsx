@@ -1,5 +1,5 @@
-import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input } from "@splashh/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input } from "@splashh/ui";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -7,7 +7,10 @@ import { useCreateFacility } from "./useAdminFacilities";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
-  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Lowercase letters, digits, hyphens only"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .regex(/^[a-z0-9-]+$/, "Lowercase letters, digits, hyphens only"),
   address_line1: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),

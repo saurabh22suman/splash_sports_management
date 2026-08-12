@@ -1,6 +1,6 @@
+import { useAuthStore } from "@splashh/api-client";
 import { Button, FormField, Input } from "@splashh/ui";
 import { useEffect, useRef, useState } from "react";
-import { useAuthStore } from "@splashh/api-client";
 import { useCreateBooking } from "./useCreateBooking";
 
 /**
@@ -81,7 +81,10 @@ export function BookingDialog({
             <p className="font-display text-[10px] uppercase tracking-[0.18em] text-volt">
               {facilityName ?? "Facility"}
             </p>
-            <h2 id="book-dialog-title" className="font-display text-2xl font-bold uppercase tracking-tight">
+            <h2
+              id="book-dialog-title"
+              className="font-display text-2xl font-bold uppercase tracking-tight"
+            >
               Book {resourceName ?? "resource"}
             </h2>
           </div>
@@ -115,7 +118,11 @@ export function BookingDialog({
         </FormField>
 
         {create.error && (
-          <p role="alert" aria-live="assertive" className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+          <p
+            role="alert"
+            aria-live="assertive"
+            className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive"
+          >
             Something went wrong. Please try again, or contact your club if the problem continues.
           </p>
         )}

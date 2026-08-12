@@ -1,8 +1,8 @@
+import { createQueryClient } from "@splashh/api-client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createQueryClient } from "@splashh/api-client";
 import App from "./App";
 import "./styles/globals.css";
 

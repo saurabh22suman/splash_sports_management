@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@splashh/ui";
 import { useInvoice, useRefundInvoice } from "@/features/payments/hooks";
 import { useAuthStore } from "@splashh/api-client";
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@splashh/ui";
+import { useState } from "react";
+import { useParams } from "react-router-dom";
 
 function formatCurrency(amountPaise: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amountPaise / 100);
+  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
+    amountPaise / 100,
+  );
 }
 
 export function InvoiceDetailPage() {
@@ -82,9 +84,7 @@ export function InvoiceDetailPage() {
                   </Button>
                 </div>
                 {refund.error && (
-                  <p className="text-sm text-destructive">
-                    {(refund.error as Error).message}
-                  </p>
+                  <p className="text-sm text-destructive">{(refund.error as Error).message}</p>
                 )}
               </div>
             )}

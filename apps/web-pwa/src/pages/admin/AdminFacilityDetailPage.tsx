@@ -1,5 +1,14 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EditFacilityForm } from "@/features/admin/facilities/EditFacilityForm";
+import { EditResourceForm } from "@/features/admin/facilities/EditResourceForm";
+import { NewResourceForm } from "@/features/admin/facilities/NewResourceForm";
+import {
+  useAdminFacility,
+  useAdminResources,
+  useDeactivateFacility,
+  useDeactivateResource,
+} from "@/features/admin/facilities/useAdminFacilities";
+import type { Resource } from "@splashh/api-client";
 import {
   Button,
   Card,
@@ -10,17 +19,8 @@ import {
   ErrorState,
   LoadingSkeleton,
 } from "@splashh/ui";
-import type { Resource } from "@splashh/api-client";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { EditFacilityForm } from "@/features/admin/facilities/EditFacilityForm";
-import { NewResourceForm } from "@/features/admin/facilities/NewResourceForm";
-import { EditResourceForm } from "@/features/admin/facilities/EditResourceForm";
-import {
-  useAdminFacility,
-  useAdminResources,
-  useDeactivateFacility,
-  useDeactivateResource,
-} from "@/features/admin/facilities/useAdminFacilities";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 type Tab = "info" | "resources";
 
@@ -35,16 +35,28 @@ export function AdminFacilityDetailPage() {
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
 
   const [confirmDeleteFacility, setConfirmDeleteFacility] = useState(false);
-  const [confirmDeleteResource, setConfirmDeleteResource] = useState<{ id: string; name: string } | null>(null);
+  const [confirmDeleteResource, setConfirmDeleteResource] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const deactivateFacility = useDeactivateFacility();
   const deactivateResource = useDeactivateResource(id!);
 
-  if (facility.isLoading) return <div className="container py-6"><LoadingSkeleton withCard lines={3} /></div>;
+  if (facility.isLoading)
+    return (
+      <div className="container py-6">
+        <LoadingSkeleton withCard lines={3} />
+      </div>
+    );
   if (facility.error || !facility.data) {
     return (
       <div className="container py-6">
-        <ErrorState title="Could not load facility" description="Try again in a moment." onRetry={() => facility.refetch()} />
+        <ErrorState
+          title="Could not load facility"
+          description="Try again in a moment."
+          onRetry={() => facility.refetch()}
+        />
       </div>
     );
   }
@@ -63,16 +75,22 @@ export function AdminFacilityDetailPage() {
 
   return (
     <div className="container py-6">
-      <Link to="/admin" className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-200 hover:text-foreground">
+      <Link
+        to="/admin"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-200 hover:text-foreground"
+      >
         ← All facilities
       </Link>
       <header className="mt-2 mb-6 border-b-2 border-border pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-display text-[10px] uppercase tracking-[0.18em] text-volt">Facility</p>
+            <p className="font-display text-[10px] uppercase tracking-[0.18em] text-volt">
+              Facility
+            </p>
             <h1 className="font-display text-3xl font-bold uppercase tracking-tight">{f.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {f.address_line1 ?? ""}{f.city ? `, ${f.city}` : ""} {f.state ?? ""} · {f.timezone}
+              {f.address_line1 ?? ""}
+              {f.city ? `, ${f.city}` : ""} {f.state ?? ""} · {f.timezone}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               <span>Slug: {f.slug}</span>
@@ -88,8 +106,16 @@ export function AdminFacilityDetailPage() {
           </div>
           {!editMode && tab === "info" && (
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>Edit facility</Button>
-              <Button variant="destructive" size="sm" onClick={() => setConfirmDeleteFacility(true)}>Deactivate</Button>
+              <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+                Edit facility
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setConfirmDeleteFacility(true)}
+              >
+                Deactivate
+              </Button>
             </div>
           )}
         </div>
@@ -120,13 +146,15 @@ export function AdminFacilityDetailPage() {
       </div>
 
       <section className="mt-6">
-        {tab === "info" && (
-          editMode ? (
+        {tab === "info" &&
+          (editMode ? (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Edit facility</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setEditMode(false)}>Cancel</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditMode(false)}>
+                    Cancel
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -139,18 +167,33 @@ export function AdminFacilityDetailPage() {
                 <CardTitle className="text-lg">Facility info</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-2 text-sm">
-                <p><span className="text-muted-foreground">Address 1:</span> {f.address_line1 ?? "—"}</p>
-                <p><span className="text-muted-foreground">Address 2:</span> {f.address_line2 ?? "—"}</p>
-                <p><span className="text-muted-foreground">City / State:</span> {f.city}, {f.state}</p>
-                <p><span className="text-muted-foreground">Postal:</span> {f.postal_code}</p>
-                <p><span className="text-muted-foreground">Country:</span> {f.country}</p>
-                <p><span className="text-muted-foreground">Timezone:</span> {f.timezone}</p>
-                <p><span className="text-muted-foreground">Phone:</span> {f.phone ?? "—"}</p>
-                <p><span className="text-muted-foreground">Status:</span> {f.status}</p>
+                <p>
+                  <span className="text-muted-foreground">Address 1:</span> {f.address_line1 ?? "—"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Address 2:</span> {f.address_line2 ?? "—"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">City / State:</span> {f.city}, {f.state}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Postal:</span> {f.postal_code}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Country:</span> {f.country}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Timezone:</span> {f.timezone}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Phone:</span> {f.phone ?? "—"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Status:</span> {f.status}
+                </p>
               </CardContent>
             </Card>
-          )
-        )}
+          ))}
 
         {tab === "resources" && (
           <div className="space-y-4">
@@ -160,50 +203,64 @@ export function AdminFacilityDetailPage() {
               </div>
             )}
             {addResource && (
-              <NewResourceForm
-                facilityId={f.id}
-                onCreated={() => setAddResource(false)}
-              />
+              <NewResourceForm facilityId={f.id} onCreated={() => setAddResource(false)} />
             )}
 
             {resources.isLoading && <LoadingSkeleton withCard lines={3} />}
             {resources.error && (
               <ErrorState title="Could not load resources" onRetry={() => resources.refetch()} />
             )}
-            {!resources.isLoading && !resources.error && resources.data?.length === 0 && !addResource && (
-              <EmptyState
-                title="No resources yet"
-                description="Add the lanes, courts, or rooms your club books."
-                action={{ label: "Add resource", onClick: () => setAddResource(true) }}
-              />
-            )}
+            {!resources.isLoading &&
+              !resources.error &&
+              resources.data?.length === 0 &&
+              !addResource && (
+                <EmptyState
+                  title="No resources yet"
+                  description="Add the lanes, courts, or rooms your club books."
+                  action={{ label: "Add resource", onClick: () => setAddResource(true) }}
+                />
+              )}
             {!resources.isLoading && !resources.error && (resources.data?.length ?? 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">
                     Resources
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">({resources.data!.length})</span>
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                      ({resources.data?.length})
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="divide-y-2 divide-border">
-                    {resources.data!.map((r: Resource) => {
+                    {resources.data?.map((r: Resource) => {
                       const isEditing = editingResourceId === r.id;
                       return (
                         <li key={r.id} className="py-3 first:pt-0 last:pb-0">
                           {!isEditing ? (
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
-                                <p className="font-display text-base font-bold uppercase tracking-tight">{r.name}</p>
+                                <p className="font-display text-base font-bold uppercase tracking-tight">
+                                  {r.name}
+                                </p>
                                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                                   {r.resource_type} · capacity {r.capacity} · {r.status}
                                 </p>
                               </div>
                               <div className="flex gap-2">
-                                <Button variant="outline" size="sm" onClick={() => setEditingResourceId(r.id)}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setEditingResourceId(r.id)}
+                                >
                                   Edit
                                 </Button>
-                                <Button variant="destructive" size="sm" onClick={() => setConfirmDeleteResource({ id: r.id, name: r.name })}>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() =>
+                                    setConfirmDeleteResource({ id: r.id, name: r.name })
+                                  }
+                                >
                                   Deactivate
                                 </Button>
                               </div>
@@ -211,8 +268,16 @@ export function AdminFacilityDetailPage() {
                           ) : (
                             <div className="border-2 border-border bg-charcoal-900 p-4">
                               <div className="mb-3 flex items-center justify-between">
-                                <p className="font-display text-[10px] uppercase tracking-[0.18em] text-volt">Editing resource</p>
-                                <Button variant="ghost" size="sm" onClick={() => setEditingResourceId(null)}>Cancel</Button>
+                                <p className="font-display text-[10px] uppercase tracking-[0.18em] text-volt">
+                                  Editing resource
+                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditingResourceId(null)}
+                                >
+                                  Cancel
+                                </Button>
                               </div>
                               <EditResourceForm
                                 facilityId={f.id}

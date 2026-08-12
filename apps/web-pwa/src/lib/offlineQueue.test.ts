@@ -1,18 +1,19 @@
-import { describe, expect, it, beforeEach, vi, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  getOfflineQueue,
-  enqueueBooking,
-  drainQueue,
-  clearQueue,
-  getQueueLength,
-  setStorageImpl,
-  resetStorageImpl,
   type StorageInterface,
+  clearQueue,
+  drainQueue,
+  enqueueBooking,
+  getOfflineQueue,
+  getQueueLength,
+  resetStorageImpl,
+  setStorageImpl,
 } from "./offlineQueue";
 
 // In-memory storage implementation for testing
 class InMemoryStorage implements StorageInterface {
-  private store: Map<string, { idempotencyKey: string; input: unknown; createdAt: number }> = new Map();
+  private store: Map<string, { idempotencyKey: string; input: unknown; createdAt: number }> =
+    new Map();
   private dbOpened = false;
 
   async openDB(): Promise<IDBDatabase> {
@@ -236,7 +237,8 @@ describe("offlineQueue", () => {
     });
 
     it("should stop on failure and keep remaining items", async () => {
-      const mockFetcher = vi.fn()
+      const mockFetcher = vi
+        .fn()
         .mockResolvedValueOnce({ success: true })
         .mockRejectedValueOnce(new Error("Network error"));
 

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { bookingsApi, type BookingInput } from "./api";
-import { enqueueBooking, drainQueue, getQueueLength } from "../../lib/offlineQueue";
 import { AxiosError } from "axios";
+import { drainQueue, enqueueBooking, getQueueLength } from "../../lib/offlineQueue";
+import { type BookingInput, bookingsApi } from "./api";
 
 /**
  * Check if an error is a network error or 5xx server error
@@ -51,7 +51,10 @@ export function useCreateBooking() {
 /**
  * Try to drain the offline queue - should be called on app load or network reconnect
  */
-export async function tryDrainOfflineQueue(): Promise<{ success: boolean; processedCount: number }> {
+export async function tryDrainOfflineQueue(): Promise<{
+  success: boolean;
+  processedCount: number;
+}> {
   const queueLength = await getQueueLength();
   if (queueLength === 0) {
     return { success: true, processedCount: 0 };

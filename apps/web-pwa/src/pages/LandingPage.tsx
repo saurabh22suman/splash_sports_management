@@ -1,23 +1,23 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
-import {
-  brand,
-  Button,
-  LogIn,
-  ArrowRight,
-  Waves,
-  CalendarDays,
-  Receipt,
-  ChevronRight,
-  CheckCircle2,
-  X,
-  Clock,
-  MapPin,
-  CreditCard,
-} from "@splashh/ui";
 import { LoginForm } from "@/features/auth/LoginForm";
-import { useAuthStore } from "@splashh/api-client";
 import { homeForRoles } from "@/lib/role-routing";
+import { useAuthStore } from "@splashh/api-client";
+import {
+  ArrowRight,
+  Button,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  LogIn,
+  MapPin,
+  Receipt,
+  Waves,
+  X,
+  brand,
+} from "@splashh/ui";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 type Mode = "customer" | "staff";
 
@@ -43,8 +43,14 @@ export function LandingPage() {
       {/* Top nav — Klook-inspired: brand left, links + CTAs right */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link to="/" className="inline-flex items-center gap-2 transition-opacity hover:opacity-80">
-            <Waves className="h-6 w-6 text-primary animate-swim-bob motion-reduce:animate-none" aria-hidden="true" />
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 transition-opacity hover:opacity-80"
+          >
+            <Waves
+              className="h-6 w-6 text-primary animate-swim-bob motion-reduce:animate-none"
+              aria-hidden="true"
+            />
             <span className="text-lg font-bold tracking-tight text-foreground">{brand.name}</span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
@@ -111,7 +117,8 @@ export function LandingPage() {
               <span className="block text-volt">spreadsheet.</span>
             </h1>
             <p className="mt-7 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg animate-rise-up motion-reduce:animate-none [animation-delay:240ms]">
-              Manage bookings, memberships, payments, attendance, and operations from one powerful platform built specifically for sports clubs.
+              Manage bookings, memberships, payments, attendance, and operations from one powerful
+              platform built specifically for sports clubs.
             </p>
 
             {/* CTAs */}
@@ -135,12 +142,14 @@ export function LandingPage() {
 
         {/* Carousel arrows (Klook-inspired) */}
         <button
+          type="button"
           aria-label="Previous"
           className="absolute left-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-card/80 p-3 shadow-volt-sm backdrop-blur transition-all duration-250 ease-swim hover:scale-110 hover:bg-card lg:flex"
         >
           <ChevronRight className="h-5 w-5 rotate-180" />
         </button>
         <button
+          type="button"
           aria-label="Next"
           className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-card/80 p-3 shadow-volt-sm backdrop-blur transition-all duration-250 ease-swim hover:scale-110 hover:bg-card lg:flex"
         >
@@ -154,7 +163,7 @@ export function LandingPage() {
           <p className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-6">
             Built for the way sports clubs actually work
           </p>
-          <ul className="flex flex-wrap items-center justify-center gap-3 sm:gap-4" role="list">
+          <ul className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
             {[
               { name: "Swimming", emoji: "🏊" },
               { name: "Badminton", emoji: "🏸" },
@@ -167,7 +176,9 @@ export function LandingPage() {
                 key={s.name}
                 className="group inline-flex items-center gap-2 rounded-none border-2 border-border bg-card/50 px-3 py-1.5 grayscale opacity-60 transition-all duration-300 hover:grayscale-0 hover:opacity-100"
               >
-                <span aria-hidden className="text-base">{s.emoji}</span>
+                <span aria-hidden className="text-base">
+                  {s.emoji}
+                </span>
                 <span className="font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground group-hover:text-foreground">
                   {s.name}
                 </span>
@@ -185,7 +196,8 @@ export function LandingPage() {
               One platform, three jobs done well.
             </h2>
             <p className="mt-3 text-pretty text-muted-foreground">
-              Bookings, front-desk check-ins, and money — wired to the same record so nothing drifts.
+              Bookings, front-desk check-ins, and money — wired to the same record so nothing
+              drifts.
             </p>
           </div>
 
@@ -252,7 +264,8 @@ export function LandingPage() {
               One platform. <span className="text-volt">Every part of your club.</span>
             </h2>
             <p className="mt-3 text-pretty text-muted-foreground">
-              From the front desk to the back courts — manage your entire facility blueprint through a single unified system.
+              From the front desk to the back courts — manage your entire facility blueprint through
+              a single unified system.
             </p>
           </div>
 
@@ -364,7 +377,7 @@ export function LandingPage() {
                 <p className="mb-3 font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                   Upcoming
                 </p>
-                <ul className="space-y-2.5" role="list">
+                <ul className="space-y-2.5">
                   {[
                     { name: "Court 1", time: "18:00" },
                     { name: "Pool Batch A", time: "18:30" },
@@ -395,7 +408,8 @@ export function LandingPage() {
               Everywhere.
             </h2>
             <p className="mt-6 max-w-md text-base text-black/80 sm:text-lg">
-              A premium, installable PWA for your customers. They can book, pay, check-in via QR, and manage memberships right from their phones.
+              A premium, installable PWA for your customers. They can book, pay, check-in via QR,
+              and manage memberships right from their phones.
             </p>
             <ul className="mt-8 space-y-3 text-sm">
               {[
@@ -448,10 +462,13 @@ export function LandingPage() {
               "radial-gradient(70% 60% at 50% 40%, color-mix(in oklab, var(--color-accent-warm) 8%, transparent), transparent 60%)",
           }}
         />
-        <div className="absolute inset-0 -z-10 opacity-[0.08]" style={{
-          backgroundImage:
-            "repeating-linear-gradient(135deg, color-mix(in oklab, var(--color-volt) 50%, transparent) 0 1px, transparent 1px 18px)",
-        }} />
+        <div
+          className="absolute inset-0 -z-10 opacity-[0.08]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(135deg, color-mix(in oklab, var(--color-volt) 50%, transparent) 0 1px, transparent 1px 18px)",
+          }}
+        />
 
         <div className="mx-auto max-w-3xl px-6 py-28 text-center">
           <h2 className="font-display text-[clamp(2.5rem,7vw,5rem)] font-bold leading-[0.9] tracking-tight">
@@ -459,7 +476,8 @@ export function LandingPage() {
             <span className="block text-volt">better club?</span>
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
-            Bring bookings, memberships, payments, and operations into one platform built specifically for sports.
+            Bring bookings, memberships, payments, and operations into one platform built
+            specifically for sports.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" onClick={() => open("customer")}>
@@ -480,39 +498,105 @@ export function LandingPage() {
             {/* Brand */}
             <div>
               <Link to="/" className="inline-flex items-center gap-2 font-bold text-lg">
-                <Waves className="h-5 w-5 text-volt animate-swim-bob motion-reduce:animate-none" aria-hidden="true" />
+                <Waves
+                  className="h-5 w-5 text-volt animate-swim-bob motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
                 {brand.name}
               </Link>
               <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-                The operating system for modern sports clubs. Designed for the way sports actually work.
+                The operating system for modern sports clubs. Designed for the way sports actually
+                work.
               </p>
             </div>
 
             {/* Product */}
             <div>
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Product</p>
+              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Product
+              </p>
               <ul className="mt-4 space-y-2 text-sm">
-                <li><a href="#platform" className="text-foreground transition-colors duration-250 hover:text-volt">Platform</a></li>
-                <li><a href="#features" className="text-foreground transition-colors duration-250 hover:text-volt">Features</a></li>
-                <li><a href="#sports" className="text-foreground transition-colors duration-250 hover:text-volt">Sports</a></li>
-                <li><a href="#pricing" className="text-foreground transition-colors duration-250 hover:text-volt">Pricing</a></li>
+                <li>
+                  <a
+                    href="#platform"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    Platform
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#features"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#sports"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    Sports
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#pricing"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    Pricing
+                  </a>
+                </li>
               </ul>
             </div>
 
             {/* Company */}
             <div>
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Company</p>
+              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Company
+              </p>
               <ul className="mt-4 space-y-2 text-sm">
-                <li><a href="#about" className="text-foreground transition-colors duration-250 hover:text-volt">About</a></li>
-                <li><a href="#contact" className="text-foreground transition-colors duration-250 hover:text-volt">Contact</a></li>
-                <li><a href="#privacy" className="text-foreground transition-colors duration-250 hover:text-volt">Privacy policy</a></li>
-                <li><a href="#terms" className="text-foreground transition-colors duration-250 hover:text-volt">Terms of service</a></li>
+                <li>
+                  <a
+                    href="#about"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    About
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#contact"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    Contact
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#privacy"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    Privacy policy
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#terms"
+                    className="text-foreground transition-colors duration-250 hover:text-volt"
+                  >
+                    Terms of service
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
 
           <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
-            <p>© {new Date().getFullYear()} {brand.name} Sports. All rights reserved.</p>
+            <p>
+              © {new Date().getFullYear()} {brand.name} Sports. All rights reserved.
+            </p>
             <div className="flex items-center gap-2">
               <a
                 aria-label="X (Twitter)"
@@ -578,7 +662,9 @@ function FeatureCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{eyebrow}</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {eyebrow}
+          </span>
           <h3 className="mt-2 text-balance text-lg font-semibold text-foreground">{title}</h3>
         </div>
         <div className="shrink-0 opacity-90 transition-transform duration-350 ease-swim group-hover:scale-110">
@@ -623,7 +709,13 @@ function FacilityCell({
   }[tone];
 
   const titleColor =
-    accent === "volt" ? "text-volt" : tone === "volt" ? "text-volt" : tone === "warm" ? "text-accent-warm" : "text-foreground";
+    accent === "volt"
+      ? "text-volt"
+      : tone === "volt"
+        ? "text-volt"
+        : tone === "warm"
+          ? "text-accent-warm"
+          : "text-foreground";
 
   return (
     <div
@@ -651,7 +743,11 @@ function FacilityCell({
       <div className="mt-auto pt-4">
         <p className={`font-display text-2xl font-bold leading-tight ${titleColor}`}>{title}</p>
         {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
-        {detail && <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/80">{detail}</p>}
+        {detail && (
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/80">
+            {detail}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -714,11 +810,16 @@ function HeroFloatingCards() {
       {/* Card 1 — Court occupancy */}
       <div className="absolute left-2 top-16 w-56 rounded-none border-2 border-border bg-card p-4 shadow-volt-md animate-rise-up motion-reduce:animate-none">
         <div className="flex items-center gap-2">
-          <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-none bg-volt text-black">
+          <span
+            aria-hidden
+            className="flex h-8 w-8 items-center justify-center rounded-none bg-volt text-black"
+          >
             <Waves className="h-4 w-4" />
           </span>
           <div>
-            <p className="font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Court 02</p>
+            <p className="font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Court 02
+            </p>
             <p className="font-display text-sm font-bold text-foreground">87% OCCUPANCY</p>
           </div>
         </div>
@@ -736,11 +837,16 @@ function HeroFloatingCards() {
       {/* Card 3 — Booked slot */}
       <div className="absolute bottom-8 right-2 w-60 rounded-none border-2 border-border bg-card p-4 shadow-volt-md animate-score-pop motion-reduce:animate-none [animation-delay:280ms]">
         <div className="flex items-center gap-3">
-          <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded-none bg-foreground text-background">
+          <span
+            aria-hidden
+            className="flex h-10 w-10 items-center justify-center rounded-none bg-foreground text-background"
+          >
             <Clock className="h-4 w-4" />
           </span>
           <div>
-            <p className="font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground">7:00 PM Slot</p>
+            <p className="font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              7:00 PM Slot
+            </p>
             <p className="font-display text-base font-bold text-foreground">BOOKED</p>
           </div>
         </div>
@@ -763,26 +869,18 @@ function DashStat({
   const isVolt = tone === "volt";
   return (
     <div
-      className={
-        "rounded-none border p-3 " +
-        (isVolt
-          ? "border-volt/30 bg-volt/5"
-          : "border-border bg-charcoal-900")
-      }
+      className={`rounded-none border p-3 ${isVolt ? "border-volt/30 bg-volt/5" : "border-border bg-charcoal-900"}`}
     >
-      <p className="font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="font-display text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
       <p
-        className={
-          "mt-1 font-display text-2xl font-bold " + (isVolt ? "text-volt" : "text-foreground")
-        }
+        className={`mt-1 font-display text-2xl font-bold ${isVolt ? "text-volt" : "text-foreground"}`}
       >
         {value}
       </p>
       <p
-        className={
-          "mt-0.5 font-mono text-[10px] " +
-          (isVolt ? "text-volt" : "text-muted-foreground")
-        }
+        className={`mt-0.5 font-mono text-[10px] ${isVolt ? "text-volt" : "text-muted-foreground"}`}
       >
         {delta}
       </p>
@@ -797,7 +895,7 @@ function RevenueBars() {
     <div className="flex h-40 items-end gap-2" role="img" aria-label="Revenue trend bar chart">
       {heights.map((h, i) => (
         <div
-          key={i}
+          key={`bar-${h}`}
           className="flex-1 rounded-t bg-gradient-to-t from-volt-hover to-volt animate-rise-up motion-reduce:animate-none"
           style={{ height: `${h}%`, animationDelay: `${i * 40}ms` }}
           aria-hidden
@@ -823,7 +921,9 @@ function PhoneMockup() {
             <p className="text-[10px] uppercase tracking-widest text-white/60">Digital pass</p>
             <p className="mt-1 text-volt font-bold uppercase tracking-widest">Pro Membership</p>
             <div className="mt-4 flex h-20 items-center justify-center rounded-none border border-dashed border-white/30">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">Scan to enter</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
+                Scan to enter
+              </span>
             </div>
           </div>
 
@@ -835,7 +935,10 @@ function PhoneMockup() {
           </div>
         </div>
       </div>
-      <div className="absolute inset-x-0 bottom-0 mx-auto h-1 w-32 -translate-y-3 rounded-b-2xl bg-black/30 blur-sm" aria-hidden />
+      <div
+        className="absolute inset-x-0 bottom-0 mx-auto h-1 w-32 -translate-y-3 rounded-b-2xl bg-black/30 blur-sm"
+        aria-hidden
+      />
     </div>
   );
 }
@@ -852,8 +955,10 @@ function StatTile({
   const valueColor = tone === "volt" ? "text-volt" : "text-foreground";
   return (
     <div className="rounded-none border-2 border-border bg-card p-6 text-center transition-all duration-350 ease-swim hover:-translate-y-0.5 hover:border-volt/40 hover:shadow-volt-sm">
-      <p className={"font-display text-5xl font-bold tracking-tight " + valueColor}>{value}</p>
-      <p className="mt-3 font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
+      <p className={`font-display text-5xl font-bold tracking-tight ${valueColor}`}>{value}</p>
+      <p className="mt-3 font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </p>
     </div>
   );
 }
@@ -862,9 +967,27 @@ function PoolIllustration() {
   return (
     <svg viewBox="0 0 80 80" className="h-16 w-16" aria-hidden="true">
       <rect x="6" y="14" width="68" height="52" rx="8" fill="var(--color-volt-soft)" />
-      <path d="M6 36 Q20 30 34 36 T62 36 T80 36" stroke="var(--color-volt)" strokeWidth="2" fill="none" />
-      <path d="M6 50 Q20 44 34 50 T62 50 T80 50" stroke="var(--color-volt-hover)" strokeOpacity="0.6" strokeWidth="2" fill="none" />
-      <path d="M0 36 Q14 30 28 36 T56 36 T74 36" stroke="var(--color-volt)" strokeOpacity="0.4" strokeWidth="1.5" fill="none" strokeDasharray="3 3" />
+      <path
+        d="M6 36 Q20 30 34 36 T62 36 T80 36"
+        stroke="var(--color-volt)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <path
+        d="M6 50 Q20 44 34 50 T62 50 T80 50"
+        stroke="var(--color-volt-hover)"
+        strokeOpacity="0.6"
+        strokeWidth="2"
+        fill="none"
+      />
+      <path
+        d="M0 36 Q14 30 28 36 T56 36 T74 36"
+        stroke="var(--color-volt)"
+        strokeOpacity="0.4"
+        strokeWidth="1.5"
+        fill="none"
+        strokeDasharray="3 3"
+      />
     </svg>
   );
 }
@@ -876,11 +999,27 @@ function CalendarIllustration() {
       <rect x="10" y="16" width="60" height="12" rx="6" fill="var(--color-accent-warm)" />
       <circle cx="22" cy="14" r="3" fill="var(--color-accent-warm)" />
       <circle cx="58" cy="14" r="3" fill="var(--color-accent-warm)" />
-      <rect x="18" y="36" width="10" height="10" rx="2" fill="var(--color-accent-warm)" fillOpacity="0.5" />
+      <rect
+        x="18"
+        y="36"
+        width="10"
+        height="10"
+        rx="2"
+        fill="var(--color-accent-warm)"
+        fillOpacity="0.5"
+      />
       <rect x="35" y="36" width="10" height="10" rx="2" fill="#ffffff" fillOpacity="0.15" />
       <rect x="52" y="36" width="10" height="10" rx="2" fill="#ffffff" fillOpacity="0.15" />
       <rect x="18" y="52" width="10" height="10" rx="2" fill="#ffffff" fillOpacity="0.15" />
-      <rect x="35" y="52" width="10" height="10" rx="2" fill="var(--color-accent-warm)" fillOpacity="0.5" />
+      <rect
+        x="35"
+        y="52"
+        width="10"
+        height="10"
+        rx="2"
+        fill="var(--color-accent-warm)"
+        fillOpacity="0.5"
+      />
     </svg>
   );
 }
@@ -894,7 +1033,14 @@ function LedgerIllustration() {
       <rect x="18" y="42" width="36" height="4" rx="2" fill="#ffffff" fillOpacity="0.25" />
       <rect x="18" y="50" width="24" height="4" rx="2" fill="#ffffff" fillOpacity="0.25" />
       <circle cx="58" cy="58" r="8" fill="var(--color-volt)" />
-      <path d="M54 58 L57 61 L62 55" stroke="#000000" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M54 58 L57 61 L62 55"
+        stroke="#000000"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -921,6 +1067,7 @@ function AuthModal({
   }, [onClose]);
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: native <dialog> not used to preserve styling/animation
     <div
       role="dialog"
       aria-modal="true"
@@ -958,12 +1105,11 @@ function AuthModal({
               role="tab"
               aria-selected={mode === m}
               onClick={() => onSwitch(m)}
-              className={
-                "flex-1 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-all duration-250 ease-swim " +
-                (mode === m
+              className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-all duration-250 ease-swim ${
+                mode === m
                   ? "border-primary text-primary bg-primary/5"
-                  : "border-transparent text-muted-foreground hover:text-foreground")
-              }
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
             >
               {m === "customer" ? "Member" : "Staff"}
             </button>

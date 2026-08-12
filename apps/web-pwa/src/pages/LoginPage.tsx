@@ -1,9 +1,9 @@
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, Waves, ChevronLeft } from "@splashh/ui";
 import { LoginForm } from "@/features/auth/LoginForm";
-import { useAuthStore } from "@splashh/api-client";
 import { homeForRoles } from "@/lib/role-routing";
+import { useAuthStore } from "@splashh/api-client";
+import { Card, CardContent, CardHeader, ChevronLeft, Waves } from "@splashh/ui";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 type Mode = "customer" | "staff";
 
@@ -26,12 +26,11 @@ function Tab({
       aria-selected={selected}
       aria-controls="login-panel"
       onClick={onSelect}
-      className={
-        "flex-1 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-all duration-250 ease-swim " +
-        (selected
+      className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-all duration-250 ease-swim ${
+        selected
           ? "border-primary text-primary bg-primary/5"
-          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40")
-      }
+          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+      }`}
     >
       {children}
     </button>
@@ -51,6 +50,7 @@ export function LoginPage() {
     if (isAuthed) navigate(homeForRoles(roles), { replace: true });
   }, [isAuthed, roles, navigate]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional re-focus on tab switch
   useEffect(() => {
     emailRef.current?.focus();
   }, [mode]);
@@ -89,7 +89,9 @@ export function LoginPage() {
           aria-hidden="true"
           className="w-9 h-9 text-primary animate-swim-bob motion-reduce:animate-none"
         />
-        <div className="mt-2 font-display text-3xl font-bold uppercase tracking-tight text-foreground">Splashh</div>
+        <div className="mt-2 font-display text-3xl font-bold uppercase tracking-tight text-foreground">
+          Splashh
+        </div>
         <div className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-volt">
           Sports club management
         </div>

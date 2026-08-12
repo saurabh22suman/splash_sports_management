@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { Link } from "react-router-dom";
 import { cn } from "../lib/cn.js";
 import { Button } from "./ui/button.js";
@@ -7,9 +7,7 @@ export interface EmptyStateProps {
   icon?: React.ReactNode;
   title: string;
   description?: string;
-  action?:
-    | { label: string; onClick: () => void }
-    | { label: string; to: string };
+  action?: { label: string; onClick: () => void } | { label: string; to: string };
   className?: string;
   "data-testid"?: string;
 }
@@ -31,10 +29,10 @@ export function EmptyState({
       )}
     >
       {icon && <div className="text-muted-foreground">{icon}</div>}
-      <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground">{title}</h2>
-      {description && (
-        <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
-      )}
+      <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-foreground">
+        {title}
+      </h2>
+      {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && "to" in action ? (
         <Button asChild>
           <Link to={action.to}>{action.label}</Link>

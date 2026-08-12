@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
 import { useAuthStore } from "@splashh/api-client";
+import { useMemo, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { navForRoles } from "./nav";
@@ -26,10 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
       )}
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar
-          mobileOpen={mobileOpen}
-          onToggleSidebar={() => setMobileOpen((v) => !v)}
-        />
+        <TopBar mobileOpen={mobileOpen} onToggleSidebar={() => setMobileOpen((v) => !v)} />
         <main id="main" className="flex-1 p-4 md:p-6 lg:p-8">
           {children}
         </main>

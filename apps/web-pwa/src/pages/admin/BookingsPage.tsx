@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
-import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill } from "@splashh/ui";
-import { useAdminBookings, type AdminBookingsParams } from "@/features/bookings/useAdminBookings";
 import { useAdminFacilities } from "@/features/admin/facilities/useAdminFacilities";
+import { type AdminBookingsParams, useAdminBookings } from "@/features/bookings/useAdminBookings";
+import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill } from "@splashh/ui";
+import { useMemo, useState } from "react";
 
 function formatTime(dateString: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -36,7 +36,9 @@ function getEndOfDay(date: Date): string {
 }
 
 // Map API booking status to StatusPill status
-function mapStatusToPill(status: string): "confirmed" | "cancelled" | "completed" | "pending" | "failed" {
+function mapStatusToPill(
+  status: string,
+): "confirmed" | "cancelled" | "completed" | "pending" | "failed" {
   switch (status) {
     case "confirmed":
       return "confirmed";
@@ -65,7 +67,10 @@ export function BookingsPage() {
       fromAt: getStartOfDay(date),
       toAt: getEndOfDay(date),
       facilityId: selectedFacility !== "all" ? selectedFacility : undefined,
-      status: selectedStatus !== "all" ? [selectedStatus as "confirmed" | "cancelled" | "completed" | "no_show"] : undefined,
+      status:
+        selectedStatus !== "all"
+          ? [selectedStatus as "confirmed" | "cancelled" | "completed" | "no_show"]
+          : undefined,
     };
   }, [selectedDate, selectedFacility, selectedStatus]);
 
@@ -85,9 +90,9 @@ export function BookingsPage() {
   const facilityOptions = useMemo(() => {
     const opts = [{ value: "all", label: "All Facilities" }];
     if (facilities) {
-      facilities.forEach((f) => {
+      for (const f of facilities) {
         opts.push({ value: f.id, label: f.name });
-      });
+      }
     }
     return opts;
   }, [facilities]);
@@ -197,7 +202,7 @@ export function BookingsPage() {
       {bookings && bookings.length > 0 && (
         <>
           {/* Mobile: card list */}
-          <ul className="space-y-3 md:hidden" role="list">
+          <ul className="space-y-3 md:hidden">
             {bookings.map((booking, idx) => (
               <li
                 key={booking.id}
@@ -211,16 +216,12 @@ export function BookingsPage() {
                 <div className="text-sm text-muted-foreground mb-1">
                   {booking.customer_name || "Unknown Customer"}
                 </div>
-                <div className="text-sm text-muted-foreground mb-1">
-                  {booking.customer_email}
-                </div>
+                <div className="text-sm text-muted-foreground mb-1">{booking.customer_email}</div>
                 <div className="text-sm font-mono">
                   {formatTime(booking.start_at)} - {formatTime(booking.end_at)}
                 </div>
                 {booking.facility_name && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {booking.facility_name}
-                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{booking.facility_name}</div>
                 )}
               </li>
             ))}
@@ -257,7 +258,9 @@ export function BookingsPage() {
                       </td>
                       <td className="py-3 text-sm">
                         <div>{booking.customer_name || "Unknown Customer"}</div>
-                        <div className="text-xs text-muted-foreground">{booking.customer_email}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {booking.customer_email}
+                        </div>
                       </td>
                       <td className="py-3 text-sm text-muted-foreground">
                         {booking.facility_name || "-"}

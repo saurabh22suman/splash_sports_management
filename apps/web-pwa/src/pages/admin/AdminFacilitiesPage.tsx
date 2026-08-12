@@ -1,23 +1,23 @@
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import {
+  useAdminFacilities,
+  useDeactivateFacility,
+} from "@/features/admin/facilities/useAdminFacilities";
+import type { Facility } from "@splashh/api-client";
 import {
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Clock,
   EmptyState,
   ErrorState,
   LoadingSkeleton,
   MapPin,
-  Clock,
 } from "@splashh/ui";
-import { Link } from "react-router-dom";
-import {
-  useAdminFacilities,
-  useDeactivateFacility,
-} from "@/features/admin/facilities/useAdminFacilities";
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import type { Facility } from "@splashh/api-client";
+import { Link } from "react-router-dom";
 
 export function AdminFacilitiesPage() {
   const { data, isLoading, error } = useAdminFacilities();
@@ -49,7 +49,7 @@ export function AdminFacilitiesPage() {
       )}
       {!isLoading && !error && (data?.length ?? 0) > 0 && (
         <ul className="grid gap-3 md:grid-cols-2">
-          {data!.map((f, idx) => (
+          {data?.map((f, idx) => (
             <li
               key={f.id}
               className="animate-rise-up motion-reduce:animate-none"

@@ -1,10 +1,10 @@
-import { Button, FormField, Input } from "@splashh/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { Resource } from "@splashh/api-client";
+import { Button, FormField, Input } from "@splashh/ui";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useUpdateResource } from "./useAdminFacilities";
-import type { Resource } from "@splashh/api-client";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -79,19 +79,34 @@ export function EditResourceForm({
         <FormField label="Name" htmlFor={`er-name-${resource.id}`} error={errors.name?.message}>
           <Input id={`er-name-${resource.id}`} {...register("name")} />
         </FormField>
-        <FormField label="Capacity" htmlFor={`er-cap-${resource.id}`} error={errors.capacity?.message}>
+        <FormField
+          label="Capacity"
+          htmlFor={`er-cap-${resource.id}`}
+          error={errors.capacity?.message}
+        >
           <Input id={`er-cap-${resource.id}`} type="number" min={1} {...register("capacity")} />
         </FormField>
       </div>
-      <FormField label="Attributes (JSON)" htmlFor={`er-attr-${resource.id}`} error={errors.attributes?.message}>
-        <Input id={`er-attr-${resource.id}`} placeholder='{"surface":"clay"}' {...register("attributes")} />
+      <FormField
+        label="Attributes (JSON)"
+        htmlFor={`er-attr-${resource.id}`}
+        error={errors.attributes?.message}
+      >
+        <Input
+          id={`er-attr-${resource.id}`}
+          placeholder='{"surface":"clay"}'
+          {...register("attributes")}
+        />
       </FormField>
       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         Slug: {resource.slug} · Type: {resource.resource_type} · Status: {resource.status}
       </p>
 
       {update.error && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive"
+        >
           {(update.error as Error).message}
         </p>
       )}

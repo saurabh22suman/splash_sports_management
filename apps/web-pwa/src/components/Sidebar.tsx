@@ -1,4 +1,4 @@
-import { cn, brand, Waves, CalendarDays, Building2, Users, Receipt, X } from "@splashh/ui";
+import { Building2, CalendarDays, Receipt, Users, Waves, X, brand, cn } from "@splashh/ui";
 import { NavLink } from "react-router-dom";
 import { UserMenu } from "./UserMenu";
 
@@ -38,7 +38,10 @@ export function Sidebar({
     >
       <div className="flex items-center justify-between px-4 py-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <Waves className="w-6 h-6 text-primary animate-swim-bob motion-reduce:animate-none" aria-hidden="true" />
+          <Waves
+            className="w-6 h-6 text-primary animate-swim-bob motion-reduce:animate-none"
+            aria-hidden="true"
+          />
           <span className="font-bold text-lg text-foreground">{brand.name}</span>
         </div>
         <button
@@ -51,7 +54,7 @@ export function Sidebar({
         </button>
       </div>
       <nav aria-label="Primary">
-        <ul role="list" className="px-2 py-3 space-y-1">
+        <ul className="px-2 py-3 space-y-1">
           {items.map((item, idx) => {
             const IconComponent = iconMap[item.icon];
             return (

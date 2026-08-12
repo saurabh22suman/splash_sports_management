@@ -16,6 +16,7 @@ export function LoadingSkeleton({
 }: LoadingSkeletonProps) {
   const arr = Array.from({ length: lines });
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <output> not appropriate for skeleton; <div role="status"> is correct
     <div
       role="status"
       aria-live="polite"
@@ -25,22 +26,16 @@ export function LoadingSkeleton({
     >
       <span className="sr-only">Loading...</span>
       {withCard && (
-        <div
-          data-skeleton-card
-          className="border-2 border-border bg-card p-6"
-        >
+        <div data-skeleton-card className="border-2 border-border bg-card p-6">
           <div className="h-4 w-1/3 animate-pulse bg-muted" />
           <div className="mt-3 h-3 w-1/2 animate-pulse bg-muted" />
         </div>
       )}
       {arr.map((_, i) => (
         <div
-          key={i}
+          key={`line-${i}`}
           data-skeleton-line
-          className={cn(
-            "h-3 animate-pulse bg-muted",
-            i === arr.length - 1 ? "w-2/3" : "w-full",
-          )}
+          className={cn("h-3 animate-pulse bg-muted", i === arr.length - 1 ? "w-2/3" : "w-full")}
         />
       ))}
     </div>

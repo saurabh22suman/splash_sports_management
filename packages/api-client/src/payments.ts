@@ -69,29 +69,39 @@ export interface CreateInvoiceInput {
   due_date: string;
 }
 
-export async function createInvoice(input: CreateInvoiceInput, idempotencyKey?: string): Promise<Invoice> {
+export async function createInvoice(
+  input: CreateInvoiceInput,
+  idempotencyKey?: string,
+): Promise<Invoice> {
   const { data } = await api.post<Invoice>(
     "/payments/invoices",
     input,
-    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
   );
   return data;
 }
 
-export async function createPaymentLink(invoiceId: string, idempotencyKey: string): Promise<PaymentLinkResponse> {
+export async function createPaymentLink(
+  invoiceId: string,
+  idempotencyKey: string,
+): Promise<PaymentLinkResponse> {
   const { data } = await api.post<PaymentLinkResponse>(
     `/payments/invoices/${invoiceId}/payment-link`,
     undefined,
-    { headers: { "Idempotency-Key": idempotencyKey } }
+    { headers: { "Idempotency-Key": idempotencyKey } },
   );
   return data;
 }
 
-export async function refundInvoice(invoiceId: string, reason: string, idempotencyKey: string): Promise<Refund> {
+export async function refundInvoice(
+  invoiceId: string,
+  reason: string,
+  idempotencyKey: string,
+): Promise<Refund> {
   const { data } = await api.post<Refund>(
     `/payments/invoices/${invoiceId}/refund`,
     { reason },
-    { headers: { "Idempotency-Key": idempotencyKey } }
+    { headers: { "Idempotency-Key": idempotencyKey } },
   );
   return data;
 }

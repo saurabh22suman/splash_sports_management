@@ -1,8 +1,8 @@
-import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill } from "@splashh/ui";
-import { Link } from "react-router-dom";
 import { useInvoices } from "@/features/payments/hooks";
-import { useState } from "react";
 import type { InvoiceStatus } from "@splashh/api-client";
+import { Button, Card, CardContent, CardHeader, CardTitle, StatusPill } from "@splashh/ui";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function formatCurrency(amountPaise: number, currency: string): string {
   return new Intl.NumberFormat("en-US", {
@@ -21,7 +21,9 @@ function formatDate(dateString: string): string {
 }
 
 // Map API invoice status to StatusPill status
-function mapStatusToPill(status: InvoiceStatus): "open" | "paid" | "refunded" | "failed" | "cancelled" | "pending" {
+function mapStatusToPill(
+  status: InvoiceStatus,
+): "open" | "paid" | "refunded" | "failed" | "cancelled" | "pending" {
   switch (status) {
     case "draft":
       return "open";
@@ -89,7 +91,7 @@ export function InvoicesPage() {
           {data && data.length > 0 && (
             <>
               {/* Mobile: card list */}
-              <ul className="space-y-3 md:hidden" role="list">
+              <ul className="space-y-3 md:hidden">
                 {data.map((inv, idx) => (
                   <li
                     key={inv.id}
@@ -106,8 +108,12 @@ export function InvoicesPage() {
                       <StatusPill status={mapStatusToPill(inv.status)} />
                     </Link>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{formatCurrency(inv.total_paise, inv.currency)}</span>
-                      <span className="font-mono text-xs text-muted-foreground">{formatDate(inv.due_date)}</span>
+                      <span className="font-medium">
+                        {formatCurrency(inv.total_paise, inv.currency)}
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {formatDate(inv.due_date)}
+                      </span>
                     </div>
                     <div className="mt-1 font-mono text-[10px] text-muted-foreground">
                       Customer {inv.customer_id.slice(0, 8)}
@@ -142,12 +148,18 @@ export function InvoicesPage() {
                           {inv.invoice_number}
                         </Link>
                       </td>
-                      <td className="py-3 text-sm text-muted-foreground">{inv.customer_id.slice(0, 8)}</td>
-                      <td className="py-3 text-sm font-medium">{formatCurrency(inv.total_paise, inv.currency)}</td>
+                      <td className="py-3 text-sm text-muted-foreground">
+                        {inv.customer_id.slice(0, 8)}
+                      </td>
+                      <td className="py-3 text-sm font-medium">
+                        {formatCurrency(inv.total_paise, inv.currency)}
+                      </td>
                       <td className="py-3">
                         <StatusPill status={mapStatusToPill(inv.status)} />
                       </td>
-                      <td className="py-3 text-sm text-muted-foreground">{formatDate(inv.due_date)}</td>
+                      <td className="py-3 text-sm text-muted-foreground">
+                        {formatDate(inv.due_date)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

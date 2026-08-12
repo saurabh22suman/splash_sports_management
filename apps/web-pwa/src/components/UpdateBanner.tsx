@@ -1,5 +1,5 @@
-import { Button } from "@splashh/ui";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { Button } from "@splashh/ui";
 
 export function UpdateBanner() {
   const {

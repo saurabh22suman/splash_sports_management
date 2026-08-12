@@ -100,10 +100,12 @@
   /* Neon glow shadows */
   --shadow-volt-sm: 0 0 6px var(--color-volt-soft);
   --shadow-volt-md: 0 0 14px var(--color-volt-soft), 0 0 2px var(--color-volt);
-  --shadow-volt-lg: 0 0 24px var(--color-volt-soft), 0 0 4px var(--color-volt), inset 0 0 2px var(--color-volt);
+  --shadow-volt-lg: 0 0 24px var(--color-volt-soft), 0 0 4px var(--color-volt), inset 0 0 2px
+    var(--color-volt);
   --shadow-warm-sm: 0 0 6px var(--color-accent-warm-soft);
   --shadow-warm-md: 0 0 14px var(--color-accent-warm-soft), 0 0 2px var(--color-accent-warm);
-  --shadow-cool-md: 0 0 14px color-mix(in oklab, var(--color-accent-cool) 30%, transparent), 0 0 2px var(--color-accent-cool);
+  --shadow-cool-md: 0 0 14px color-mix(in oklab, var(--color-accent-cool) 30%, transparent), 0 0 2px
+    var(--color-accent-cool);
   --shadow-hard-volt: 4px 4px 0 0 var(--color-volt);
   --shadow-hard-warm: 4px 4px 0 0 var(--color-accent-warm);
   --shadow-hard-cool: 4px 4px 0 0 var(--color-accent-cool);
@@ -237,26 +239,33 @@
 }
 
 @keyframes neon-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 6px color-mix(in oklab, var(--color-volt) 40%, transparent),
-      0 0 12px color-mix(in oklab, var(--color-volt) 20%, transparent);
+  0%,
+  100% {
+    box-shadow: 0 0 6px color-mix(in oklab, var(--color-volt) 40%, transparent), 0 0 12px
+      color-mix(in oklab, var(--color-volt) 20%, transparent);
     opacity: 1;
   }
   50% {
-    box-shadow:
-      0 0 12px color-mix(in oklab, var(--color-volt) 70%, transparent),
-      0 0 24px color-mix(in oklab, var(--color-volt) 40%, transparent),
-      0 0 2px var(--color-volt);
+    box-shadow: 0 0 12px color-mix(in oklab, var(--color-volt) 70%, transparent), 0 0 24px
+      color-mix(in oklab, var(--color-volt) 40%, transparent), 0 0 2px var(--color-volt);
     opacity: 0.92;
   }
 }
 
 @keyframes flicker {
-  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+  0%,
+  19%,
+  21%,
+  23%,
+  25%,
+  54%,
+  56%,
+  100% {
     opacity: 1;
   }
-  20%, 24%, 55% {
+  20%,
+  24%,
+  55% {
     opacity: 0.55;
   }
 }
@@ -299,11 +308,7 @@
   }
 
   .lane-underline {
-    background-image: linear-gradient(
-      to right,
-      var(--color-volt) 0%,
-      var(--color-volt) 100%
-    );
+    background-image: linear-gradient(to right, var(--color-volt) 0%, var(--color-volt) 100%);
     background-repeat: no-repeat;
     background-size: 0% 2px;
     background-position: 0 100%;

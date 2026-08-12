@@ -1,6 +1,6 @@
-import { useLocation } from "react-router-dom";
-import { cn, Menu, Waves } from "@splashh/ui";
 import { titleForPath } from "@/lib/page-titles";
+import { Menu, Waves, cn } from "@splashh/ui";
+import { useLocation } from "react-router-dom";
 import { UserMenu } from "./UserMenu";
 
 export function TopBar({

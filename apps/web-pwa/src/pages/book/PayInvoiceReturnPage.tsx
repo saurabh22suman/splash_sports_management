@@ -1,11 +1,13 @@
-import { useParams, Link } from "react-router-dom";
-import { Button, Card, CardContent, StatusPill } from "@splashh/ui";
-import { CheckCircle2, Clock } from "lucide-react";
 import { useInvoice } from "@/features/payments/hooks";
 import type { InvoiceStatus } from "@splashh/api-client";
+import { Button, Card, CardContent, StatusPill } from "@splashh/ui";
+import { CheckCircle2, Clock } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 
 // Map API invoice status to StatusPill status
-function mapStatusToPill(status: InvoiceStatus): "open" | "paid" | "refunded" | "failed" | "cancelled" | "pending" {
+function mapStatusToPill(
+  status: InvoiceStatus,
+): "open" | "paid" | "refunded" | "failed" | "cancelled" | "pending" {
   switch (status) {
     case "draft":
       return "open";
@@ -44,7 +46,9 @@ export function PayInvoiceReturnPage() {
               <p className="text-lg font-semibold">Payment received</p>
               <p className="text-sm text-muted-foreground mb-2">Invoice {inv?.invoice_number}</p>
               <StatusPill status="paid" className="mb-4" />
-              <Button asChild className="mt-2"><Link to="/book/bookings">My bookings</Link></Button>
+              <Button asChild className="mt-2">
+                <Link to="/book/bookings">My bookings</Link>
+              </Button>
             </>
           ) : (
             <>
@@ -54,7 +58,9 @@ export function PayInvoiceReturnPage() {
               <p className="text-lg font-semibold">Processing payment</p>
               <p className="text-sm text-muted-foreground mb-2">Your payment is being processed.</p>
               {inv && <StatusPill status={mapStatusToPill(inv.status)} className="mb-4" />}
-              <Button onClick={() => refetch()} className="mt-2">Refresh</Button>
+              <Button onClick={() => refetch()} className="mt-2">
+                Refresh
+              </Button>
             </>
           )}
         </CardContent>

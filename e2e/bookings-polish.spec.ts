@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
 
 test("/book/bookings passes axe-core (light)", async ({ page }) => {
   // assumes a logged-in customer via existing seed; see admin-user-creation.spec.ts

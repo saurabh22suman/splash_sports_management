@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { getQueueLength, drainQueue } from "../lib/offlineQueue";
-import { bookingsApi, type BookingInput } from "../features/bookings/api";
+import { useCallback, useEffect, useState } from "react";
+import { type BookingInput, bookingsApi } from "../features/bookings/api";
+import { drainQueue, getQueueLength } from "../lib/offlineQueue";
 
 export function OfflineBanner() {
   const [queueLength, setQueueLength] = useState(0);

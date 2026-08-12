@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@splashh/api-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  adminFacilitiesApi,
   type FacilityInput,
   type FacilityUpdateInput,
   type ResourceInput,
   type ResourceUpdateInput,
+  adminFacilitiesApi,
 } from "./api";
 
 export function useAdminFacilities() {

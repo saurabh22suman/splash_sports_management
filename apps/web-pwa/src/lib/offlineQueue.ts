@@ -162,7 +162,7 @@ async function popOne(idempotencyKey: string): Promise<QueuedBooking | null> {
  * Stops on first failure.
  */
 export async function drainQueue(
-  fetcher: (input: BookingInput, idempotencyKey: string) => Promise<unknown>
+  fetcher: (input: BookingInput, idempotencyKey: string) => Promise<unknown>,
 ): Promise<{ success: boolean; processedCount: number; error?: Error }> {
   const queued = await getAllQueued();
 

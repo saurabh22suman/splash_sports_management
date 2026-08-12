@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("admin creates a customer; customer logs in at /login", async ({ page, request }) => {
   const slug = `e2e-create-${Date.now()}`;
@@ -34,7 +34,10 @@ test("admin creates a customer; customer logs in at /login", async ({ page, requ
   await page.getByLabel("Full name").fill("E2E Customer");
   await page.getByLabel("Temporary password").fill(password);
   await page.getByLabel("Customer").check();
-  await page.getByRole("button", { name: /add user/i }).last().click();
+  await page
+    .getByRole("button", { name: /add user/i })
+    .last()
+    .click();
 
   // The new user appears in the list
   await expect(page.getByText(customerEmail)).toBeVisible();

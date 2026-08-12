@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { bookingsApi } from "@/features/bookings/api";
+import { useBookingsByCustomer } from "@/features/bookings/useBookings";
+import { useAuthStore } from "@splashh/api-client";
 import {
   Button,
   Card,
@@ -11,9 +13,7 @@ import {
   StatusPill,
 } from "@splashh/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuthStore } from "@splashh/api-client";
-import { bookingsApi } from "@/features/bookings/api";
-import { useBookingsByCustomer } from "@/features/bookings/useBookings";
+import { useRef, useState } from "react";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString();
@@ -51,7 +51,8 @@ function CancelConfirmDialog({
         Cancel booking?
       </h2>
       <p className="mt-3 text-sm text-muted-foreground">
-        You're about to cancel <strong className="text-foreground">{bookingLabel}</strong>. This cannot be undone.
+        You're about to cancel <strong className="text-foreground">{bookingLabel}</strong>. This
+        cannot be undone.
       </p>
       <div className="mt-6 flex justify-end gap-2">
         <Button variant="ghost" type="button" onClick={onClose} disabled={isPending}>
@@ -71,7 +72,16 @@ function CancelConfirmDialog({
   );
 }
 
-function CancelButton({ booking }: { booking: { id: string; facility_name?: string | null; resource_name?: string | null; start_at: string } }) {
+function CancelButton({
+  booking,
+}: {
+  booking: {
+    id: string;
+    facility_name?: string | null;
+    resource_name?: string | null;
+    start_at: string;
+  };
+}) {
   const qc = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const cancel = useMutation({
@@ -114,7 +124,9 @@ export function BookingsPage() {
     <div className="container py-6">
       <header className="mb-6 flex items-end justify-between gap-3 border-b-2 border-border pb-3">
         <div>
-          <p className="font-display text-[10px] uppercase tracking-[0.18em] text-volt">Your bookings</p>
+          <p className="font-display text-[10px] uppercase tracking-[0.18em] text-volt">
+            Your bookings
+          </p>
           <h1 className="font-display text-3xl font-bold uppercase tracking-tight">My bookings</h1>
         </div>
       </header>
@@ -136,7 +148,7 @@ export function BookingsPage() {
       )}
       {!isLoading && !error && (data?.length ?? 0) > 0 && (
         <ul className="space-y-3">
-          {data!.map((b) => (
+          {data?.map((b) => (
             <li key={b.id}>
               <Card>
                 <CardHeader>
@@ -157,7 +169,12 @@ export function BookingsPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    {b.price_cents === 0 ? "Free booking" : new Intl.NumberFormat("en-US", { style: "currency", currency: b.currency }).format(b.price_cents / 100)}
+                    {b.price_cents === 0
+                      ? "Free booking"
+                      : new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: b.currency,
+                        }).format(b.price_cents / 100)}
                   </p>
                   {b.notes && <p className="mt-1 text-xs text-muted-foreground">{b.notes}</p>}
                 </CardContent>

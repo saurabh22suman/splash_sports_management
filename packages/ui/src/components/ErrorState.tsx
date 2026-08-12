@@ -26,10 +26,10 @@ export function ErrorState({
         className,
       )}
     >
-      <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-destructive">{title}</h2>
-      {description && (
-        <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
-      )}
+      <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-destructive">
+        {title}
+      </h2>
+      {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {onRetry && (
         <Button variant="outline" onClick={onRetry}>
           Try again

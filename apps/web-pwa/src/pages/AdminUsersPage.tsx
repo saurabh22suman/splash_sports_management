@@ -1,11 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
-import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input, Badge } from "@splashh/ui";
-import { Search } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useUsers, useCreateUser } from "@/features/admin/users/useUsers";
 import type { CreateUserInput } from "@/features/admin/users/api";
+import { useCreateUser, useUsers } from "@/features/admin/users/useUsers";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  FormField,
+  Input,
+} from "@splashh/ui";
+import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -23,7 +32,10 @@ function AddUserForm({ onCreated }: { onCreated: () => void }) {
     reset,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { role_customer: true, role_staff: false } });
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { role_customer: true, role_staff: false },
+  });
   const create = useCreateUser();
   const [roleError, setRoleError] = useState<string | null>(null);
 
@@ -125,7 +137,7 @@ export function AdminUsersPage() {
     if (!search.trim()) return data;
     const q = search.toLowerCase();
     return data.filter(
-      (u) => u.email.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q)
+      (u) => u.email.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q),
     );
   }, [data, search]);
 
@@ -135,7 +147,11 @@ export function AdminUsersPage() {
         <h1 className="text-2xl font-semibold">Users</h1>
         <Button onClick={() => setAdding((s) => !s)}>{adding ? "Close" : "+ Add user"}</Button>
       </div>
-      {adding && <div className="mb-4"><AddUserForm onCreated={() => setAdding(false)} /></div>}
+      {adding && (
+        <div className="mb-4">
+          <AddUserForm onCreated={() => setAdding(false)} />
+        </div>
+      )}
       {isLoading && <p>Loading...</p>}
       {error && <p className="text-destructive">Failed to load users.</p>}
       <Card>

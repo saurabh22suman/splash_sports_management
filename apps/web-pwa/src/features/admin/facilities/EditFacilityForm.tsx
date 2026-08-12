@@ -1,10 +1,10 @@
-import { Button, FormField, Input } from "@splashh/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { Facility } from "@splashh/api-client";
+import { Button, FormField, Input } from "@splashh/ui";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useUpdateFacility } from "./useAdminFacilities";
-import type { Facility } from "@splashh/api-client";
 
 const schema = z.object({
   name: z.string().min(2, "Name is required (2+ chars)"),
@@ -118,7 +118,10 @@ export function EditFacilityForm({
       </p>
 
       {update.error && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive"
+        >
           {(update.error as Error).message}
         </p>
       )}

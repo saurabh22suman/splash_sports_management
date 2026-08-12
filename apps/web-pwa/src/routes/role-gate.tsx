@@ -1,5 +1,5 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@splashh/api-client";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { RoleMismatch } from "../components/RoleMismatch";
 
 export function RoleGate({ roles }: { roles: string[] }) {

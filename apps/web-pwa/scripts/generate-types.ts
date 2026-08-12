@@ -8,8 +8,8 @@
  *   pnpm gen:types              # Generate from default URL or fixture
  *   pnpm gen:types --check      # Check for drift (exit non-zero if stale)
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -17,18 +17,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Default configuration
 const DEFAULT_OPENAPI_URL = "http://localhost:8000/openapi.json";
 const DEFAULT_FIXTURE_PATH = resolve(__dirname, "./fixtures/openapi.json");
-const OUTPUT_PATH = resolve(
-  __dirname,
-  "../../../packages/api-client/src/types/generated.ts"
-);
+const OUTPUT_PATH = resolve(__dirname, "../../../packages/api-client/src/types/generated.ts");
 
 /**
  * Convert OpenAPI schema type to TypeScript type
  */
-function openApiTypeToTs(
-  schema: Record<string, unknown>,
-  required: string[]
-): string {
+function openApiTypeToTs(schema: Record<string, unknown>, required: string[]): string {
   if (!schema || typeof schema !== "object") {
     return "unknown";
   }
@@ -48,18 +42,14 @@ function openApiTypeToTs(
 
   // Handle enum
   if (enumValues) {
-    const enumTs = enumValues
-      .map((v) => (typeof v === "string" ? `"${v}"` : v))
-      .join(" | ");
+    const enumTs = enumValues.map((v) => (typeof v === "string" ? `"${v}"` : v)).join(" | ");
     return nullable ? `(${enumTs}) | null` : enumTs;
   }
 
   // Handle arrays
   if (type === "array") {
     const items = schema.items as Record<string, unknown> | undefined;
-    const itemType = items
-      ? openApiTypeToTs(items, required)
-      : "unknown";
+    const itemType = items ? openApiTypeToTs(items, required) : "unknown";
     return nullable ? `(${itemType}[]) | null` : `${itemType}[]`;
   }
 
@@ -200,7 +190,9 @@ async function main() {
     }
     const existing = readFileSync(OUTPUT_PATH, "utf-8");
     if (existing.trim() !== generated.trim()) {
-      console.error("ERROR: Generated types differ from existing file. Run 'pnpm gen:types' to update.");
+      console.error(
+        "ERROR: Generated types differ from existing file. Run 'pnpm gen:types' to update.",
+      );
       process.exit(1);
     }
     console.log("Types are up to date.");

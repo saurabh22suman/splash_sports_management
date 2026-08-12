@@ -1,12 +1,15 @@
-import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input } from "@splashh/ui";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, Card, CardContent, CardHeader, CardTitle, FormField, Input } from "@splashh/ui";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useCreateResource } from "./useAdminFacilities";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
-  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Lowercase letters, digits, hyphens only"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .regex(/^[a-z0-9-]+$/, "Lowercase letters, digits, hyphens only"),
   resource_type: z.enum(["court", "lane", "pool", "field", "net", "studio", "gym_floor", "room"]),
   capacity: z.coerce.number().int().min(1, "At least 1"),
   attributes: z.string().optional(),
@@ -33,7 +36,7 @@ export function NewResourceForm({
 
   const onSubmit = handleSubmit(async (data) => {
     let attributes: Record<string, unknown> | undefined;
-    if (data.attributes && data.attributes.trim()) {
+    if (data.attributes?.trim()) {
       try {
         attributes = JSON.parse(data.attributes);
       } catch {
@@ -87,11 +90,18 @@ export function NewResourceForm({
               <Input id="rcapacity" type="number" min={1} {...register("capacity")} />
             </FormField>
           </div>
-          <FormField label="Attributes (JSON, optional)" htmlFor="rattr" error={errors.attributes?.message}>
+          <FormField
+            label="Attributes (JSON, optional)"
+            htmlFor="rattr"
+            error={errors.attributes?.message}
+          >
             <Input id="rattr" placeholder='{"surface":"clay"}' {...register("attributes")} />
           </FormField>
           {create.error && (
-            <p role="alert" className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+            <p
+              role="alert"
+              className="border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive"
+            >
               {(create.error as Error).message}
             </p>
           )}

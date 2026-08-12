@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode } from "react";
-import { useCreateBooking } from "./useCreateBooking";
+import { renderHook, waitFor } from "@testing-library/react";
 import { AxiosError } from "axios";
+import type { ReactNode } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useCreateBooking } from "./useCreateBooking";
 
 // Mock the bookings API
 const mockCreate = vi.fn();
@@ -170,7 +170,7 @@ describe("useCreateBooking", () => {
     result.current.mutate(input);
 
     // Wait a bit for the mutation to process
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Should have tried to create via API
     expect(mockCreate).toHaveBeenCalledWith(input);

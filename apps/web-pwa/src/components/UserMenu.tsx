@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { useAuthStore } from "@splashh/api-client";
 import { useLogout } from "@/features/auth/useLogout";
+import { useAuthStore } from "@splashh/api-client";
+import { useEffect, useRef, useState } from "react";
 
-function useClickOutside(ref: React.RefObject<HTMLElement>, onClose: () => void) {
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () => void) {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
