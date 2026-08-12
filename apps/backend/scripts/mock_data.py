@@ -18,6 +18,7 @@ For non-confirmed bookings, we call `bookings.add_safe()` (creates CONFIRMED),
 then mutate via `b.cancel(reason=...)` / `b.complete()` / `b.mark_no_show()`
 and persist via `bookings.update(b)`.
 """
+
 from __future__ import annotations
 
 import random
@@ -116,8 +117,10 @@ FACILITIES: tuple[_FacilitySpec, ...] = (
         resource_type="pool",
         capacity=24,
         attributes={"lanes": 8, "length_m": 25, "min_age": 5},
-        open_start_hour=6, open_start_minute=0,
-        open_end_hour=21, open_end_minute=0,
+        open_start_hour=6,
+        open_start_minute=0,
+        open_end_hour=21,
+        open_end_minute=0,
     ),
     _FacilitySpec(
         slug="melbourne-swim-academy",
@@ -133,8 +136,10 @@ FACILITIES: tuple[_FacilitySpec, ...] = (
         resource_type="pool",
         capacity=32,
         attributes={"lanes": 10, "length_m": 50, "min_age": 3},
-        open_start_hour=5, open_start_minute=30,
-        open_end_hour=22, open_end_minute=0,
+        open_start_hour=5,
+        open_start_minute=30,
+        open_end_hour=22,
+        open_end_minute=0,
     ),
     _FacilitySpec(
         slug="brisbane-sport-complex",
@@ -150,8 +155,10 @@ FACILITIES: tuple[_FacilitySpec, ...] = (
         resource_type="court",
         capacity=20,
         attributes={"surface": "timber", "lighting": True},
-        open_start_hour=6, open_start_minute=0,
-        open_end_hour=23, open_end_minute=0,
+        open_start_hour=6,
+        open_start_minute=0,
+        open_end_hour=23,
+        open_end_minute=0,
     ),
     _FacilitySpec(
         slug="auckland-marine-pool",
@@ -167,8 +174,10 @@ FACILITIES: tuple[_FacilitySpec, ...] = (
         resource_type="pool",
         capacity=18,
         attributes={"lanes": 6, "length_m": 25, "min_age": 4},
-        open_start_hour=7, open_start_minute=0,
-        open_end_hour=20, open_end_minute=0,
+        open_start_hour=7,
+        open_start_minute=0,
+        open_end_hour=20,
+        open_end_minute=0,
     ),
     _FacilitySpec(
         slug="gold-coast-gym",
@@ -184,8 +193,10 @@ FACILITIES: tuple[_FacilitySpec, ...] = (
         resource_type="gym_floor",
         capacity=40,
         attributes={"equipment_count": 60, "has_showers": True},
-        open_start_hour=5, open_start_minute=0,
-        open_end_hour=23, open_end_minute=0,
+        open_start_hour=5,
+        open_start_minute=0,
+        open_end_hour=23,
+        open_end_minute=0,
     ),
 )
 
@@ -225,9 +236,7 @@ def _weighted_status(rng: random.Random) -> str:
     return rng.choices(statuses, weights=weights, k=1)[0]
 
 
-def _pick_window(
-    status: str, rng: random.Random, now: datetime
-) -> tuple[datetime, datetime]:
+def _pick_window(status: str, rng: random.Random, now: datetime) -> tuple[datetime, datetime]:
     """Pick a random (start_at, end_at) window for the given status.
 
     CONFIRMED:  80% next 14 days, 20% last 7 days
@@ -294,9 +303,7 @@ from datetime import time
 
 async def seed_tenant(session: AsyncSession, *, stdout: TextIO | None = None) -> "uuid.UUID":
     """Idempotently create the demo tenant. Returns the tenant id."""
-    result = await session.execute(
-        select(TenantModel).where(TenantModel.slug == TENANT_SLUG)
-    )
+    result = await session.execute(select(TenantModel).where(TenantModel.slug == TENANT_SLUG))
     existing = result.scalar_one_or_none()
     if existing is not None:
         return existing.id
@@ -368,10 +375,10 @@ async def seed_customers(
 
     # Build a quick lookup of existing customers by email
     existing_rows = (
-        await session.execute(
-            select(CustomerModel).where(CustomerModel.tenant_id == tenant_id)
-        )
-    ).scalars().all()
+        (await session.execute(select(CustomerModel).where(CustomerModel.tenant_id == tenant_id)))
+        .scalars()
+        .all()
+    )
     existing_by_email: dict[str, CustomerModel] = {c.email: c for c in existing_rows}
 
     # Track which emails already have users (from CUSTOMER_USERS)
@@ -484,12 +491,16 @@ async def seed_facilities_and_resources(
 
         # 3. Availability rules (one per day-of-week)
         existing_rules = (
-            await session.execute(
-                select(AvailabilityRuleModel).where(
-                    AvailabilityRuleModel.resource_id == resource_id
+            (
+                await session.execute(
+                    select(AvailabilityRuleModel).where(
+                        AvailabilityRuleModel.resource_id == resource_id
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         existing_days = {r.day_of_week for r in existing_rules}
 
         start_time = time(spec.open_start_hour, spec.open_start_minute)
@@ -552,10 +563,10 @@ async def seed_bookings(
 
     # Check if bookings already exist for this tenant (idempotency)
     existing_count = (
-        await session.execute(
-            select(BookingModel).where(BookingModel.tenant_id == tenant_id)
-        )
-    ).scalars().all()
+        (await session.execute(select(BookingModel).where(BookingModel.tenant_id == tenant_id)))
+        .scalars()
+        .all()
+    )
     if existing_count:
         # Bookings already exist, count them and return
         counts = {
@@ -614,10 +625,10 @@ async def seed_bookings(
                 notes=notes,
             )
             try:
-                booking = await bookings_repo.add_safe(booking)
+                booking = await bookings_repo.add(booking)
             except Exception:
-                # If resource is locked or overlap occurs (rare with curated customers),
-                # skip and continue.
+                # Seed data is allowed to overlap (we use add() not add_safe()),
+                # so this only fires on hard constraint violations.
                 counts["skipped"] += 1
                 continue
 
@@ -655,14 +666,16 @@ async def seed_mock_data(
     """
     # 1. Seed tenant (with gate: skip if demo tenant already exists)
     from sqlalchemy import select
+
     existing_tenant = (
-        await session.execute(
-            select(TenantModel).where(TenantModel.slug == TENANT_SLUG)
-        )
+        await session.execute(select(TenantModel).where(TenantModel.slug == TENANT_SLUG))
     ).scalar_one_or_none()
     if existing_tenant is not None:
         tenant_id = existing_tenant.id
-        print(f"Demo tenant already exists: {TENANT_NAME} (slug={TENANT_SLUG}, id={tenant_id})", file=stdout)
+        print(
+            f"Demo tenant already exists: {TENANT_NAME} (slug={TENANT_SLUG}, id={tenant_id})",
+            file=stdout,
+        )
     else:
         tenant_id = await seed_tenant(session, stdout=stdout)
         print(f"Demo tenant: {TENANT_NAME} (slug={TENANT_SLUG}, id={tenant_id})", file=stdout)
@@ -681,7 +694,9 @@ async def seed_mock_data(
 
     # 5. Seed bookings
     resource_ids = [ids["resource_id"] for ids in fr.values()]
-    booking_counts = await seed_bookings(session, tenant_id, customer_ids, resource_ids, stdout=stdout)
+    booking_counts = await seed_bookings(
+        session, tenant_id, customer_ids, resource_ids, stdout=stdout
+    )
     print(f"Seeded {booking_counts['created']} bookings", file=stdout)
 
     # 6. Commit all changes

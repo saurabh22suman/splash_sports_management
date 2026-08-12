@@ -8,9 +8,10 @@ One repository per aggregate:
 Each exposes domain-meaningful methods. They never leak SQLAlchemy models
 upward; the application layer works with domain entities only.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -18,8 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.domain.entities import RefreshToken, Tenant, TenantStatus, User, UserRole
 from auth.infrastructure.models import RefreshTokenModel, TenantModel, UserModel
-from common.infrastructure.repository import BaseRepository
 from common.infrastructure.mixins import uuid_pk
+from common.infrastructure.repository import BaseRepository
 
 
 def _tenant_to_domain(m: TenantModel) -> Tenant:
@@ -151,7 +152,11 @@ class UserRepository(BaseRepository[User]):
         return _user_to_domain(m)
 
     async def list_by_tenant(self, tenant_id: UUID) -> list[User]:
-        stmt = select(UserModel).where(UserModel.tenant_id == tenant_id).order_by(UserModel.created_at.desc())
+        stmt = (
+            select(UserModel)
+            .where(UserModel.tenant_id == tenant_id)
+            .order_by(UserModel.created_at.desc())
+        )
         result = await self.session.execute(stmt)
         return [_user_to_domain(m) for m in result.scalars().all()]
 
@@ -185,14 +190,14 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
         m = await self.session.get(RefreshTokenModel, token.id)
         if m is None:
             return
-        m.used_at = now or datetime.now(timezone.utc)
+        m.used_at = now or datetime.now(UTC)
         await self.session.flush()
 
     async def revoke_family(self, family_id: str, now: datetime | None = None) -> int:
         """Revoke every token in a family. Returns count revoked."""
         from sqlalchemy import update
 
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         stmt = (
             update(RefreshTokenModel)
             .where(RefreshTokenModel.family_id == family_id, RefreshTokenModel.revoked_at.is_(None))

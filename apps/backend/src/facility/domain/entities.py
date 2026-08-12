@@ -10,11 +10,12 @@ Invariants:
 - Availability rules don't overlap for the same resource
 - A Resource's facility_id must reference an existing Facility in the same tenant
 """
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time, timezone
 from enum import Enum
 from uuid import UUID
 
@@ -74,8 +75,8 @@ class Facility:
     timezone: str
     phone: str | None
     status: FacilityStatus
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
     def create(
@@ -116,15 +117,15 @@ class Facility:
 
     def close(self) -> None:
         self.status = FacilityStatus.INACTIVE
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def open(self) -> None:
         self.status = FacilityStatus.ACTIVE
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def put_under_maintenance(self) -> None:
         self.status = FacilityStatus.UNDER_MAINTENANCE
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def update_details(
         self,
@@ -160,7 +161,7 @@ class Facility:
             self.timezone = timezone_
         if phone is not None:
             self.phone = phone or None
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
 
 @dataclass(slots=True)
@@ -174,8 +175,8 @@ class Resource:
     capacity: int
     attributes: dict[str, object]
     status: ResourceStatus
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
     def create(
@@ -208,11 +209,11 @@ class Resource:
 
     def deactivate(self) -> None:
         self.status = ResourceStatus.INACTIVE
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def reactivate(self) -> None:
         self.status = ResourceStatus.ACTIVE
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def update_details(
         self,
@@ -231,7 +232,7 @@ class Resource:
             self.capacity = capacity
         if attributes is not None:
             self.attributes = attributes
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
 
 @dataclass(slots=True)
@@ -253,7 +254,7 @@ class AvailabilityRule:
     slot_duration_minutes: int
     valid_from: date | None
     valid_until: date | None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
     def create(

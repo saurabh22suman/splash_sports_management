@@ -1,4 +1,5 @@
 """Dependency injection for payments HTTP endpoints."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
@@ -84,14 +85,14 @@ async def get_payment_service(
 
 
 def idempotency_key(
-    x_idempotency_key: Annotated[str | None, Header(alias="X-Idempotency-Key")] = None
+    x_idempotency_key: Annotated[str | None, Header(alias="X-Idempotency-Key")] = None,
 ) -> str | None:
     """Extract the X-Idempotency-Key header value (optional)."""
     return x_idempotency_key
 
 
 def required_idempotency_key(
-    x_idempotency_key: Annotated[str, Header(alias="X-Idempotency-Key")]
+    x_idempotency_key: Annotated[str, Header(alias="X-Idempotency-Key")],
 ) -> str:
     """Extract the X-Idempotency-Key header value (required)."""
     return x_idempotency_key

@@ -1,4 +1,5 @@
 """FastAPI router for payments endpoints."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -9,7 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from auth.interfaces.http.dependencies import auth_required, requires_role
 from common.domain.exceptions import Validation
 from payments.application.payment_service import PaymentService
-from payments.interfaces.http.deps import get_current_user, get_payment_service, idempotency_key, required_idempotency_key
+from payments.interfaces.http.deps import (
+    get_current_user,
+    get_payment_service,
+    idempotency_key,
+    required_idempotency_key,
+)
 from payments.interfaces.http.schemas import (
     InvoiceCreateRequest,
     InvoiceResponse,

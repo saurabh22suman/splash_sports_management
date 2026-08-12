@@ -28,7 +28,7 @@ from payments.application.devsim_state import encode_state
 
 # Importing from the same module as NullAdapter/RazorpayAdapter to share
 # the dataclass and Protocol definitions.
-from payments.application.provider import (  # noqa: F401  (re-exported via type)
+from payments.application.provider import (
     PaymentLinkResult,
     PaymentProvider,
 )

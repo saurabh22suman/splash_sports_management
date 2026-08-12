@@ -13,12 +13,13 @@ Development/Test uses:
 - RS256 with ephemeral keys (generated per-process in tests)
 - HS256 with hardcoded secret (dev convenience only, NOT for production)
 """
+
 from __future__ import annotations
 
 import os
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -30,6 +31,7 @@ from common.domain.types import TenantId, UserId
 @dataclass(frozen=True, slots=True)
 class RS256KeyPaths:
     """Paths to RSA key files for RS256 JWT signing."""
+
     private_key_path: Path
     public_key_path: Path
 
@@ -64,7 +66,7 @@ class HS256TokenService:
         roles: list[str],
         family_id: str | None = None,
     ) -> TokenPair:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         access_exp = now + self._access_ttl
         refresh_exp = now + self._refresh_ttl
         family_id = family_id or secrets.token_urlsafe(16)
@@ -174,9 +176,9 @@ class RS256TokenService:
 
         Uses RSA-2048 which is the minimum recommended key size.
         """
+        from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric import rsa
-        from cryptography.hazmat.backends import default_backend
 
         private_key = rsa.generate_private_key(
             public_exponent=65537,
@@ -205,7 +207,7 @@ class RS256TokenService:
         *,
         access_ttl: timedelta,
         refresh_ttl: timedelta,
-    ) -> "RS256TokenService":
+    ) -> RS256TokenService:
         """Factory to create RS256TokenService from key file paths."""
         if not private_key_path.is_file():
             msg = f"JWT private key not found: {private_key_path}"
@@ -232,7 +234,7 @@ class RS256TokenService:
         roles: list[str],
         family_id: str | None = None,
     ) -> TokenPair:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         access_exp = now + self._access_ttl
         refresh_exp = now + self._refresh_ttl
         family_id = family_id or secrets.token_urlsafe(16)

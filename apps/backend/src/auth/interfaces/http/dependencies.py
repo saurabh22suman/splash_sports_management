@@ -12,6 +12,7 @@ like `require_tenant_id` raise "Tenant context required".
 For RS256: uses public key from JWT_PUBLIC_KEY_PATH env var (or file).
 For HS256 (dev only): uses JWT_SECRET env var.
 """
+
 from __future__ import annotations
 
 import os
@@ -66,6 +67,7 @@ def _get_public_key() -> str:
             raise RuntimeError(msg)
         # Dev/test: ephemeral RS256 keypair per process
         from auth.infrastructure.token_service import RS256TokenService
+
         _, public_pem = RS256TokenService.generate_ephemeral_keypair()
         return public_pem
 

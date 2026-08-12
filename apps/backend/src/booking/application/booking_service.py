@@ -12,16 +12,18 @@ The booking flow:
 This service is the only entry point for booking creation. Repositories are
 private collaborators.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from booking.domain.entities import Booking, BookingStatus, BookingTariff, CancellationReason
 from booking.infrastructure.repositories import BookingRepository, BookingTariffRepository
 from common.domain.exceptions import NotFound, Validation
-from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from facility.application.facility_service import FacilityService
@@ -74,7 +76,7 @@ class BookingService:
         self,
         session: AsyncSession,
         bookings: BookingRepository,
-        facility_service: "FacilityService | None" = None,
+        facility_service: FacilityService | None = None,
     ) -> None:
         self.session = session
         self.bookings = bookings

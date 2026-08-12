@@ -6,6 +6,7 @@ maps these to RFC 7807 problem responses.
 > **Rule** — modules MUST raise domain exceptions, never HTTPException.
 > Modules MUST NOT import FastAPI.
 """
+
 from __future__ import annotations
 
 from typing import Any

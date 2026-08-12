@@ -1,4 +1,5 @@
 """HTTP router for customer endpoints."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -10,7 +11,6 @@ from auth.interfaces.http.dependencies import auth_required, auth_tenant, requir
 from common.application.context import require_tenant_id
 from common.domain.types import TenantId
 from common.infrastructure.db import get_session
-
 from customer.application.customer_service import CustomerService
 from customer.infrastructure.repositories import CustomerRepository
 from customer.interfaces.http.schemas import (

@@ -1,13 +1,15 @@
 """CustomerService — application orchestration for customer use cases."""
+
 from __future__ import annotations
 
 from datetime import date
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from common.domain.exceptions import NotFound
 from customer.domain.entities import Customer
 from customer.infrastructure.repositories import CustomerRepository
-from common.domain.exceptions import NotFound
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class CustomerService:

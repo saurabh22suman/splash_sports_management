@@ -1,4 +1,5 @@
 """Pydantic schemas for auth HTTP endpoints."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -12,7 +13,9 @@ from auth.domain.entities import UserRole
 
 class RegisterTenantRequest(BaseModel):
     tenant_name: str = Field(min_length=2, max_length=100)
-    tenant_slug: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9](?:[a-z0-9\-]{0,38}[a-z0-9])?$")
+    tenant_slug: str = Field(
+        min_length=1, max_length=40, pattern=r"^[a-z0-9](?:[a-z0-9\-]{0,38}[a-z0-9])?$"
+    )
     primary_contact_email: EmailStr
     admin_email: EmailStr
     admin_password: str = Field(min_length=12, max_length=128)
@@ -59,6 +62,7 @@ class RefreshRequest(BaseModel):
 
     The router reads cookie first; body is a fallback for server-to-server callers.
     """
+
     refresh_token: str | None = Field(default=None, min_length=10)
 
 

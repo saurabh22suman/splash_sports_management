@@ -6,6 +6,7 @@
 These are unauthenticated by design so load balancers and orchestrators can
 probe them.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, status
@@ -32,7 +33,7 @@ async def readiness() -> dict[str, object]:
         async with factory() as session:
             await session.execute(text("SELECT 1"))
         checks["database"] = "ok"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         overall_ok = False
         checks["database"] = f"error: {exc.__class__.__name__}"
 

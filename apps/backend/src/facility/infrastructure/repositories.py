@@ -1,4 +1,5 @@
 """Facility repositories."""
+
 from __future__ import annotations
 
 from datetime import date, time
@@ -7,6 +8,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.domain.exceptions import Conflict
+from common.domain.types import TenantId
+from common.infrastructure.repository import BaseRepository
 from facility.domain.entities import (
     AvailabilityRule,
     Facility,
@@ -16,9 +20,6 @@ from facility.domain.entities import (
     ResourceType,
 )
 from facility.infrastructure.models import AvailabilityRuleModel, FacilityModel, ResourceModel
-from common.domain.exceptions import Conflict
-from common.infrastructure.repository import BaseRepository
-from common.domain.types import TenantId
 
 
 def _facility_to_domain(m: FacilityModel) -> Facility:
@@ -196,9 +197,7 @@ class ResourceRepository(BaseRepository[Resource]):
 class AvailabilityRuleRepository(BaseRepository[AvailabilityRule]):
     model = AvailabilityRuleModel
 
-    async def list_for_resource(
-        self, tenant_id: UUID, resource_id: UUID
-    ) -> list[AvailabilityRule]:
+    async def list_for_resource(self, tenant_id: UUID, resource_id: UUID) -> list[AvailabilityRule]:
         stmt = (
             select(AvailabilityRuleModel)
             .where(

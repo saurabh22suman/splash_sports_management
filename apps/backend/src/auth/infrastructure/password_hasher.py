@@ -2,6 +2,7 @@
 
 We use Argon2id with OWASP-recommended parameters.
 """
+
 from __future__ import annotations
 
 from argon2 import PasswordHasher as _Argon2

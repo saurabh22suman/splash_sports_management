@@ -4,11 +4,12 @@ Per the handbook, the domain layer has zero framework dependencies. Entities
 here are pure Python dataclasses. The ORM models in `infrastructure/models.py`
 are a separate concern.
 """
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from uuid import UUID
 
@@ -80,7 +81,7 @@ class Tenant:
             raise Validation("Slug must be lowercase alphanumeric with hyphens")
         if "@" not in primary_contact_email:
             raise Validation("Invalid contact email")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return cls(
             id=UUID(int=0),  # assigned by DB
             name=name,
@@ -92,12 +93,9 @@ class Tenant:
         )
 
     def activate(self) -> None:
-        if self.status == TenantStatus.SUSPENDED:
+        if self.status == TenantStatus.SUSPENDED or self.status == TenantStatus.ONBOARDING:
             self.status = TenantStatus.ACTIVE
-            self.updated_at = datetime.now(timezone.utc)
-        elif self.status == TenantStatus.ONBOARDING:
-            self.status = TenantStatus.ACTIVE
-            self.updated_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(UTC)
         else:
             raise InvariantViolation(f"Cannot activate from {self.status}")
 
@@ -125,8 +123,8 @@ class User:
     failed_login_count: int = 0
     locked_until: datetime | None = None
     last_login_at: datetime | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     _MAX_FAILED_LOGINS = 10
     _LOCKOUT_MINUTES = 15
@@ -162,11 +160,11 @@ class User:
     def is_locked(self, now: datetime | None = None) -> bool:
         if self.locked_until is None:
             return False
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         return self.locked_until > now
 
     def record_failed_login(self, now: datetime | None = None) -> None:
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         self.failed_login_count += 1
         if self.failed_login_count >= self._MAX_FAILED_LOGINS:
             from datetime import timedelta
@@ -175,7 +173,7 @@ class User:
             self.updated_at = now
 
     def record_successful_login(self, now: datetime | None = None) -> None:
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         self.failed_login_count = 0
         self.locked_until = None
         self.last_login_at = now
@@ -187,12 +185,12 @@ class User:
     def add_role(self, role: UserRole) -> None:
         if role not in self.roles:
             self.roles.append(role)
-            self.updated_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(UTC)
 
     def remove_role(self, role: UserRole) -> None:
         if role in self.roles:
             self.roles.remove(role)
-            self.updated_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(UTC)
 
 
 @dataclass(slots=True)
@@ -221,11 +219,11 @@ class RefreshToken:
     revoked_at: datetime | None
 
     def is_active(self, now: datetime | None = None) -> bool:
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         return self.used_at is None and self.revoked_at is None and self.expires_at > now
 
     def mark_used(self, now: datetime | None = None) -> None:
-        self.used_at = now or datetime.now(timezone.utc)
+        self.used_at = now or datetime.now(UTC)
 
     def revoke(self, now: datetime | None = None) -> None:
-        self.revoked_at = now or datetime.now(timezone.utc)
+        self.revoked_at = now or datetime.now(UTC)

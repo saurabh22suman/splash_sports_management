@@ -1,4 +1,5 @@
 """Customer repository."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -7,11 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.infrastructure.models import UserModel  # for FK existence check at creation
+from common.domain.exceptions import Conflict
+from common.domain.types import TenantId
+from common.infrastructure.repository import BaseRepository
 from customer.domain.entities import Customer, CustomerStatus
 from customer.infrastructure.models import CustomerModel
-from common.domain.exceptions import Conflict
-from common.infrastructure.repository import BaseRepository
-from common.domain.types import TenantId
 
 
 def _to_domain(m: CustomerModel) -> Customer:
@@ -73,7 +74,9 @@ class CustomerRepository(BaseRepository[Customer]):
         )
         user_result = await self.session.execute(user_stmt)
         if user_result.scalar_one_or_none() is None:
-            raise Conflict("User does not exist in this tenant", details={"user_id": str(customer.user_id)})
+            raise Conflict(
+                "User does not exist in this tenant", details={"user_id": str(customer.user_id)}
+            )
 
         existing = await self.get_by_user(customer.tenant_id, customer.user_id)
         if existing is not None:

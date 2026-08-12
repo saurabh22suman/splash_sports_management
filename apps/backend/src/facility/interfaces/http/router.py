@@ -1,4 +1,5 @@
 """HTTP router for facility endpoints."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -6,11 +7,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.interfaces.http.dependencies import auth_required, auth_tenant, requires_role
 from common.application.context import require_tenant_id
 from common.domain.types import TenantId
 from common.infrastructure.db import get_session
-
-from auth.interfaces.http.dependencies import auth_required, auth_tenant, requires_role
 from facility.application.facility_service import FacilityService
 from facility.infrastructure.repositories import (
     AvailabilityRuleRepository,
@@ -44,6 +44,7 @@ def _facility_service(session: AsyncSession = Depends(get_session)) -> FacilityS
 
 
 # ---------- Facility ----------
+
 
 @router.post(
     "",
@@ -128,6 +129,7 @@ async def deactivate_facility(
 
 # ---------- Resource ----------
 
+
 @router.post(
     "/{facility_id}/resources",
     response_model=ResourceOut,
@@ -201,6 +203,7 @@ async def deactivate_resource(
 
 
 # ---------- Availability ----------
+
 
 @router.post(
     "/resources/{resource_id}/availability-rules",

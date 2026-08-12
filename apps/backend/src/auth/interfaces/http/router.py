@@ -1,4 +1,5 @@
 """HTTP router for auth endpoints."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -8,7 +9,7 @@ from auth.application.auth_service import AuthService, build_auth_service
 from auth.application.user_admin_service import UserAdminService
 from auth.infrastructure.password_hasher import Argon2PasswordHasher
 from auth.infrastructure.repositories import UserRepository
-from auth.interfaces.http.dependencies import auth_required, CurrentPrincipal, requires_role
+from auth.interfaces.http.dependencies import CurrentPrincipal, auth_required, requires_role
 from auth.interfaces.http.schemas import (
     CreateUserRequest,
     CreateUserResponse,
@@ -35,8 +36,8 @@ def _auth_service(session: AsyncSession = Depends(get_session)) -> AuthService:
 def _to_token_response(result) -> TokenResponse:  # type: ignore[no-untyped-def]
     import datetime as _dt
 
-    access_in = int((result.access_expires_at - _dt.datetime.now(_dt.timezone.utc)).total_seconds())
-    refresh_in = int((result.refresh_expires_at - _dt.datetime.now(_dt.timezone.utc)).total_seconds())
+    access_in = int((result.access_expires_at - _dt.datetime.now(_dt.UTC)).total_seconds())
+    refresh_in = int((result.refresh_expires_at - _dt.datetime.now(_dt.UTC)).total_seconds())
     return TokenResponse(
         access_token=result.access_token,
         refresh_token=result.refresh_token,
@@ -136,7 +137,6 @@ async def logout(
     if token:
         await svc.logout(refresh_token=token)
     response.delete_cookie(key=s.auth_refresh_cookie_name, path=s.auth_refresh_cookie_path)
-    return None
 
 
 def _user_admin_service(
@@ -200,5 +200,3 @@ async def list_users(
             for u in users
         ]
     )
-
-

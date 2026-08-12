@@ -6,16 +6,14 @@ Usage:
 The factory pattern lets tests create isolated app instances with overridden
 dependencies.
 """
+
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Import payments models to register them with Base.metadata
-from payments.infrastructure import models as _payments_models  # noqa: F401
 
 from common.infrastructure.db import dispose_engine, init_engine
 from common.infrastructure.logging import configure_logging, get_logger
@@ -23,6 +21,9 @@ from common.infrastructure.middleware import RequestContextMiddleware
 from common.infrastructure.settings import get_settings
 from common.interfaces.http.errors import register_error_handlers
 from common.interfaces.http.health import router as health_router
+
+# Import payments models to register them with Base.metadata
+from payments.infrastructure import models as _payments_models
 
 _logger = get_logger(__name__)
 
@@ -95,7 +96,9 @@ def create_app() -> FastAPI:
                 key_secret=settings.razorpay_key_secret,
                 webhook_secret=settings.razorpay_webhook_secret,
             )
-        _logger.info("payment_provider_initialised", provider=type(app.state.payment_provider).__name__)
+        _logger.info(
+            "payment_provider_initialised", provider=type(app.state.payment_provider).__name__
+        )
 
         try:
             yield

@@ -6,6 +6,7 @@ We use the **async session per request** pattern:
 3. Service code uses the session via [`get_session`] (FastAPI dependency).
 4. On exit, session commits on success, rolls back on exception.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -88,8 +89,9 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     Sets `app.tenant_id` on the connection for RLS policies when a tenant
     context is available (i.e., for authenticated requests).
     """
-    from common.application.context import get_context, reset_context
     from sqlalchemy import text
+
+    from common.application.context import get_context, reset_context
 
     factory = get_session_factory()
     async with factory() as session:

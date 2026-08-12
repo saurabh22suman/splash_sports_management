@@ -10,14 +10,17 @@ Use cases:
 - refresh: rotate refresh tokens with reuse detection
 - logout: revoke refresh family
 """
+
 from __future__ import annotations
 
 import hashlib
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.domain.entities import RefreshToken, Tenant, User, UserRole
 from auth.infrastructure.password_hasher import Argon2PasswordHasher
@@ -35,7 +38,6 @@ from auth.infrastructure.token_service import (
 from common.domain.exceptions import Conflict, Forbidden, Unauthorized, Validation
 from common.domain.types import TenantId, UserId
 from customer.infrastructure.repositories import CustomerRepository
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +128,12 @@ class AuthService:
             raise Forbidden("Account is disabled")
 
         if user.is_locked():
-            raise Forbidden("Account temporarily locked", details={"locked_until": user.locked_until.isoformat() if user.locked_until else None})
+            raise Forbidden(
+                "Account temporarily locked",
+                details={
+                    "locked_until": user.locked_until.isoformat() if user.locked_until else None
+                },
+            )
 
         if not self.password_hasher.verify(user.password_hash, password):
             user.record_failed_login()
@@ -241,9 +248,7 @@ class AuthService:
 
     # ----------------- helpers -----------------
 
-    def _issue_pair(
-        self, user: User, *, family_id: str | None = None
-    ) -> tuple[TokenPair, str]:
+    def _issue_pair(self, user: User, *, family_id: str | None = None) -> tuple[TokenPair, str]:
         """Issue access + refresh tokens. Returns (pair, family_id).
 
         Caller is responsible for persisting the refresh token record.
@@ -271,7 +276,7 @@ class AuthService:
             user_id=user.id,
             token_hash=self._hash(pair.refresh_token),
             family_id=family_id,
-            issued_at=datetime.now(timezone.utc),
+            issued_at=datetime.now(UTC),
             expires_at=pair.refresh_expires_at,
             used_at=None,
             revoked_at=None,
@@ -296,7 +301,7 @@ class AuthService:
         return secrets.token_urlsafe(16)
 
 
-def _read_keypair(key_paths: "RS256KeyPaths") -> tuple[str, str]:
+def _read_keypair(key_paths: RS256KeyPaths) -> tuple[str, str]:
     return (
         Path(key_paths.private_key_path).read_text(encoding="utf-8").strip(),
         Path(key_paths.public_key_path).read_text(encoding="utf-8").strip(),
@@ -330,11 +335,13 @@ def build_auth_service(session: AsyncSession, settings) -> AuthService:  # type:
             msg = "HS256 is forbidden in production. Use RS256."
             raise RuntimeError(msg)
         import os
+
         secret = os.environ.get("JWT_SECRET")
         if not secret or len(secret) < 32:
             msg = "JWT_SECRET must be set and ≥32 chars in HS256 dev/test mode"
             raise RuntimeError(msg)
         from auth.infrastructure.token_service import HS256TokenService
+
         token_service = HS256TokenService(
             secret=secret,
             access_ttl=dt.timedelta(seconds=settings.jwt_access_token_ttl_seconds),

@@ -6,6 +6,7 @@ can be correlated without manual threading.
 
 PII fields are redacted via the `redact_pii` processor.
 """
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,6 @@ from typing import Any
 
 import structlog
 from structlog.types import EventDict, Processor
-
 
 REDACT_KEYS = {
     "password",

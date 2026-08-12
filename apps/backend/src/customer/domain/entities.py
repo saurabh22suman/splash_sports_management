@@ -13,11 +13,12 @@ Invariants:
 - Phone numbers are E.164 when provided
 - `status` transitions: ACTIVE -> INACTIVE -> ACTIVE, ACTIVE -> BANNED
 """
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime, timezone
 from enum import Enum
 from uuid import UUID
 
@@ -44,8 +45,8 @@ class Customer:
     date_of_birth: date | None
     status: CustomerStatus
     notes: str | None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
     def create(
@@ -81,16 +82,16 @@ class Customer:
     def deactivate(self) -> None:
         if self.status != CustomerStatus.BANNED:
             self.status = CustomerStatus.INACTIVE
-            self.updated_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(UTC)
 
     def activate(self) -> None:
         if self.status != CustomerStatus.BANNED:
             self.status = CustomerStatus.ACTIVE
-            self.updated_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(UTC)
 
     def ban(self) -> None:
         self.status = CustomerStatus.BANNED
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def update_profile(
         self,
@@ -113,4 +114,4 @@ class Customer:
             self.date_of_birth = date_of_birth
         if notes is not None:
             self.notes = notes
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)

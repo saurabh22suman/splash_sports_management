@@ -1,7 +1,8 @@
 """HTTP router for booking endpoints."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
@@ -17,7 +18,6 @@ from booking.interfaces.http.schemas import (
     BookingListResponse,
     BookingOut,
 )
-from booking.domain.entities import BookingStatus
 from common.application.context import require_tenant_id
 from common.domain.types import TenantId
 from common.infrastructure.db import get_session
@@ -54,9 +54,7 @@ def _to_out(b, *, facility_name: str | None = None, resource_name: str | None = 
     return out
 
 
-async def _to_admin_out(
-    svc: BookingService, b, tenant_id: TenantId
-) -> BookingOut:
+async def _to_admin_out(svc: BookingService, b, tenant_id: TenantId) -> BookingOut:
     """Convert a booking to admin output with customer and facility details."""
     from customer.infrastructure.repositories import CustomerRepository
 
@@ -82,6 +80,7 @@ async def _to_admin_out(
         # Get facility_id for filtering
         if resource_name:
             from facility.infrastructure.repositories import ResourceRepository
+
             resource_repo = ResourceRepository(svc.session)
             resource = await resource_repo.get_by_id(tenant_id, b.resource_id)
             if resource:
@@ -132,9 +131,7 @@ async def cancel_booking(
     svc: BookingService = Depends(_booking_service),
     tenant_id: TenantId = Depends(auth_tenant),
 ) -> BookingOut:
-    b = await svc.cancel_booking(
-        tenant_id=tenant_id, booking_id=booking_id, reason=payload.reason
-    )
+    b = await svc.cancel_booking(tenant_id=tenant_id, booking_id=booking_id, reason=payload.reason)
     return _to_out(b)
 
 
@@ -183,10 +180,7 @@ async def list_for_customer(
         offset=offset,
     )
     return BookingListResponse(
-        data=[
-            _to_out(b, facility_name=fn, resource_name=rn)
-            for b, fn, rn in bookings
-        ]
+        data=[_to_out(b, facility_name=fn, resource_name=rn) for b, fn, rn in bookings]
     )
 
 
@@ -237,7 +231,7 @@ async def list_admin_bookings(
     """
     # Default to today if not specified
     if from_at is None:
-        from_at = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        from_at = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     if to_at is None:
         to_at = from_at.replace(hour=23, minute=59, second=59)
 

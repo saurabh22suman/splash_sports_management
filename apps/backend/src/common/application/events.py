@@ -57,7 +57,7 @@ class OutboxEventPublisher:
     This is the production-ready implementation per ADR-0004.
     """
 
-    def __init__(self, outbox_repository: "OutboxRepository") -> None:
+    def __init__(self, outbox_repository: OutboxRepository) -> None:
         self._outbox = outbox_repository
 
     async def publish(self, event: DomainEvent) -> None:

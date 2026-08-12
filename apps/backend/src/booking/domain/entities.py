@@ -16,10 +16,11 @@ BookingTariff defines the price for a resource based on:
 - day_of_week (0=Monday, 6=Sunday)
 - time of day (hour, e.g., 6 = 6:00 AM to 7:00 AM)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from uuid import UUID
 
@@ -56,8 +57,8 @@ class Booking:
     cancelled_at: datetime | None
     checked_in_at: datetime | None
     completed_at: datetime | None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
     def create(
@@ -97,7 +98,7 @@ class Booking:
     def cancel(self, *, reason: CancellationReason, now: datetime | None = None) -> None:
         if self.status != BookingStatus.CONFIRMED:
             raise InvariantViolation(f"Cannot cancel booking in status {self.status}")
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         self.status = BookingStatus.CANCELLED
         self.cancellation_reason = reason
         self.cancelled_at = now
@@ -106,14 +107,14 @@ class Booking:
     def check_in(self, now: datetime | None = None) -> None:
         if self.status != BookingStatus.CONFIRMED:
             raise InvariantViolation(f"Cannot check-in booking in status {self.status}")
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         self.checked_in_at = now
         self.updated_at = now
 
     def complete(self, now: datetime | None = None) -> None:
         if self.status != BookingStatus.CONFIRMED:
             raise InvariantViolation(f"Cannot complete booking in status {self.status}")
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         self.status = BookingStatus.COMPLETED
         self.completed_at = now
         self.updated_at = now
@@ -121,12 +122,12 @@ class Booking:
     def mark_no_show(self, now: datetime | None = None) -> None:
         if self.status != BookingStatus.CONFIRMED:
             raise InvariantViolation(f"Cannot mark no-show for booking in status {self.status}")
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         self.status = BookingStatus.NO_SHOW
         self.cancellation_reason = CancellationReason.NO_SHOW
         self.updated_at = now
 
-    def overlaps(self, other: "Booking") -> bool:
+    def overlaps(self, other: Booking) -> bool:
         """True if this booking's time window overlaps with `other`."""
         return self.start_at < other.end_at and other.start_at < self.end_at
 
@@ -151,8 +152,8 @@ class BookingTariff:
     tenant_id: UUID
     resource_id: UUID
     day_of_week: int  # 0=Monday, 6=Sunday
-    time_start: int    # Hour of day (0-23) - start of the time slot
-    time_end: int     # Hour of day (0-23) - end of the time slot (exclusive)
+    time_start: int  # Hour of day (0-23) - start of the time slot
+    time_end: int  # Hour of day (0-23) - end of the time slot (exclusive)
     price_cents: int
     currency: str
     # Computed duration_hours: time_end - time_start (typically 1 hour slots)

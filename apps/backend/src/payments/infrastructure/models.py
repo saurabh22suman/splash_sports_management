@@ -26,6 +26,7 @@ from common.infrastructure.mixins import TimestampMixin
 
 class JsonColumn(TypeDecorator):
     """A JSON column that uses JSONB for PostgreSQL and JSON for other dialects (e.g., SQLite)."""
+
     impl = TEXT
     cache_ok = True
 
@@ -41,6 +42,7 @@ class JsonColumn(TypeDecorator):
             return value
         # For SQLite, convert to JSON string
         import json
+
         return json.dumps(value)
 
     def process_result_value(self, value, dialect):
@@ -50,6 +52,7 @@ class JsonColumn(TypeDecorator):
             return value
         # For SQLite, parse JSON string
         import json
+
         return json.loads(value)
 
 
@@ -59,10 +62,17 @@ class TenantPaymentConfigModel(Base, TimestampMixin):
     tenant_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         # use_alter defers FK constraint creation to avoid SQLite issues
-        ForeignKey("tenants.id", ondelete="CASCADE", use_alter=True, name="fk_payments_tenant_config_tenant_id"),
-        primary_key=True
+        ForeignKey(
+            "tenants.id",
+            ondelete="CASCADE",
+            use_alter=True,
+            name="fk_payments_tenant_config_tenant_id",
+        ),
+        primary_key=True,
     )
-    razorpay_account_id: Mapped[str | None] = mapped_column(Text)  # NULL in v1 (single platform account)
+    razorpay_account_id: Mapped[str | None] = mapped_column(
+        Text
+    )  # NULL in v1 (single platform account)
     default_currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default="INR")
 
 
@@ -86,9 +96,13 @@ class InvoiceModel(Base, TimestampMixin):
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
-    metadata_: Mapped[dict] = mapped_column("metadata", JsonColumn, nullable=False, server_default="{}")
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata", JsonColumn, nullable=False, server_default="{}"
+    )
 
-    line_items: Mapped[list[InvoiceLineItemModel]] = relationship(back_populates="invoice", cascade="all, delete-orphan", lazy="selectin")
+    line_items: Mapped[list[InvoiceLineItemModel]] = relationship(
+        back_populates="invoice", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class InvoiceLineItemModel(Base):
@@ -96,7 +110,15 @@ class InvoiceLineItemModel(Base):
     __table_args__ = (Index("payments_line_items_invoice_idx", "invoice_id"),)
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    invoice_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_invoices.id", ondelete="CASCADE", name="fk_payments_invoice_line_items_invoice_id"), nullable=False)
+    invoice_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(
+            "payments_invoices.id",
+            ondelete="CASCADE",
+            name="fk_payments_invoice_line_items_invoice_id",
+        ),
+        nullable=False,
+    )
     description: Mapped[str] = mapped_column(Text, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -108,14 +130,24 @@ class InvoiceLineItemModel(Base):
 class PaymentModel(Base, TimestampMixin):
     __tablename__ = "payments_payments"
     __table_args__ = (
-        Index("payments_payments_rzp_payment_uniq", "tenant_id", "razorpay_payment_id", unique=True),
-        Index("payments_payments_rzp_link_uniq", "tenant_id", "razorpay_payment_link_id", unique=True),
+        Index(
+            "payments_payments_rzp_payment_uniq", "tenant_id", "razorpay_payment_id", unique=True
+        ),
+        Index(
+            "payments_payments_rzp_link_uniq", "tenant_id", "razorpay_payment_link_id", unique=True
+        ),
         Index("payments_payments_idempotency_uniq", "tenant_id", "idempotency_key", unique=True),
     )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
-    invoice_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_invoices.id", ondelete="RESTRICT", name="fk_payments_payments_invoice_id"), nullable=False)
+    invoice_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(
+            "payments_invoices.id", ondelete="RESTRICT", name="fk_payments_payments_invoice_id"
+        ),
+        nullable=False,
+    )
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default="INR")
     status: Mapped[str] = mapped_column(Text, nullable=False)
@@ -133,7 +165,13 @@ class RefundModel(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     tenant_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
-    payment_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("payments_payments.id", ondelete="RESTRICT", name="fk_payments_refunds_payment_id"), nullable=False)
+    payment_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey(
+            "payments_payments.id", ondelete="RESTRICT", name="fk_payments_refunds_payment_id"
+        ),
+        nullable=False,
+    )
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(CHAR(3), nullable=False, server_default="INR")
     status: Mapped[str] = mapped_column(Text, nullable=False)
@@ -146,7 +184,9 @@ class ProcessedRazorpayEventModel(Base):
     __table_args__ = (Index("payments_processed_events_processed_at_idx", "processed_at"),)
 
     razorpay_event_id: Mapped[str] = mapped_column(Text, primary_key=True)
-    tenant_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True))  # nullable: test events lack tenant context
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True)
+    )  # nullable: test events lack tenant context
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
     processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

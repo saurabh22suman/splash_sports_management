@@ -14,7 +14,7 @@ from payments.infrastructure.models import (
     PaymentModel,
     RefundModel,
 )
-from payments.infrastructure.repositories import (  # noqa: F401
+from payments.infrastructure.repositories import (
     InvoiceRepository,
     TenantPaymentConfigRepository,
 )
@@ -22,7 +22,7 @@ from payments.infrastructure.repositories import (  # noqa: F401
 if TYPE_CHECKING:
     from common.application.events import EventPublisher
     from payments.application.provider import PaymentLinkResult, PaymentProvider
-    from payments.infrastructure.repositories import (  # noqa: F401
+    from payments.infrastructure.repositories import (
         IdempotencyKeyRepository,
         PaymentRepository,
         ProcessedRazorpayEventRepository,
@@ -32,9 +32,18 @@ if TYPE_CHECKING:
 
 class PaymentService:
     def __init__(
-        self, *, session, invoice_repo, payment_repo, refund_repo,
-        processed_event_repo, idempotency, tenant_config_repo,
-        events: EventPublisher, provider: PaymentProvider, settings,
+        self,
+        *,
+        session,
+        invoice_repo,
+        payment_repo,
+        refund_repo,
+        processed_event_repo,
+        idempotency,
+        tenant_config_repo,
+        events: EventPublisher,
+        provider: PaymentProvider,
+        settings,
     ) -> None:
         self._session = session
         self._invoices = invoice_repo
@@ -48,9 +57,14 @@ class PaymentService:
         self._settings = settings
 
     async def create_invoice(
-        self, *, tenant_id: UUID, customer_id: UUID,
-        line_items: list[dict], description: str, due_date: date,
-        idempotency_key: str | None = None,  # noqa: ARG002
+        self,
+        *,
+        tenant_id: UUID,
+        customer_id: UUID,
+        line_items: list[dict],
+        description: str,
+        due_date: date,
+        idempotency_key: str | None = None,
     ) -> Invoice:
         # Note: idempotency_key is reserved for future use
         # Validate line items
@@ -75,44 +89,63 @@ class PaymentService:
 
         # Create the invoice model
         inv = InvoiceModel(
-            id=uuid4(), tenant_id=tenant_id, customer_id=customer_id,
-            invoice_number=invoice_number, status="pending",
-            subtotal_paise=subtotal, tax_paise=0, total_paise=subtotal,
-            currency=currency, due_date=due_date, paid_at=None,
-            description=description, metadata_={},
-            created_at=now, updated_at=now,
+            id=uuid4(),
+            tenant_id=tenant_id,
+            customer_id=customer_id,
+            invoice_number=invoice_number,
+            status="pending",
+            subtotal_paise=subtotal,
+            tax_paise=0,
+            total_paise=subtotal,
+            currency=currency,
+            due_date=due_date,
+            paid_at=None,
+            description=description,
+            metadata_={},
+            created_at=now,
+            updated_at=now,
         )
 
         # Add line items to the model
         for li in line_items:
             total = li["quantity"] * li["unit_price_paise"]
-            inv.line_items.append(InvoiceLineItemModel(
-                id=uuid4(), invoice_id=inv.id, description=li["description"],
-                quantity=li["quantity"], unit_price_paise=li["unit_price_paise"], total_paise=total,
-            ))
+            inv.line_items.append(
+                InvoiceLineItemModel(
+                    id=uuid4(),
+                    invoice_id=inv.id,
+                    description=li["description"],
+                    quantity=li["quantity"],
+                    unit_price_paise=li["unit_price_paise"],
+                    total_paise=total,
+                )
+            )
 
         # Persist the invoice (cascade saves line items)
         await self._invoices.save(inv)
 
         # Publish InvoiceCreated event
-        await self._events.publish(InvoiceCreated(
-            tenant_id=tenant_id,
-            invoice_id=inv.id,
-            customer_id=customer_id,
-            total_paise=subtotal,
-            currency=currency,
-        ))
+        await self._events.publish(
+            InvoiceCreated(
+                tenant_id=tenant_id,
+                invoice_id=inv.id,
+                customer_id=customer_id,
+                total_paise=subtotal,
+                currency=currency,
+            )
+        )
 
         # Build and return Invoice entity
         entity_line_items = []
         for model_li in inv.line_items:
-            entity_line_items.append(LineItem(
-                id=model_li.id,
-                description=model_li.description,
-                quantity=model_li.quantity,
-                unit_price=Money(amount_paise=model_li.unit_price_paise, currency=currency),
-                total=Money(amount_paise=model_li.total_paise, currency=currency),
-            ))
+            entity_line_items.append(
+                LineItem(
+                    id=model_li.id,
+                    description=model_li.description,
+                    quantity=model_li.quantity,
+                    unit_price=Money(amount_paise=model_li.unit_price_paise, currency=currency),
+                    total=Money(amount_paise=model_li.total_paise, currency=currency),
+                )
+            )
 
         return Invoice(
             id=inv.id,
@@ -132,7 +165,12 @@ class PaymentService:
         )
 
     async def create_payment_link(
-        self, *, tenant_id: UUID, customer_id: UUID, invoice_id: UUID, idempotency_key: str,
+        self,
+        *,
+        tenant_id: UUID,
+        customer_id: UUID,
+        invoice_id: UUID,
+        idempotency_key: str,
     ) -> PaymentLinkResult:
         inv = await self._invoices.get_for_update(tenant_id, invoice_id)
         if inv is None:
@@ -144,25 +182,41 @@ class PaymentService:
             raise Conflict("Invoice is not payable", details={"status": inv.status})
 
         payment = PaymentModel(
-            id=uuid4(), tenant_id=tenant_id, invoice_id=invoice_id,
-            amount_paise=inv.total_paise, currency=inv.currency,
+            id=uuid4(),
+            tenant_id=tenant_id,
+            invoice_id=invoice_id,
+            amount_paise=inv.total_paise,
+            currency=inv.currency,
             status=PaymentStatus.PENDING.value,
-            razorpay_payment_id=None, razorpay_payment_link_id=None,
-            idempotency_key=idempotency_key, captured_at=None,
-            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+            razorpay_payment_id=None,
+            razorpay_payment_link_id=None,
+            idempotency_key=idempotency_key,
+            captured_at=None,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         await self._payments.save(payment)
 
         inv_dict = {
-            "id": inv.id, "tenant_id": tenant_id, "customer_id": inv.customer_id,
-            "line_items": [{"description": li.description, "quantity": li.quantity,
-                            "unit_price_paise": li.unit_price_paise, "total_paise": li.total_paise}
-                           for li in inv.line_items],
+            "id": inv.id,
+            "tenant_id": tenant_id,
+            "customer_id": inv.customer_id,
+            "line_items": [
+                {
+                    "description": li.description,
+                    "quantity": li.quantity,
+                    "unit_price_paise": li.unit_price_paise,
+                    "total_paise": li.total_paise,
+                }
+                for li in inv.line_items
+            ],
             "currency": inv.currency,
         }
         app_url = self._settings.app_url
         result = await self._provider.create_payment_link(
-            invoice=inv_dict, payment_id=payment.id, idempotency_key=idempotency_key,
+            invoice=inv_dict,
+            payment_id=payment.id,
+            idempotency_key=idempotency_key,
             success_url=f"{app_url}/book/pay/{invoice_id}/return?payment_link_id={{PAYMENT_LINK_ID}}",
             cancel_url=f"{app_url}/book/pay/{invoice_id}",
             customer={"id": str(inv.customer_id)},
@@ -194,7 +248,9 @@ class PaymentService:
                 await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
 
-            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(razorpay_payment_id)
+            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(
+                razorpay_payment_id
+            )
             if payment is None:
                 await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
@@ -215,14 +271,16 @@ class PaymentService:
             await self._invoices.save(inv)
             await self._processed_events.mark_processed(event["id"], tenant_id, etype)
 
-            await self._events.publish(InvoicePaid(
-                tenant_id=tenant_id,
-                invoice_id=inv.id,
-                payment_id=payment.id,
-                customer_id=inv.customer_id,
-                amount_paise=inv.total_paise,
-                currency=inv.currency,
-            ))
+            await self._events.publish(
+                InvoicePaid(
+                    tenant_id=tenant_id,
+                    invoice_id=inv.id,
+                    payment_id=payment.id,
+                    customer_id=inv.customer_id,
+                    amount_paise=inv.total_paise,
+                    currency=inv.currency,
+                )
+            )
 
         elif etype == "payment.failed":
             ent = payload.get("payment", {}).get("entity", {})
@@ -232,7 +290,9 @@ class PaymentService:
                 await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
 
-            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(razorpay_payment_id)
+            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(
+                razorpay_payment_id
+            )
             if payment is None:
                 await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
@@ -249,13 +309,15 @@ class PaymentService:
             await self._invoices.save(inv)
             await self._processed_events.mark_processed(event["id"], tenant_id, etype)
 
-            await self._events.publish(PaymentFailed(
-                tenant_id=tenant_id,
-                invoice_id=inv.id,
-                payment_id=payment.id,
-                customer_id=inv.customer_id,
-                reason=reason,
-            ))
+            await self._events.publish(
+                PaymentFailed(
+                    tenant_id=tenant_id,
+                    invoice_id=inv.id,
+                    payment_id=payment.id,
+                    customer_id=inv.customer_id,
+                    reason=reason,
+                )
+            )
 
         elif etype == "refund.processed":
             ent = payload.get("refund", {}).get("entity", {})
@@ -268,7 +330,9 @@ class PaymentService:
                 return
 
             # First, look up the payment to get tenant_id
-            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(razorpay_payment_id)
+            payment = await self._payments.get_by_razorpay_payment_id_for_any_tenant(
+                razorpay_payment_id
+            )
             if payment is None:
                 await self._processed_events.mark_processed(event["id"], uuid4(), etype)
                 return
@@ -290,22 +354,29 @@ class PaymentService:
             await self._invoices.save(inv)
             await self._processed_events.mark_processed(event["id"], tenant_id, etype)
 
-            await self._events.publish(RefundIssued(
-                tenant_id=tenant_id,
-                invoice_id=inv.id,
-                payment_id=payment.id,
-                refund_id=refund.id,
-                customer_id=inv.customer_id,
-                amount_paise=refund.amount_paise,
-                currency=refund.currency,
-            ))
+            await self._events.publish(
+                RefundIssued(
+                    tenant_id=tenant_id,
+                    invoice_id=inv.id,
+                    payment_id=payment.id,
+                    refund_id=refund.id,
+                    customer_id=inv.customer_id,
+                    amount_paise=refund.amount_paise,
+                    currency=refund.currency,
+                )
+            )
 
         else:
             # Unknown event type - mark processed and move on
             await self._processed_events.mark_processed(event["id"], uuid4(), etype)
 
     async def refund_invoice(
-        self, *, tenant_id: UUID, invoice_id: UUID, reason: str, idempotency_key: str,
+        self,
+        *,
+        tenant_id: UUID,
+        invoice_id: UUID,
+        reason: str,
+        idempotency_key: str,
     ) -> RefundModel:
         # Per correction #3: drop async with session.begin() wrapper
         # Load invoice for update
@@ -324,10 +395,16 @@ class PaymentService:
         # Build refund model
         now = datetime.now(UTC)
         refund = RefundModel(
-            id=uuid4(), tenant_id=tenant_id, payment_id=payment.id,
-            amount_paise=inv.total_paise, currency=inv.currency,
-            status="pending", razorpay_refund_id=None, reason=reason,
-            created_at=now, updated_at=now,
+            id=uuid4(),
+            tenant_id=tenant_id,
+            payment_id=payment.id,
+            amount_paise=inv.total_paise,
+            currency=inv.currency,
+            status="pending",
+            razorpay_refund_id=None,
+            reason=reason,
+            created_at=now,
+            updated_at=now,
         )
         await self._refunds.save(refund)
 
@@ -342,9 +419,14 @@ class PaymentService:
         return refund
 
     async def list_invoices(
-        self, *, tenant_id: UUID, viewer_customer_id: UUID | None = None,
-        status: str | None = None, customer_id: UUID | None = None,
-        limit: int = 50, offset: int = 0,
+        self,
+        *,
+        tenant_id: UUID,
+        viewer_customer_id: UUID | None = None,
+        status: str | None = None,
+        customer_id: UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[InvoiceModel]:
         if viewer_customer_id is not None:
             return await self._invoices.list_by_customer(
