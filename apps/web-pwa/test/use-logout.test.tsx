@@ -14,10 +14,10 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useNavigate: vi.fn() };
 });
 
+import { useLogout } from "@/features/auth/useLogout";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { api, useAuthStore } from "@splashh/api-client";
 import { useNavigate } from "react-router-dom";
-import { useLogout } from "@/features/auth/useLogout";
 
 const setup = () => {
   const qc = new QueryClient();
@@ -42,7 +42,11 @@ describe("useLogout", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({
-      accessToken: null, userId: null, tenantId: null, roles: [], isAuthenticated: false,
+      accessToken: null,
+      userId: null,
+      tenantId: null,
+      roles: [],
+      isAuthenticated: false,
     });
   });
 
@@ -51,7 +55,9 @@ describe("useLogout", () => {
     const { wrapper } = setup();
     useAuthStore.setState({ accessToken: "t", isAuthenticated: true });
     const { result } = renderHook(() => useLogout(), { wrapper });
-    await act(async () => { result.current.mutate(); });
+    await act(async () => {
+      result.current.mutate();
+    });
     expect(api.post).toHaveBeenCalledWith("/auth/logout");
   });
 
@@ -60,7 +66,9 @@ describe("useLogout", () => {
     const { navigate, wrapper } = setup();
     useAuthStore.setState({ accessToken: "t", isAuthenticated: true });
     const { result } = renderHook(() => useLogout(), { wrapper });
-    await act(async () => { result.current.mutate(); });
+    await act(async () => {
+      result.current.mutate();
+    });
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(navigate).toHaveBeenCalledWith("/", { replace: true });
@@ -72,7 +80,9 @@ describe("useLogout", () => {
     const { navigate, wrapper } = setup();
     useAuthStore.setState({ accessToken: "t", isAuthenticated: true });
     const { result } = renderHook(() => useLogout(), { wrapper });
-    await act(async () => { result.current.mutate(); });
+    await act(async () => {
+      result.current.mutate();
+    });
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(navigate).toHaveBeenCalledWith("/", { replace: true });

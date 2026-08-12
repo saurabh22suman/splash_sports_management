@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { titleForPath } from "@/lib/page-titles";
+import { describe, expect, it } from "vitest";
 
 describe("titleForPath", () => {
   it("returns the public landing title at /", () => {

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/payments/hooks", () => ({
   useInvoice: vi.fn(),
@@ -24,7 +24,7 @@ function wrap(status: string) {
           <Route path="/book/pay/:id/return" element={<PayInvoiceReturnPage />} />
         </Routes>
       </MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -36,7 +36,7 @@ describe("PayInvoiceReturnPage", () => {
 
   it("shows success state when invoice is paid", () => {
     wrap("paid");
-    expect(screen.getByText(/Payment successful/i)).toBeInTheDocument();
+    expect(screen.getByText(/Payment received/i)).toBeInTheDocument();
   });
   it("shows processing state otherwise", () => {
     wrap("pending");

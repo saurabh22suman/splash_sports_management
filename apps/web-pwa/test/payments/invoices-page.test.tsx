@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/payments/hooks", () => ({
   useInvoices: vi.fn(),
@@ -17,7 +17,7 @@ function wrap() {
       <MemoryRouter>
         <InvoicesPage />
       </MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -52,7 +52,8 @@ describe("InvoicesPage", () => {
     });
 
     wrap();
-    expect(screen.getByText("INV-000001")).toBeInTheDocument();
+    // Invoice number renders in both mobile card list and desktop table
+    expect(screen.getAllByText("INV-000001").length).toBeGreaterThan(0);
     // Use getAllByText since the filter buttons also have the status text
     expect(screen.getAllByText(/pending/i).length).toBeGreaterThan(0);
   });
@@ -65,6 +66,7 @@ describe("InvoicesPage", () => {
     });
 
     wrap();
-    expect(screen.getByRole("link", { name: /new invoice/i })).toBeInTheDocument();
+    // "+ New invoice" appears in both header and empty-state action
+    expect(screen.getAllByRole("link", { name: /new invoice/i }).length).toBeGreaterThan(0);
   });
 });

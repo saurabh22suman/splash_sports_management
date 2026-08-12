@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,14 +9,20 @@ vi.mock("@/lib/page-titles", () => ({
   titleForPath: (p: string) => (p.startsWith("/admin") ? "Admin" : "Browse"),
 }));
 
+vi.mock("@/features/auth/useLogout", () => ({
+  useLogout: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 import { TopBar } from "@/components/TopBar";
 
 const renderBar = (pathname: string, mobileOpen = false) => {
   const onToggle = vi.fn();
   const result = render(
-    <MemoryRouter initialEntries={[pathname]}>
-      <TopBar mobileOpen={mobileOpen} onToggleSidebar={onToggle} />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[pathname]}>
+        <TopBar mobileOpen={mobileOpen} onToggleSidebar={onToggle} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
   return { onToggle, ...result };
 };
@@ -55,6 +62,9 @@ describe("TopBar", () => {
 
   it("reflects the mobileOpen prop in aria-expanded", () => {
     renderBar("/book", true);
-    expect(screen.getByRole("button", { name: /toggle navigation/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /toggle navigation/i })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 });

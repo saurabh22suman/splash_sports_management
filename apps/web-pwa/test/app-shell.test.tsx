@@ -14,7 +14,9 @@ vi.mock("@/components/Sidebar", () => ({
   Sidebar: ({ items, mobileOpen, onClose }: any) => (
     <div data-testid="sidebar" data-mobile-open={mobileOpen ? "true" : "false"}>
       {items.map((it: any) => (
-        <a key={it.to} href={it.to} onClick={onClose}>{it.label}</a>
+        <a key={it.to} href={it.to} onClick={onClose}>
+          {it.label}
+        </a>
       ))}
     </div>
   ),
@@ -23,17 +25,19 @@ vi.mock("@/components/Sidebar", () => ({
 vi.mock("@/components/TopBar", () => ({
   TopBar: ({ mobileOpen, onToggleSidebar }: any) => (
     <div>
-      <button data-testid="hamburger" aria-expanded={mobileOpen} onClick={onToggleSidebar}>☰</button>
+      <button data-testid="hamburger" aria-expanded={mobileOpen} onClick={onToggleSidebar}>
+        ☰
+      </button>
     </div>
   ),
 }));
 
 vi.mock("@/components/UserMenu", () => ({ UserMenu: () => <div data-testid="user-menu" /> }));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { useAuthStore } from "@splashh/api-client";
 import { AppShell } from "@/components/AppShell";
 import { NAV_BY_ROLE, navForRoles } from "@/components/nav";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { useAuthStore } from "@splashh/api-client";
 
 const renderShell = (path: string, roles: string[]) => {
   useAuthStore.setState({ roles, isAuthenticated: true });
@@ -63,7 +67,11 @@ describe("navForRoles", () => {
 describe("AppShell", () => {
   beforeEach(() => {
     useAuthStore.setState({
-      accessToken: null, userId: null, tenantId: null, roles: [], isAuthenticated: false,
+      accessToken: null,
+      userId: null,
+      tenantId: null,
+      roles: [],
+      isAuthenticated: false,
     });
   });
 

@@ -8,7 +8,10 @@
       "**/node_modules/**",
       "**/.venv/**",
       "**/playwright-report/**",
-      "**/test-results/**"
+      "**/test-results/**",
+      "reference/**",
+      "apps/web-pwa/scripts/fixtures/**",
+      "apps/backend/coverage.json"
     ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
@@ -17,8 +20,18 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "style": { "noNonNullAssertion": "warn" },
-      "suspicious": { "noExplicitAny": "warn" }
+      "style": {
+        "noNonNullAssertion": "warn"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noArrayIndexKey": "warn"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "warn",
+        "useValidAnchor": "warn",
+        "useButtonType": "warn"
+      }
     }
   },
   "javascript": {

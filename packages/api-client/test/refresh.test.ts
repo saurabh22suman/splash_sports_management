@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useAuthStore } from "@/auth/store";
 import { silentRefresh } from "@/api/refresh";
+import { useAuthStore } from "@/auth/store";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("silentRefresh", () => {
   beforeEach(() => {
@@ -28,9 +28,9 @@ describe("silentRefresh", () => {
   });
 
   it("is single-flight: concurrent calls share one request", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ access_token: "shared" }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ access_token: "shared" }), { status: 200 }));
     const [a, b] = await Promise.all([silentRefresh(), silentRefresh()]);
     expect(a).toBe("shared");
     expect(b).toBe("shared");

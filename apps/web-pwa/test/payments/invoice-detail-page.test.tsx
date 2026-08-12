@@ -1,13 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@splashh/api-client", async () => {
   const actual = await vi.importActual<typeof import("@splashh/api-client")>("@splashh/api-client");
   return {
     ...actual,
-    useAuthStore: (selector: (state: { roles: string[] }) => unknown) => selector({ roles: ["tenant_admin"] }),
+    useAuthStore: (selector: (state: { roles: string[] }) => unknown) =>
+      selector({ roles: ["tenant_admin"] }),
   };
 });
 
@@ -33,7 +34,13 @@ describe("InvoiceDetailPage", () => {
         total_paise: 150000,
         currency: "INR",
         line_items: [
-          { id: "li1", description: "Lane 4", quantity: 1, unit_price_paise: 150000, total_paise: 150000 },
+          {
+            id: "li1",
+            description: "Lane 4",
+            quantity: 1,
+            unit_price_paise: 150000,
+            total_paise: 150000,
+          },
         ],
         customer_id: "c1",
         tenant_id: "t1",
@@ -63,7 +70,7 @@ describe("InvoiceDetailPage", () => {
             <Route path="/admin/invoices/:id" element={<InvoiceDetailPage />} />
           </Routes>
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
     // Use function matcher since text may be in nested elements
     expect(screen.getByText((content) => content.includes("Lane 4"))).toBeInTheDocument();

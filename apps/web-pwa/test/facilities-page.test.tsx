@@ -13,10 +13,10 @@ vi.mock("@/features/facilities/useFacilities", () => ({
   useFacilities: vi.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { api } from "@splashh/api-client";
 import { useFacilities } from "@/features/facilities/useFacilities";
 import { FacilitiesPage } from "@/pages/book/FacilitiesPage";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { api } from "@splashh/api-client";
 
 describe("FacilitiesPage", () => {
   beforeEach(() => {
@@ -40,9 +40,7 @@ describe("FacilitiesPage", () => {
       </QueryClientProvider>,
     );
 
-    const link = await waitFor(() =>
-      screen.getByRole("link", { name: /view details/i }),
-    );
+    const link = await waitFor(() => screen.getByRole("link", { name: /view details/i }));
     expect(link).toHaveAttribute("href", "/book/facilities/fac-123");
   });
 });
@@ -86,7 +84,9 @@ describe("FacilitiesPage (polish)", () => {
         </QueryClientProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByRole("heading", { level: 1, name: /facilities/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /facilities/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders the empty state with a Browse action when there are no facilities", async () => {
@@ -124,6 +124,6 @@ describe("FacilitiesPage (polish)", () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 });

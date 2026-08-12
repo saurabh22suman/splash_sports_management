@@ -13,7 +13,7 @@ const items = [
   { to: "/book/bookings", label: "My bookings", icon: "📅" },
 ];
 
-const renderSidebar = (path: string = "/book") =>
+const renderSidebar = (path = "/book") =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <Sidebar items={items} mobileOpen={false} onClose={vi.fn()} />
@@ -37,10 +37,10 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "My bookings" })).toBeInTheDocument();
   });
 
-  it("marks the current route's link as active (sky-50 background)", () => {
+  it("marks the current route's link as active (primary background)", () => {
     renderSidebar("/book");
     const browse = screen.getByRole("link", { name: "Browse" });
-    expect(browse.className).toMatch(/bg-sky-50/);
+    expect(browse.className).toMatch(/bg-primary/);
   });
 
   it("renders the UserMenu in the footer", () => {

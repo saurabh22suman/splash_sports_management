@@ -1,11 +1,17 @@
+import { useAuthStore } from "@splashh/api-client";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import { useAuthStore } from "@splashh/api-client";
 import { RoleGate } from "../src/routes/role-gate";
 
 const renderWith = (roles: string[], path = "/admin") => {
-  useAuthStore.setState({ roles, isAuthenticated: true, accessToken: "x", userId: "u", tenantId: "t" });
+  useAuthStore.setState({
+    roles,
+    isAuthenticated: true,
+    accessToken: "x",
+    userId: "u",
+    tenantId: "t",
+  });
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>

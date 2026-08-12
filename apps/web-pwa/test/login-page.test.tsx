@@ -15,13 +15,13 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useNavigate: vi.fn() };
 });
 
+import { AdminLoginPage } from "@/pages/AdminLoginPage";
+import { LoginPage } from "@/pages/LoginPage";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { api, useAuthStore } from "@splashh/api-client";
 import { useNavigate } from "react-router-dom";
-import { LoginPage } from "@/pages/LoginPage";
-import { AdminLoginPage } from "@/pages/AdminLoginPage";
 
-const renderLogin = (initialPath: string = "/login") => {
+const renderLogin = (initialPath = "/login") => {
   const navigate = vi.fn();
   (useNavigate as ReturnType<typeof vi.fn>).mockReturnValue(navigate);
   return {
@@ -45,7 +45,11 @@ describe("LoginPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({
-      accessToken: null, userId: null, tenantId: null, roles: [], isAuthenticated: false,
+      accessToken: null,
+      userId: null,
+      tenantId: null,
+      roles: [],
+      isAuthenticated: false,
     });
   });
 
@@ -72,7 +76,7 @@ describe("LoginPage", () => {
   it("shows the Splashh wordmark and tagline above the card", () => {
     renderLogin();
     expect(screen.getByText("Splashh")).toBeInTheDocument();
-    expect(screen.getByText(/book your club in seconds/i)).toBeInTheDocument();
+    expect(screen.getByText(/sports club management/i)).toBeInTheDocument();
   });
 
   it("submits the Customer tab with mode='customer' on success", async () => {

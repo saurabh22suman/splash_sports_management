@@ -10,16 +10,16 @@ vi.mock("@splashh/api-client", async () => {
   return { ...actual, api: { post: vi.fn() } };
 });
 
+import { UserMenu } from "@/components/UserMenu";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useAuthStore } from "@splashh/api-client";
-import { UserMenu } from "@/components/UserMenu";
 
 const setup = () => {
   const qc = new QueryClient();
   useAuthStore.setState({ userId: "alex-123", accessToken: "t", isAuthenticated: true });
   return {
     qc,
-    rerender: () => undefined as void,
+    rerender: () => undefined as undefined,
   };
 };
 
@@ -38,7 +38,11 @@ describe("UserMenu", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({
-      accessToken: null, userId: null, tenantId: null, roles: [], isAuthenticated: false,
+      accessToken: null,
+      userId: null,
+      tenantId: null,
+      roles: [],
+      isAuthenticated: false,
     });
   });
 

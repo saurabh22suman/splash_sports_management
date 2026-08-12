@@ -8,9 +8,9 @@ vi.mock("@splashh/api-client", async () => {
   return { ...actual, api: { post: vi.fn() } };
 });
 
+import { useCreateBooking } from "@/features/bookings/useCreateBooking";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { api } from "@splashh/api-client";
-import { useCreateBooking } from "@/features/bookings/useCreateBooking";
 
 function Probe() {
   const create = useCreateBooking();
@@ -22,8 +22,6 @@ function Probe() {
           resource_id: "r1",
           start_at: "2026-12-01T10:00:00Z",
           end_at: "2026-12-01T11:00:00Z",
-          price_cents: 2500,
-          currency: "AUD",
         })
       }
     >
@@ -44,7 +42,10 @@ describe("useCreateBooking", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "create" }));
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith("/booking", expect.objectContaining({ resource_id: "r1" }));
+      expect(api.post).toHaveBeenCalledWith(
+        "/booking",
+        expect.objectContaining({ resource_id: "r1" }),
+      );
     });
   });
 });

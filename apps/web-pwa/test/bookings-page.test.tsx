@@ -1,13 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@splashh/api-client", async () => {
-  const actual = await vi.importActual<typeof import("@splashh/api-client")>(
-    "@splashh/api-client",
-  );
+  const actual = await vi.importActual<typeof import("@splashh/api-client")>("@splashh/api-client");
   return { ...actual, useAuthStore: vi.fn(() => ({ userId: "u1" })) };
 });
 
@@ -15,10 +13,10 @@ vi.mock("@/features/bookings/useBookings", () => ({
   useBookingsByCustomer: vi.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { useAuthStore } from "@splashh/api-client";
 import { useBookingsByCustomer } from "@/features/bookings/useBookings";
 import { BookingsPage } from "@/pages/book/BookingsPage";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { useAuthStore } from "@splashh/api-client";
 
 function renderPage() {
   return render(
@@ -55,7 +53,7 @@ describe("BookingsPage", () => {
     });
     renderPage();
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("renders an h1 and an empty state when there are no bookings", async () => {
@@ -66,7 +64,9 @@ describe("BookingsPage", () => {
       refetch: vi.fn(),
     });
     renderPage();
-    expect(await screen.findByRole("heading", { level: 1, name: /my bookings/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /my bookings/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/no bookings yet/i)).toBeInTheDocument();
   });
 });

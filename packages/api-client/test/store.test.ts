@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import { useAuthStore } from "@/auth/store";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("useAuthStore", () => {
   beforeEach(() => {
@@ -14,6 +14,7 @@ describe("useAuthStore", () => {
       accessToken: "abc",
       userId: "u1",
       tenantId: "t1",
+      customerId: "c1",
       roles: ["tenant_admin"],
     });
     expect(useAuthStore.getState().accessToken).toBe("abc");
@@ -21,7 +22,13 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().roles).toEqual(["tenant_admin"]);
   });
   it("clear wipes state", () => {
-    useAuthStore.getState().setSession({ accessToken: "abc", userId: "u1", tenantId: "t1", roles: [] });
+    useAuthStore.getState().setSession({
+      accessToken: "abc",
+      userId: "u1",
+      tenantId: "t1",
+      customerId: "c1",
+      roles: [],
+    });
     useAuthStore.getState().clear();
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });

@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/features/payments/hooks", () => ({
   useInvoice: () => ({
@@ -31,7 +31,7 @@ vi.mock("@/features/payments/hooks", () => ({
         short_url: "https://rzp.io/i/test",
         razorpay_payment_link_id: "plink_test",
         expires_at: "",
-      })
+      }),
     ),
     isPending: false,
   }),
@@ -68,7 +68,7 @@ describe("PayInvoicePage", () => {
             <Route path="/book/pay/:id" element={<PayInvoicePage />} />
           </Routes>
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
     expect(screen.getByText((content) => content.includes("INV-000001"))).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pay with card/i })).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("PayInvoicePage", () => {
             <Route path="/book/pay/:id" element={<PayInvoicePage />} />
           </Routes>
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
     await user.click(screen.getByRole("button", { name: /Pay with card/i }));
     expect(window.location.href).toBe("https://rzp.io/i/test");
