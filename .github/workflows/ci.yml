@@ -137,6 +137,11 @@ jobs:
       - name: Run integration tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
+          # Integration tests look up TEST_DATABASE_URL (not DATABASE_URL) when
+          # spinning up their own async engines; without this override they
+          # fall back to the local-dev splashh credentials and fail with
+          # "role splashh does not exist" against the CI service.
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
           REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: test
           PYTHONPATH: apps/backend/src
